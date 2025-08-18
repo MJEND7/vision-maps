@@ -1,0 +1,19 @@
+@font-face {
+  font-family: 'Sora';
+  src: url('/Sora_Complete/Fonts/WEB/fonts/Sora-Variable.woff2') format('woff2'),
+       url('/Sora_Complete/Fonts/WEB/fonts/Sora-Variable.woff') format('woff'),
+       url('/Sora_Complete/Fonts/WEB/fonts/Sora-Variable.ttf') format('truetype');
+  font-weight: 100 800;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Sora';
+  src: url('/Sora_Complete/Fonts/WEB/fonts/Sora-VariableItalic.woff2') format('woff2'),
+       url('/Sora_Complete/Fonts/WEB/fonts/Sora-VariableItalic.woff') format('woff'),
+       url('/Sora_Complete/Fonts/WEB/fonts/Sora-VariableItalic.ttf') format('truetype');
+  font-weight: 100 800;
+  font-display: swap;
+  font-style: italic;
+}
