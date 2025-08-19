@@ -8,7 +8,7 @@ export default function SignUpPage() {
     const router = useRouter();
 
     return (
-        <div className="min-h-screen bg-background flex flex-col">
+        <div className="min-h-screen bg-transparent flex flex-col">
             {/* Header */}
             <LandingNav />
 

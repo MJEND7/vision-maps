@@ -83,14 +83,14 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
             if (isSignIn && signIn) {
                 await signIn.authenticateWithRedirect({
                     strategy,
-                    redirectUrl: "/",
-                    redirectUrlComplete: "/",
+                    redirectUrl: "/visions",
+                    redirectUrlComplete: "/visions",
                 });
             } else if (signUp) {
                 await signUp.authenticateWithRedirect({
                     strategy,
                     redirectUrl: "/sso-callback",
-                    redirectUrlComplete: "/",
+                    redirectUrlComplete: "/visions",
                 });
             } else {
                 throw new Error("Failed to get a version of this component (oauth)")
@@ -113,7 +113,7 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="w-full max-w-md mx-auto relative"
+            className="w-full max-w-lg mx-auto relative"
         >
             <div className="absolute -top-0 left-0 z-10">
                 <Button
@@ -136,7 +136,7 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
                 </Button>
             </div>
 
-            <div className="bg-card border border-border rounded-xl shadow-lg sm:p-8 p-4 pt-12">
+            <div className="bg-card border border-border rounded-t-xl sm:rounded-xl shadow-lg sm:p-8 p-4 pt-12">
                 <div className="text-center mb-6">
                     <h2 className="text-2xl font-display font-bold mb-2">
                         {isSignIn ? "Welcome back, Vision" : "Create your account"}
