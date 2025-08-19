@@ -95,7 +95,7 @@ export default function LandingNav({
                 {!isLoaded ? (
                     <SkeletonLoader />
                 ) : user ? (
-                    <div className={showLandingSections ? "hidden sm:block" : ""}>
+                    <div className={showLandingSections ? "hidden sm:block" : "flex items-center"}>
                         <UserButton
                             appearance={{
                                 elements: { avatarBox: "w-10 h-10" },
@@ -105,36 +105,38 @@ export default function LandingNav({
                 ) : (
                     <div className="hidden sm:flex gap-2">
                         <Link href="/signup">
-                            <Button size="sm" variant="outline">
+                            <Button size="lg" variant="outline">
                                 Sign up
                             </Button>
                         </Link>
                         <Link href="/contact-us">
-                            <Button size="sm">Contact Us</Button>
+                            <Button size="lg">Contact Us</Button>
                         </Link>
                     </div>
                 )}
 
                 {/* Mobile Menu Toggle */}
                 {showLandingSections && (
-                    <button
-                        ref={buttonRef}
-                        className="sm:hidden p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-                        onClick={() => setMenuOpen(!menuOpen)}
-                    >
-                        {menuOpen ? <X size={24} /> : <Menu size={24} />}
-                    </button>
+                    <div className="sm:hidden flex items-center">
+                        <button
+                            ref={buttonRef}
+                            className="sm:hidden p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                            onClick={() => setMenuOpen(!menuOpen)}
+                        >
+                            {menuOpen ? <X size={24} /> : <Menu size={24} />}
+                        </button>
+                        <Authenticated>
+                            <UserButton
+                                appearance={{
+                                    elements: { avatarBox: "w-8 h-8" },
+                                }}
+                            />
+                        </Authenticated>
+                        <Unauthenticated>
+                            <div className="bg-gradient-to-t from-gray-400 to-blue-500 w-8 h-8 rounded-full" />
+                        </Unauthenticated>
+                    </div>
                 )}
-                <Authenticated>
-                    <UserButton
-                        appearance={{
-                            elements: { avatarBox: "w-8 h-8" },
-                        }}
-                    />
-                </Authenticated>
-                <Unauthenticated>
-                    <div className="bg-gradient-to-t from-gray-400 to-blue-500 w-8 h-8 rounded-full" />
-                </Unauthenticated>
             </div>
 
             {/* Mobile Dropdown Menu with AnimatePresence */}
@@ -168,31 +170,35 @@ export default function LandingNav({
                         </div>
 
                         {/* Mobile Auth Buttons */}
-                        {!user && (
-                            <>
-                                {/* Divider */}
-                                < div className="my-3 border-t border-gray-200 dark:border-zinc-700" />
+                        {/* Divider */}
+                        < div className="my-3 border-t border-gray-200 dark:border-zinc-700" />
 
-                                <div className="flex flex-col gap-2 px-4">
+                        <div className="flex flex-col gap-2 px-4">
 
-                                    <div className="flex w-full gap-2">
-                                        <Link href="/signup" className="w-full">
-                                            <Button size={"lg"} className="w-full" variant="outline">
-                                                Sign up
-                                            </Button>
-                                        </Link>
-                                        {/* Theme Switcher in Mobile Menu */}
-                                        {isLoaded && (
-                                            <ThemeSwitcher />
-                                        )}
-                                    </div>
-                                    <Link href="/contact-us">
-                                        <Button size={"lg"} className="w-full">Contact Us</Button>
+                            <div className="flex w-full justify-end gap-2">
+                                {!user ? (
+                                    <Link href="/signup" className="w-full">
+                                        <Button size={"lg"} className="w-full" variant="outline">
+                                            Sign up
+                                        </Button>
                                     </Link>
+                                ) : (
+                                    <Link href="/visions" className="w-full">
+                                        <Button size={"lg"} className="w-full" variant="outline">
+                                            Visions
+                                        </Button>
+                                    </Link>
+                                )}
+                                {/* Theme Switcher in Mobile Menu */}
+                                {isLoaded && (
+                                    <ThemeSwitcher />
+                                )}
+                            </div>
+                            <Link href="/contact-us">
+                                <Button size={"lg"} className="w-full">Contact Us</Button>
+                            </Link>
 
-                                </div>
-                            </>
-                        )}
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>

@@ -118,7 +118,7 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
             <div className="absolute -top-0 left-0 z-10">
                 <Button
                     onClick={() => router.push("/")}
-                    className="flex rounded-bl-none rounded-tr-none items-center justify-center w-15 h-12 bg-card border border-border rounded-tl-xl rounded-br-xl shadow-lg hover:bg-accent transition-colors"
+                    className="flex rounded-bl-none rounded-tr-none items-center justify-center w-15 h-12 bg-card border border-border rounded-tl-none sm:rounded-tl-xl rounded-br-xl shadow-lg hover:bg-accent transition-colors"
                 >
                     <svg
                         className="w-5 h-5 text-foreground"
@@ -136,7 +136,7 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
                 </Button>
             </div>
 
-            <div className="bg-card border border-border rounded-xl shadow-lg sm:p-8 p-4 pt-12">
+            <div className="bg-background border border-border h-full sm:h-auto sm:rounded-xl rounded-b-xl shadow-lg sm:p-8 p-4 pt-15">
                 <div className="text-center mb-6">
                     <h2 className="text-2xl font-display font-bold mb-2">
                         {isSignIn ? "Welcome back, Vision" : "Create your account"}
@@ -271,12 +271,8 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
                     </div>
 
                     {isSignIn && (
-                        <div className="flex items-center justify-between">
-                            <label className="flex items-center">
-                                <input type="checkbox" className="w-4 h-4 text-primary border-input rounded focus:ring-ring" />
-                                <span className="ml-2 text-sm text-muted-foreground">Remember for 30 days</span>
-                            </label>
-                            <button type="button" className="text-sm text-primary hover:text-primary/80">
+                        <div className="flex items-center justify-end">
+                            <button type="button" className="text-sm cursor-pointer hover:underline mb-2 text-primary hover:text-primary/80">
                                 Forgot password
                             </button>
                         </div>
