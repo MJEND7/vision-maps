@@ -255,6 +255,15 @@
             background-position: 0% 50%;
         }
     }
+
+    .scrollbar-hide {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
 }
 @layer components {
   .default-button-hover {

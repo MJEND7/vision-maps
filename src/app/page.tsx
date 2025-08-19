@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "motion/react"
 import { useState, useEffect } from "react"
 import LandingNav from "@/components/landing/LandingNav";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Zap, Users, Palette, Video, Globe, Upload } from "lucide-react";
+import { CheckCircle, Zap, Users, Palette, Video, Globe, Upload, ChevronLeft, ChevronRight } from "lucide-react";
 import { SignedIn } from '@clerk/nextjs';
 import { CheckoutButton, usePlans } from '@clerk/nextjs/experimental'
 import WastedTimeTimer from "@/components/WastedTimeTimer";
@@ -40,7 +40,7 @@ function Header({ router }: { router: AppRouterInstance }) {
             animate={{ opacity: 1 }}
             transition={{ duration: 1, delay: 0.5 }}
         >
-            <div className="flex flex-col h-[300px] text-center gap-2 mx-auto mb-[100px]">
+            <div className="mt-[100px] sm:mt-[180px] sm:h-[250px] text-center gap-2 mx-auto mb-[100px]">
                 <motion.h1
                     initial={{ y: 100, opacity: 0, scale: 0.8 }}
                     animate={{ y: 0, opacity: 1, scale: 1 }}
@@ -51,7 +51,7 @@ function Header({ router }: { router: AppRouterInstance }) {
                         stiffness: 100,
                         damping: 12
                     }}
-                    className="mt-[180px] text-[60px] cursor-default font-light "
+                    className="text-[40px] sm:text-[60px] cursor-default font-light "
                 >
                     <motion.span
                         initial={{ opacity: 0, y: 20 }}
@@ -77,7 +77,7 @@ function Header({ router }: { router: AppRouterInstance }) {
                         type: "spring",
                         stiffness: 120
                     }}
-                    className="space-y-3"
+                    className="space-y-3 mt-3"
                 >
                     <WastedTimeTimer />
                     <Button size={"lg"} onClick={() => {
@@ -309,10 +309,57 @@ function About() {
 
 function Pricing({ router }: { router: AppRouterInstance }) {
     const [isAnnual, setIsAnnual] = useState(false);
+    const [currentIndex, setCurrentIndex] = useState(1);
+    const [touchStart, setTouchStart] = useState(null);
+    const [touchEnd, setTouchEnd] = useState(null);
     const { data, isLoading } = usePlans({
         for: 'user',
         pageSize: 3,
     })
+
+    const minSwipeDistance = 50;
+
+    const onTouchStart = (e: any) => {
+        setTouchEnd(null);
+        setTouchStart(e.targetTouches[0].clientX);
+    };
+
+    const onTouchMove = (e: any) => setTouchEnd(e.targetTouches[0].clientX);
+
+    const onTouchEnd = () => {
+        if (!touchStart || !touchEnd) return;
+        const distance = touchStart - touchEnd;
+        const isLeftSwipe = distance > minSwipeDistance;
+        const isRightSwipe = distance < -minSwipeDistance;
+
+        if (isLeftSwipe && data) {
+            nextCard();
+        }
+        if (isRightSwipe && data) {
+            prevCard();
+        }
+    };
+
+    const nextCard = () => {
+        if (!data) return;
+        setCurrentIndex((prev) => (prev + 1) % data.length);
+    };
+
+    const prevCard = () => {
+        if (!data) return;
+        setCurrentIndex((prev) => (prev - 1 + data.length) % data.length);
+    };
+
+
+
+    useEffect(() => {
+        if (!data) return;
+
+        const proIndex = data.findIndex(plan => plan.name === "Pro");
+        if (proIndex !== -1) {
+            setCurrentIndex(proIndex);
+        }
+    }, [data]);
 
     if (isLoading) {
         return (
@@ -338,9 +385,24 @@ function Pricing({ router }: { router: AppRouterInstance }) {
                         </p>
                     </motion.div>
 
-                    <div className="grid md:grid-cols-3 gap-8">
+                    <div className="md:grid md:grid-cols-3 md:gap-8">
+                        <div className="relative md:hidden h-96 mb-8">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className={`absolute inset-0 border rounded-xl p-8 animate-pulse max-w-xs mx-auto
+                                    ${i === 2 ? 'z-30 scale-100 opacity-100' : i === 1 ? 'z-20 scale-95 opacity-60 translate-y-4' : 'z-10 scale-90 opacity-30 translate-y-8'}`}>
+                                    <div className="h-6 bg-muted rounded mb-4"></div>
+                                    <div className="h-10 bg-muted rounded mb-6"></div>
+                                    <div className="space-y-3 mb-8">
+                                        {[1, 2, 3, 4].map((j) => (
+                                            <div key={j} className="h-4 bg-muted rounded"></div>
+                                        ))}
+                                    </div>
+                                    <div className="h-10 bg-muted rounded"></div>
+                                </div>
+                            ))}
+                        </div>
                         {[1, 2, 3].map((i) => (
-                            <div key={i} className="border rounded-xl p-8 animate-pulse">
+                            <div key={i + 'desktop'} className="border rounded-xl p-8 animate-pulse hidden md:block">
                                 <div className="h-6 bg-muted rounded mb-4"></div>
                                 <div className="h-10 bg-muted rounded mb-6"></div>
                                 <div className="space-y-3 mb-8">
@@ -405,15 +467,123 @@ function Pricing({ router }: { router: AppRouterInstance }) {
                     </motion.div>
                 </motion.div>
 
-                <div className="grid md:grid-cols-3 gap-8">
+                <div className="md:grid md:grid-cols-3 md:gap-8">
+                    <div className="relative md:hidden h-[500px] mb-8">
+                        <button
+                            onClick={prevCard}
+                            className="absolute -left-4 top-1/2 transform -translate-y-1/2 z-40 bg-white dark:bg-background border rounded-full p-2 shadow-lg hover:shadow-xl transition-all"
+                        >
+                            <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <button
+                            onClick={nextCard}
+                            className="absolute -right-4 top-1/2 transform -translate-y-1/2 z-40 bg-white dark:bg-background border rounded-full p-2 shadow-lg hover:shadow-xl transition-all"
+                        >
+                            <ChevronRight className="w-5 h-5" />
+                        </button>
+                        <div
+                            className="relative h-full"
+                            onTouchStart={onTouchStart}
+                            onTouchMove={onTouchMove}
+                            onTouchEnd={onTouchEnd}
+                        >
+                            {data.map((plan, index) => (
+                                <motion.div
+                                    key={plan.name + index}
+                                    initial={{ y: 50, opacity: 0 }}
+                                    whileInView={{ y: 0, opacity: 1 }}
+                                    transition={{ duration: 0.6, delay: index * 0.1 }}
+                                    viewport={{ once: true }}
+                                    className={`absolute inset-0 justify-between flex flex-col p-8 rounded-xl  bg-card transition-all duration-300 cursor-pointer max-w-xs mx-auto
+                                ${currentIndex === index
+                                            ? 'z-30 scale-100 opacity-100 shadow-2xl border-primary'
+                                            : currentIndex === index - 1 || (currentIndex === 0 && index === data.length - 1)
+                                                ? 'z-20 scale-95 opacity-60 blur-sm translate-y-4'
+                                                : currentIndex === index + 1 || (currentIndex === data.length - 1 && index === 0)
+                                                    ? 'z-20 scale-95 opacity-60 blur-sm translate-y-4'
+                                                    : 'z-10 scale-90 opacity-30 blur-md translate-y-8'
+                                        }
+                                ${plan.name == "Pro" && currentIndex === index ? 'border-primary shadow-lg' : ''}`}
+                                    onClick={() => setCurrentIndex(index)}
+                                >
+                                    <div className="space-y-3">
+                                        {plan.name == "Pro" && currentIndex === index && (
+                                            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                                                <span className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-semibold">
+                                                    Most Popular
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        <div className="text-center">
+                                            <h3 className="text-2xl font-semibold mb-2">{plan.name}</h3>
+                                            <div className="mb-2">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <span className="text-4xl font-bold">{isAnnual ? plan.annualFee.amountFormatted : plan.fee.amountFormatted}</span>
+                                                    <span className="text-muted-foreground">{isAnnual ? "Yearly" : "Monthly"}</span>
+                                                </div>
+                                                {isAnnual && plan.name !== "Free" && (
+                                                    <p className="text-xs text-muted-foreground mt-2">
+                                                        {`(${plan.annualMonthlyFee.amountFormatted}/month billed annually)`}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <p className="text-muted-foreground text-xs">{plan.description}</p>
+                                        </div>
+                                        <hr />
+                                        <div className="space-y-4 mb-8 max-h-32 overflow-y-auto">
+                                            {plan.features.map((feature) => (
+                                                <div key={feature.slug} className="flex items-center gap-3">
+                                                    <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                                                    <span className="text-sm">{feature.name}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {plan.name != "Free" && (
+                                        <>
+
+                                            <SignedIn>
+                                                <CheckoutButton planId={plan.id} planPeriod={isAnnual ? "annual" : "month"} >
+                                                    <Button
+                                                        className={`w-full ${plan.name == "Pro" ? 'bg-primary hover:bg-primary/90' : ''}`}
+                                                        variant={plan.name == "Pro" ? 'default' : 'outline'}
+                                                        size="lg"
+                                                    >
+                                                        Subscribe to {plan.name}
+                                                    </Button>
+                                                </CheckoutButton>
+                                            </SignedIn>
+                                            <Unauthenticated>
+                                                <Button
+                                                    className={`w-full ${plan.name == "Pro" ? 'bg-primary hover:bg-primary/90' : ''}`}
+                                                    variant={plan.name == "Pro" ? 'default' : 'outline'}
+                                                    size="lg"
+                                                    onClick={() => {
+                                                        if (plan.id && plan.name !== 'Free') {
+                                                            router.push("/signup")
+                                                        }
+                                                    }}
+                                                >
+                                                    Subscribe to {plan.name}
+                                                </Button>
+                                            </Unauthenticated>
+                                        </>
+                                    )}
+                                </motion.div>
+                            ))}
+                        </div>
+                    </div>
+
                     {data.map((plan, index) => (
                         <motion.div
-                            key={plan.name + index}
+                            key={plan.name + index + 'desktop'}
                             initial={{ y: 50, opacity: 0 }}
                             whileInView={{ y: 0, opacity: 1 }}
                             transition={{ duration: 0.6, delay: index * 0.1 }}
                             viewport={{ once: true }}
-                            className={`relative justify-between flex flex-col p-8 rounded-xl border bg-card hover:shadow-lg transition-all
+                            className={`relative justify-between flex-col p-8 rounded-xl border bg-card hover:shadow-lg transition-all hidden md:flex
                             ${plan.name == "Pro" ? 'border-primary shadow-lg scale-105' : ''}`}
                         >
                             <div className="space-y-3">
@@ -452,33 +622,47 @@ function Pricing({ router }: { router: AppRouterInstance }) {
                             </div>
 
 
-
-                            <SignedIn>
-                                <CheckoutButton planId={plan.id} planPeriod={isAnnual ? "annual" : "month"} >
-                                    <Button
-                                        className={`w-full ${plan.name == "Pro" ? 'bg-primary hover:bg-primary/90' : ''}`}
-                                        variant={plan.name == "Pro" ? 'default' : 'outline'}
-                                        size="lg"
-                                    >
-                                        Subscribe to {plan.name}
-                                    </Button>
-                                </CheckoutButton>
-                            </SignedIn>
-                            <Unauthenticated>
-                                <Button
-                                    className={`w-full ${plan.name == "Pro" ? 'bg-primary hover:bg-primary/90' : ''}`}
-                                    variant={plan.name == "Pro" ? 'default' : 'outline'}
-                                    size="lg"
-                                    onClick={() => {
-                                        if (plan.id && plan.name !== 'Free') {
-                                            router.push("/signup")
-                                        }
-                                    }}
-                                >
-                                    Subscribe to {plan.name}
-                                </Button>
-                            </Unauthenticated>
+                            {plan.name != "Free" && (
+                                <>
+                                    <SignedIn>
+                                        <CheckoutButton planId={plan.id} planPeriod={isAnnual ? "annual" : "month"} >
+                                            <Button
+                                                className={`w-full ${plan.name == "Pro" ? 'bg-primary hover:bg-primary/90' : ''}`}
+                                                variant={plan.name == "Pro" ? 'default' : 'outline'}
+                                                size="lg"
+                                            >
+                                                Subscribe to {plan.name}
+                                            </Button>
+                                        </CheckoutButton>
+                                    </SignedIn>
+                                    <Unauthenticated>
+                                        <Button
+                                            className={`w-full ${plan.name == "Pro" ? 'bg-primary hover:bg-primary/90' : ''}`}
+                                            variant={plan.name == "Pro" ? 'default' : 'outline'}
+                                            size="lg"
+                                            onClick={() => {
+                                                if (plan.id && plan.name !== 'Free') {
+                                                    router.push("/signup")
+                                                }
+                                            }}
+                                        >
+                                            Subscribe to {plan.name}
+                                        </Button>
+                                    </Unauthenticated>
+                                </>
+                            )}
                         </motion.div>
+                    ))}
+                </div>
+
+                <div className="flex justify-center mt-8 gap-2 md:hidden">
+                    {data.map((_, index) => (
+                        <button
+                            key={index}
+                            onClick={() => setCurrentIndex(index)}
+                            className={`w-2 h-2 rounded-full transition-all ${currentIndex === index ? 'bg-primary' : 'bg-muted'
+                                }`}
+                        />
                     ))}
                 </div>
 
