@@ -8,137 +8,34 @@ import {
 } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import Link from "next/link";
-import { SignUpButton } from "@clerk/nextjs";
-import { SignInButton } from "@clerk/nextjs";
-import { UserButton } from "@clerk/nextjs";
-import Logo from "../icons/logo";
-import { Button } from "../components/ui/button";
-import ThemeSwitcher from "../components/ThemeSwitcher";
 import { motion, AnimatePresence } from "motion/react"
 import { useState, useEffect } from "react"
+import LandingNav from "@/components/landing/LandingNav";
 
 export default function Home() {
     return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-        >
-            <motion.header 
-                initial={{ y: -100, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-                className="sticky top-0 z-10 bg-white dark:bg-background p-4 flex flex-row items-center"
+        <>
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
             >
-                <motion.div 
-                    initial={{ x: -50, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
-                    className="w-full flex gap-1 justify-start items-center"
-                >
-                    <motion.div
-                        initial={{ rotate: -180, scale: 0 }}
-                        animate={{ rotate: 0, scale: 1 }}
-                        transition={{ duration: 0.8, delay: 0.3, type: "spring" }}
-                    >
-                        <Logo size={50} />
-                    </motion.div>
-                    <motion.p 
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.6, delay: 0.5 }}
-                        className="mb-1 font-display italic text-2xl dark:text-white text-black"
-                    >
-                        Vision Maps
-                    </motion.p>
-                </motion.div>
-                <motion.div 
-                    initial={{ y: -20, opacity: 0 }}
+                <LandingNav showLandingSections={true} />
+                <motion.main
+                    initial={{ y: 50, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.6, delay: 0.4 }}
-                    className="flex w-full justify-center items-center gap-4 font-body"
+                    transition={{ duration: 0.8, delay: 0.4 }}
+                    className="flex flex-col gap-8"
                 >
-                    {["Features", "About", "Pricing", "Contact"].map((item, index) => (
-                        <motion.button
-                            key={item}
-                            initial={{ y: -20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            transition={{ duration: 0.4 }}
-                            whileHover={{ scale: 1.05, transition: { duration: 0.1 } }}
-                            whileTap={{ scale: 0.95 }}
-                            className="cursor-pointer px-4 py-2 m-[1px] hover:m-0 hover:border hover:border-input rounded-lg"
-                        >
-                            {item}
-                        </motion.button>
-                    ))}
-                </motion.div>
-                <motion.div 
-                    initial={{ x: 50, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ duration: 0.6, delay: 0.3 }}
-                    className="w-full flex justify-end items-center gap-4"
-                >
-                    <motion.div
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ duration: 0.4, delay: 0.9, type: "spring" }}
-                    >
-                        <ThemeSwitcher />
-                    </motion.div>
                     <Authenticated>
-                        <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ duration: 0.4, delay: 0.8, type: "spring" }}
-                        >
-                            <UserButton />
-                        </motion.div>
+                        <Content />
                     </Authenticated>
                     <Unauthenticated>
-                        <motion.div 
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            transition={{ duration: 0.5, delay: 0.7 }}
-                            className="flex gap-2"
-                        >
-                            <SignInButton mode="modal">
-                                <motion.div
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                >
-                                    <Button size={"lg"} variant={"outline"}>
-                                        Sign in
-                                    </Button>
-                                </motion.div>
-                            </SignInButton>
-                            <SignUpButton mode="modal">
-                                <motion.div
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                >
-                                    <Button size={"lg"}>
-                                        Sign up
-                                    </Button>
-                                </motion.div>
-                            </SignUpButton>
-                        </motion.div>
+                        <Landing />
                     </Unauthenticated>
-                </motion.div>
-            </motion.header>
-            <motion.main 
-                initial={{ y: 50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.8, delay: 0.4 }}
-                className="p-8 flex flex-col gap-8"
-            >
-                <Authenticated>
-                    <Content />
-                </Authenticated>
-                <Unauthenticated>
-                    <Landing />
-                </Unauthenticated>
-            </motion.main>
-        </motion.div>
+                </motion.main>
+            </motion.div>
+        </>
     );
 }
 
@@ -149,14 +46,14 @@ function Landing() {
         { text: "spec", color: "text-green-500" },
         { text: "brand", color: "text-orange-500" }
     ];
-    
+
     const [currentWordIndex, setCurrentWordIndex] = useState(0);
-    
+
     useEffect(() => {
         const interval = setInterval(() => {
             setCurrentWordIndex((prev) => (prev + 1) % words.length);
         }, 2000);
-        
+
         return () => clearInterval(interval);
     }, []);
 
@@ -166,18 +63,18 @@ function Landing() {
             animate={{ opacity: 1 }}
             transition={{ duration: 1, delay: 0.5 }}
         >
-            <div className="flex flex-col h-[300px] justify-end text-center gap-3 mx-auto">
+            <div className="flex flex-col h-[300px] justify-end text-center gap-4 mx-auto">
                 <motion.h1
                     initial={{ y: 100, opacity: 0, scale: 0.8 }}
                     animate={{ y: 0, opacity: 1, scale: 1 }}
-                    transition={{ 
-                        duration: 1.2, 
+                    transition={{
+                        duration: 1.2,
                         delay: 0.8,
                         type: "spring",
                         stiffness: 100,
                         damping: 12
                     }}
-                    className="text-4xl cursor-default font-display font-bold "
+                    className="text-4xl cursor-default font-display "
                 >
                     <motion.span
                         initial={{ opacity: 0, y: 20 }}
@@ -187,7 +84,7 @@ function Landing() {
                         The Essence of{" "}
                     </motion.span>
                     <motion.span
-                        className="bg-black text-white px-2 dark:text-black dark:bg-white italic font-extrabold"
+                        className="dark:text-white text-black italic font-extrabold"
                     >
                         Vision
                     </motion.span>
@@ -195,14 +92,14 @@ function Landing() {
                 <motion.h2
                     initial={{ y: 50, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    transition={{ 
-                        duration: 0.8, 
+                    transition={{
+                        duration: 0.8,
                         delay: 1.6,
                         type: "spring",
                         stiffness: 120
                     }}
-                    whileHover={{ 
-                        scale: 1.02, 
+                    whileHover={{
+                        scale: 1.02,
                         transition: { duration: 0.2 }
                     }}
                     whileTap={{ scale: 0.98 }}
@@ -222,8 +119,8 @@ function Landing() {
                                 initial={{ y: 20, opacity: 0, rotateX: -90 }}
                                 animate={{ y: 0, opacity: 1, rotateX: 0 }}
                                 exit={{ y: -20, opacity: 0, rotateX: 90 }}
-                                transition={{ 
-                                    duration: 0.5, 
+                                transition={{
+                                    duration: 0.5,
                                     type: "spring",
                                     stiffness: 300,
                                     damping: 20

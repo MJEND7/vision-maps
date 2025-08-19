@@ -1,3 +1,5 @@
+import banner from '../../public/landing/banner.png';
+
 export const ASSETS = {
-  banner: '/landing/banner.png',
+  banner,
 } as const;

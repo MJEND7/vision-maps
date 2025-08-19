@@ -43,7 +43,7 @@ export default function ThemeSwitcher() {
   return (
     <Button
       variant="outline"
-      size="default"
+      size="lg"
       onClick={toggleTheme}
       className="p-2"
     >
