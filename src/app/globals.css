@@ -230,11 +230,11 @@
 
     .dark .moving-gradient {
         background: linear-gradient(270deg,
-                #D1D6E0 0%,
-                #A3ADC2 25%,
-                #D1D6E0 50%,
-                #A3ADC2 75%,
-                #D1D6E0 100%);
+                #E8ECF0 0%,
+                #87ceeb 25%,
+                #E8ECF0 50%,
+                #87ceeb 75%,
+                #E8ECF0 100%);
         background-size: 400% 400%;
         animation: gradientMove 3s ease-in-out infinite;
         -webkit-background-clip: text;

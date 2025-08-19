@@ -40,7 +40,7 @@ function Header({ router }: { router: AppRouterInstance }) {
             animate={{ opacity: 1 }}
             transition={{ duration: 1, delay: 0.5 }}
         >
-            <div className="mt-[100px] sm:mt-[180px] sm:h-[250px] text-center gap-2 mx-auto mb-[100px]">
+            <div className="mt-[90px] sm:mt-[180px] sm:h-[250px] text-center gap-2 mx-auto mb-[100px]">
                 <motion.h1
                     initial={{ y: 100, opacity: 0, scale: 0.8 }}
                     animate={{ y: 0, opacity: 1, scale: 1 }}
