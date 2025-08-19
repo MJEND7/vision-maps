@@ -136,7 +136,7 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
                 </Button>
             </div>
 
-            <div className="bg-card border border-border rounded-t-xl sm:rounded-xl shadow-lg sm:p-8 p-4 pt-12">
+            <div className="bg-card border border-border rounded-xl shadow-lg sm:p-8 p-4 pt-12">
                 <div className="text-center mb-6">
                     <h2 className="text-2xl font-display font-bold mb-2">
                         {isSignIn ? "Welcome back, Vision" : "Create your account"}
