@@ -45,7 +45,7 @@ export default function SheetsPage() {
         >
           <h2 className="text-xl font-semibold mb-4">Your Sheets</h2>
           <p className="text-muted-foreground">
-            Welcome to your sheets dashboard. This is where you'll manage your vision maps.
+            Welcome to your sheets dashboard. This is where you&apos;ll manage your vision maps.
           </p>
         </motion.div>
       </main>

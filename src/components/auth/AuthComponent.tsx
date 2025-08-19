@@ -66,8 +66,8 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
             } else {
                 throw new Error("Failed to get a version of this component")
             }
-        } catch (err: any) {
-            const errorMessage = err.errors?.[0]?.message || "An error occurred";
+        } catch (err: unknown) {
+            const errorMessage = (err as { errors?: { message: string }[] })?.errors?.[0]?.message || "An error occurred";
             setError(errorMessage);
             toast.error(errorMessage);
         } finally {
@@ -95,16 +95,16 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
             } else {
                 throw new Error("Failed to get a version of this component (oauth)")
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             const provider = strategy === "oauth_google" ? "Google" : "GitHub";
-            const errorMessage = err.errors?.[0]?.message || `${provider} ${isSignIn ? "sign in" : "sign up"} failed`;
+            const errorMessage = (err as { errors?: { message: string }[] })?.errors?.[0]?.message || `${provider} ${isSignIn ? "sign in" : "sign up"} failed`;
             setError(errorMessage);
             toast.error(errorMessage);
             setIsLoading(false);
         }
     };
 
-    if (!isSignIn && pendingVerification) {
+    if (!isSignIn && pendingVerification && signUp) {
         return <EmailVerification email={email} signUp={signUp} setActive={setSignUpActive} />;
     }
 

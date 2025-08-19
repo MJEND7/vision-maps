@@ -42,8 +42,8 @@ export default function CustomSignUp({ onSwitchToSignIn }: CustomSignUpProps) {
 
             await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
             setPendingVerification(true);
-        } catch (err: any) {
-            const errorMessage = err.errors?.[0]?.message || "An error occurred";
+        } catch (err: unknown) {
+            const errorMessage = (err as { errors?: { message: string }[] })?.errors?.[0]?.message || "An error occurred";
             setError(errorMessage);
             toast.error(errorMessage);
         } finally {
@@ -61,8 +61,8 @@ export default function CustomSignUp({ onSwitchToSignIn }: CustomSignUpProps) {
                 redirectUrl: "/sso-callback",
                 redirectUrlComplete: "/sso-callback",
             });
-        } catch (err: any) {
-            const errorMessage = err.errors?.[0]?.message || "Google sign up failed";
+        } catch (err: unknown) {
+            const errorMessage = (err as { errors?: { message: string }[] })?.errors?.[0]?.message || "Google sign up failed";
             setError(errorMessage);
             toast.error(errorMessage);
             setIsLoading(false);
@@ -79,15 +79,15 @@ export default function CustomSignUp({ onSwitchToSignIn }: CustomSignUpProps) {
                 redirectUrl: "/sso-callback",
                 redirectUrlComplete: "/sso-callback",
             });
-        } catch (err: any) {
-            const errorMessage = err.errors?.[0]?.message || "GitHub sign up failed";
+        } catch (err: unknown) {
+            const errorMessage = (err as { errors?: { message: string }[] })?.errors?.[0]?.message || "GitHub sign up failed";
             setError(errorMessage);
             toast.error(errorMessage);
             setIsLoading(false);
         }
     };
 
-    if (pendingVerification) {
+    if (pendingVerification && signUp) {
         return <EmailVerification email={email} signUp={signUp} setActive={setActive} />;
     }
 

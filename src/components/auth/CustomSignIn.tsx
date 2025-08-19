@@ -44,8 +44,8 @@ export default function CustomSignIn({ onSwitchToSignUp }: CustomSignInProps) {
                 setError(errorMessage);
                 toast.error(errorMessage);
             }
-        } catch (err: any) {
-            const errorMessage = err.errors?.[0]?.message || "An error occurred";
+        } catch (err: unknown) {
+            const errorMessage = (err as { errors?: { message: string }[] })?.errors?.[0]?.message || "An error occurred";
             setError(errorMessage);
             toast.error(errorMessage);
         } finally {
@@ -63,8 +63,8 @@ export default function CustomSignIn({ onSwitchToSignUp }: CustomSignInProps) {
                 redirectUrl: "/sso-callback",
                 redirectUrlComplete: "/sso-callback",
             });
-        } catch (err: any) {
-            const errorMessage = err.errors?.[0]?.message || "Google sign in failed";
+        } catch (err: unknown) {
+            const errorMessage = (err as { errors?: { message: string }[] })?.errors?.[0]?.message || "Google sign in failed";
             setError(errorMessage);
             toast.error(errorMessage);
             setIsLoading(false);
@@ -81,8 +81,8 @@ export default function CustomSignIn({ onSwitchToSignUp }: CustomSignInProps) {
                 redirectUrl: "/sso-callback",
                 redirectUrlComplete: "/sso-callback",
             });
-        } catch (err: any) {
-            const errorMessage = err.errors?.[0]?.message || "GitHub sign in failed";
+        } catch (err: unknown) {
+            const errorMessage = (err as { errors?: { message: string }[] })?.errors?.[0]?.message || "GitHub sign in failed";
             setError(errorMessage);
             toast.error(errorMessage);
             setIsLoading(false);
@@ -246,7 +246,7 @@ export default function CustomSignIn({ onSwitchToSignUp }: CustomSignInProps) {
 
                 <div className="mt-6 text-center">
                     <p className="text-sm text-muted-foreground">
-                        Don't have an account?{" "}
+                        Don&apos;t have an account?{" "}
                         <button
                             onClick={onSwitchToSignUp}
                             className="text-primary hover:text-primary/80 font-medium"

@@ -185,7 +185,7 @@ function About() {
         }, 2000);
 
         return () => clearInterval(interval);
-    }, []);
+    }, [words.length]);
 
     return (
         <motion.section
@@ -236,17 +236,17 @@ function About() {
                     </h2>
                     <div className="space-y-6 text-lg text-muted-foreground">
                         <p>
-                            Vision Maps is more than just a product—it's a new way of thinking and communicating.
+                            Vision Maps is more than just a product—it&apos;s a new way of thinking and communicating.
                             We believe that building great things requires fast, clear communication that cuts through
                             complexity and gets straight to the essence of your idea.
                         </p>
                         <p>
-                            Whether you're explaining the vibe of a product, mapping application flows, managing
+                            Whether you&apos;re explaining the vibe of a product, mapping application flows, managing
                             creative projects, or shooting a film, Vision Maps helps you transfer your vision from
                             your mind to others without losing the nuance that makes ideas powerful.
                         </p>
                         <p>
-                            Stop explaining—start showing. Create visual canvases that capture not just what you're
+                            Stop explaining—start showing. Create visual canvases that capture not just what you&apos;re
                             building, but the feeling, mood, and inspiration behind it.
                         </p>
                     </div>
@@ -285,7 +285,7 @@ function About() {
                         <ul className="space-y-3 text-muted-foreground">
                             <li className="flex items-start gap-3">
                                 <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">1</span>
-                                Create a new vision map or "sheet"
+                                Create a new vision map or &quot;sheet&quot;
                             </li>
                             <li className="flex items-start gap-3">
                                 <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">2</span>

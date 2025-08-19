@@ -7,10 +7,12 @@ import { X } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
+import type { SignUpResource, SetActive } from '@clerk/types';
+
 interface EmailVerificationProps {
   email: string;
-  signUp: any;
-  setActive: any;
+  signUp: SignUpResource;
+  setActive: SetActive;
 }
 
 export default function EmailVerification({ email, signUp, setActive }: EmailVerificationProps) {
@@ -72,15 +74,15 @@ export default function EmailVerification({ email, signUp, setActive }: EmailVer
       });
 
       if (completeSignUp.status === "complete") {
-        await setActive({ session: completeSignUp.createdSessionId });
+        await setActive({ session: completeSignUp.createdSessionId! });
         router.push("/");
       } else {
         const errorMessage = "Verification failed. Please try again.";
         setError(errorMessage);
         toast.error(errorMessage);
       }
-    } catch (err: any) {
-      const errorMessage = err.errors?.[0]?.message || "Invalid verification code";
+    } catch (err: unknown) {
+      const errorMessage = (err as { errors?: { message: string }[] })?.errors?.[0]?.message || "Invalid verification code";
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -93,7 +95,7 @@ export default function EmailVerification({ email, signUp, setActive }: EmailVer
     try {
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       toast.success("Verification code sent!");
-    } catch (err: any) {
+    } catch {
       const errorMessage = "Failed to resend code";
       setError(errorMessage);
       toast.error(errorMessage);
@@ -155,7 +157,7 @@ export default function EmailVerification({ email, signUp, setActive }: EmailVer
             {code.map((digit, index) => (
               <input
                 key={index}
-                ref={(el) => (inputRefs.current[index] = el)}
+                ref={(el) => { inputRefs.current[index] = el; }}
                 type="text"
                 inputMode="numeric"
                 pattern="\d*"
@@ -170,7 +172,7 @@ export default function EmailVerification({ email, signUp, setActive }: EmailVer
 
           <div className="text-center mb-6">
             <p className="text-sm text-muted-foreground mb-2">
-              Didn't get a code?{" "}
+              Didn&apos;t get a code?{" "}
               <button
                 type="button"
                 onClick={handleResend}
