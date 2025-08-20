@@ -125,7 +125,7 @@ export default function LandingNav({
                         key={"Home"}
                         href={"#home"}
                         onClick={() => setMenuOpen(false)}
-                        className="flex items-center"
+                        className="flex gap-3 items-center"
                     >
                         <motion.div
                             initial={{ rotate: -180, scale: 0 }}
