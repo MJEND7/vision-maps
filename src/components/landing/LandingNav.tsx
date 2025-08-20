@@ -50,7 +50,7 @@ export default function LandingNav({
             const docHeight = document.documentElement.scrollHeight - window.innerHeight;
             const scrolledPercent = (scrollTop / docHeight) * 100;
 
-            if (scrolledPercent < 0.5 || scrolledPercent > 99) {
+            if (scrolledPercent < 0.5) {
                 setShowLoginHint(true);
             } else {
                 setShowLoginHint(false);
@@ -67,7 +67,7 @@ export default function LandingNav({
                 initial={{ y: -50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.6 }}
-                className="relative sm:max-w-[900px] w-full rounded-l-4xl rounded-r-xl backdrop-blur-[5px] dark:bg-background/50 dark:backdrop-blur-md bg-accent/50 border px-5 py-2 flex items-center justify-between"
+                className="relative sm:max-w-[900px] w-full sm:rounded-l-4xl rounded-4xl sm:rounded-r-xl backdrop-blur-[5px] dark:bg-background/50 dark:backdrop-blur-md bg-accent/50 border px-5 py-2 flex items-center justify-between"
             >
 
                 <AnimatePresence>
@@ -114,7 +114,7 @@ export default function LandingNav({
                                 <p className="font-gaegu text-lg font-bold absolute top-15 sm:top-25 -left-3 sm:left-23">Login</p>
                             </Unauthenticated>
                             <Authenticated>
-                                <p className="w-[150px] font-gaegu text-xl font-bold absolute top-15 sm:top-25 -left-17 sm:left-23">Look it&lsquo;s you</p>
+                                <p className="w-[150px] font-gaegu text-xl font-bold absolute top-15 sm:top-25 -left-20 sm:left-23">Look it&apos;s you</p>
                             </Authenticated>
                         </motion.div>
                     )}
