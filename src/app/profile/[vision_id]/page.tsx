@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { motion } from 'motion/react';
-import { UserButton } from '@clerk/nextjs';
+import UserAvatar from '@/components/ui/user-avatar';
 
 export default function VisionDetailPage() {
   const params = useParams();
@@ -21,7 +21,7 @@ export default function VisionDetailPage() {
           </motion.div>
           
           <div className="flex items-center gap-4">
-            <UserButton />
+            <UserAvatar />
           </div>
         </div>
       </header>

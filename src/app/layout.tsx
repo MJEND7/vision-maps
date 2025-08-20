@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     title: "Vision",
     description: "The Essence of Vision. A way of thinking, communicating and building",
     icons: {
-        icon: "/light_vision_map.ico",
+        icon: "/light_favicon.ico",
     },
 };
 
@@ -21,7 +21,26 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en">
+        <html lang="en" className="light">
+            <head>
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `
+                            (function() {
+                                try {
+                                    const savedTheme = localStorage.getItem('theme');
+                                    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                                    const shouldBeDark = savedTheme === 'dark' || (!savedTheme && systemDark);
+                                    
+                                    document.documentElement.className = shouldBeDark ? 'dark' : 'light';
+                                } catch (e) {
+                                    document.documentElement.className = 'light';
+                                }
+                            })();
+                        `,
+                    }}
+                />
+            </head>
             <body
                 className="antialiased"
             >
