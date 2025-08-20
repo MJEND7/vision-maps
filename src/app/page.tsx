@@ -101,7 +101,7 @@ function Header({ router }: { router: AppRouterInstance }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1, delay: 0.5 }}
-            className="text-center flex items-center justify-center flex-col h-[800px] sm:h-[900px] mb-15"
+            className="text-center flex items-center justify-center flex-col h-[720px] sm:h-[900px] mb-15"
         >
             <motion.h1
                 initial={{ y: 100, opacity: 0, scale: 0.8 }}

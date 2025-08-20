@@ -213,7 +213,7 @@ export default function LandingNav({
                             animate={{ y: 0, opacity: 1 }}
                             exit={{ y: -10, opacity: 0 }}
                             transition={{ duration: 0.3 }}
-                            className="absolute top-16 left-2 right-2 bg-background dark:bg-background/80 dark:backdrop-blur-sm rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-700 flex flex-col items-stretch py-4 sm:hidden z-50"
+                            className="absolute top-16 left-2 right-2 bg-background dark:bg-background rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-700 flex flex-col items-stretch py-4 sm:hidden z-50"
                         >
                             {/* Nav Links */}
                             <div className="flex flex-col gap-2 px-4">
