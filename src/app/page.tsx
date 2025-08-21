@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, AnimatePresence } from "motion/react"
+import { motion } from "motion/react"
 import { useState, useEffect } from "react"
 import LandingNav from "@/components/landing/LandingNav";
 import LandingFooter from "@/components/landing/LandingFooter";
@@ -356,7 +356,7 @@ function About() {
                 >
                     <div className="space-y-6">
                         <h3 className="text-3xl font-bold text-primary">
-                            "Align priors and share your creative vision faster"
+                            &ldquo;Align priors and share your creative vision faster&rdquo;
                         </h3>
                         <div className="w-full h-64 bg-muted rounded-lg border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
                             <div className="text-center space-y-2">
@@ -385,7 +385,7 @@ function About() {
                     </div>
                     <div className="space-y-6 order-1 md:order-2">
                         <h3 className="text-3xl font-bold text-primary">
-                            "Transform scattered thoughts into a coherent, instantly consumable narrative"
+                            &ldquo;Transform scattered thoughts into a coherent, instantly consumable narrative&rdquo;
                         </h3>
                         <div className="w-full h-64 bg-muted rounded-lg border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
                             <div className="text-center space-y-2">
@@ -408,7 +408,7 @@ function About() {
                 >
                     <div className="space-y-6">
                         <h3 className="text-3xl font-bold text-primary">
-                            "A dynamic, living Vision Map that speaks to your creative process"
+                            &ldquo;A dynamic, living Vision Map that speaks to your creative process&rdquo;
                         </h3>
                         <div className="w-full h-64 bg-muted rounded-lg border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
                             <div className="text-center space-y-2">
