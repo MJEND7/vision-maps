@@ -164,8 +164,8 @@ export default function LandingNav({
                 <div className="flex">
                     {/* Auth / Buttons - Hide UserButton on mobile when showLandingSections is true */}
                     <div className="hidden sm:flex items-center gap-2">
-                        <Link href="/contact-us">
-                            <Button size="lg">Contact Us</Button>
+                        <Link href="/signup">
+                            <Button size="lg">Sign up</Button>
                         </Link>
                         <div className="flex w-8 h-8">
                             <Authenticated>
@@ -258,8 +258,8 @@ export default function LandingNav({
                                         <ThemeSwitcher />
                                     )}
                                 </div>
-                                <Link href="/contact-us">
-                                    <Button size={"lg"} className="w-full">Contact Us</Button>
+                                <Link href="/signup">
+                                    <Button size={"lg"} className="w-full">Sign up</Button>
                                 </Link>
 
                             </div>
