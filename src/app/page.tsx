@@ -6,6 +6,7 @@ import LandingNav from "@/components/landing/LandingNav";
 import LandingFooter from "@/components/landing/LandingFooter";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Zap, Users, Palette, Video, Globe, Upload, ChevronLeft, ChevronRight } from "lucide-react";
+import { Accordion } from "@/components/ui/accordion";
 import { SignedIn } from '@clerk/nextjs';
 import { CheckoutButton, usePlans } from '@clerk/nextjs/experimental'
 import WastedTimeTimer from "@/components/WastedTimeTimer";
@@ -117,6 +118,7 @@ export default function Home() {
             <Features />
             <About />
             <Pricing router={router} />
+            <CallToAction />
             <LandingFooter />
         </motion.div>
     );
@@ -301,22 +303,38 @@ function Features() {
 }
 
 function About() {
-    const words = [
-        { text: "idea", color: "text-blue-500" },
-        { text: "vibe", color: "text-purple-500" },
-        { text: "spec", color: "text-green-500" },
-        { text: "brand", color: "text-orange-500" }
+    const visionItems = [
+        {
+            title: "Core Vision",
+            content: "As a founder and co-founder of three startups, I've learned that communicating early-stage ideas is both challenging and time-consuming. Vision Maps addresses this challenge by helping you quickly align priors and build shared context."
+        },
+        {
+            title: "What We Do",
+            content: "We believe that the only way to truly showcase your ideas is to build them—but building a full product takes time. Vision Maps lets you create that 'idea skeleton' quickly so you can align priors, transform scattered thoughts into coherent narratives, and accelerate the journey from idea to MVP."
+        }
     ];
 
-    const [currentWordIndex, setCurrentWordIndex] = useState(0);
+    const featuresItems = [
+        {
+            title: "Creative Platform Integration",
+            content: "Universal paste mechanism and automatic content organization from common platforms (Websites, Figma, GitHub, YouTube, TikTok, Instagram, Spotify, Notion, etc.) with manual override capabilities."
+        },
+        {
+            title: "LLM-Powered Innovation",
+            content: "AI-driven brainstorming, vision validation, structured output generation, and usage credit system for scalable AI usage with flexible options for both free and premium users."
+        }
+    ];
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentWordIndex((prev) => (prev + 1) % words.length);
-        }, 2000);
-
-        return () => clearInterval(interval);
-    }, [words.length]);
+    const brandItems = [
+        {
+            title: "Brand & Strategic Vision", 
+            content: "Vision Maps is more than just a tool—it's a revolutionary way of communicating ideas. Our aim is to build a brand centered around ideation and creative expression that transforms how founders and business owners convey their visions."
+        },
+        {
+            title: "Revolutionary Communication",
+            content: "When a founder steps into a VC meeting, they won't be limited to slides; they'll have a dynamic, living Vision Map that speaks to their creative process and demonstrates the full scope of their vision."
+        }
+    ];
 
     return (
         <motion.section
@@ -327,110 +345,117 @@ function About() {
             id="about"
             className="py-20 px-6 bg-background"
         >
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-6xl mx-auto space-y-16">
+                {/* Section 1: Left Quote/Image */}
                 <motion.div
-                    initial={{ y: 50, opacity: 0 }}
-                    whileInView={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.6 }}
+                    initial={{ opacity: 0, x: -50 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.8 }}
                     viewport={{ once: true }}
-                    className="text-center mb-16"
+                    className="grid md:grid-cols-2 gap-12 items-center"
                 >
-                    <h2
-                        className="text-4xl mb-10 cursor-default font-display font-light"
-                    >
-                        <span
-                        >
-                            Never Explain a{" "}
-                        </span>
-                        <span className="inline-block min-w-[110px]">
-                            <AnimatePresence mode="wait">
-                                <motion.span
-                                    key={currentWordIndex}
-                                    initial={{ y: 20, opacity: 0, rotateX: -90 }}
-                                    animate={{ y: 0, opacity: 1, rotateX: 0 }}
-                                    exit={{ y: -20, opacity: 0, rotateX: 90 }}
-                                    transition={{
-                                        duration: 0.5,
-                                        type: "spring",
-                                        stiffness: 300,
-                                        damping: 20
-                                    }}
-                                    className={`inline-block font-semibold ${words[currentWordIndex].color}`}
-                                >
-                                    {words[currentWordIndex].text}
-                                </motion.span>
-                            </AnimatePresence>
-                        </span>
-                        <span>
-                            {" "}again
-                        </span>
-                    </h2>
-                    <div className="space-y-6 text-lg text-muted-foreground">
-                        <p>
-                            Vision Maps is more than just a product—it&apos;s a new way of thinking and communicating.
-                            We believe that building great things requires fast, clear communication that cuts through
-                            complexity and gets straight to the essence of your idea.
-                        </p>
-                        <p>
-                            Whether you&apos;re explaining the vibe of a product, mapping application flows, managing
-                            creative projects, or shooting a film, Vision Maps helps you transfer your vision from
-                            your mind to others without losing the nuance that makes ideas powerful.
-                        </p>
-                        <p>
-                            Stop explaining—start showing. Create visual canvases that capture not just what you&apos;re
-                            building, but the feeling, mood, and inspiration behind it.
-                        </p>
+                    <div className="space-y-6">
+                        <h3 className="text-3xl font-bold text-primary">
+                            "Align priors and share your creative vision faster"
+                        </h3>
+                        <div className="w-full h-64 bg-muted rounded-lg border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
+                            <div className="text-center space-y-2">
+                                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                                    <Palette className="w-8 h-8 text-primary" />
+                                </div>
+                                <p className="text-sm text-muted-foreground">Brand Image Placeholder</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <Accordion items={visionItems} />
                     </div>
                 </motion.div>
 
+                {/* Section 2: Right Accordion */}
                 <motion.div
-                    initial={{ y: 50, opacity: 0 }}
-                    whileInView={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
+                    initial={{ opacity: 0, x: 50 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.8 }}
                     viewport={{ once: true }}
-                    className="grid md:grid-cols-2 gap-8 mt-16"
+                    className="grid md:grid-cols-2 gap-12 items-center"
                 >
-                    <div className="space-y-4">
-                        <h3 className="text-2xl font-semibold">Perfect For</h3>
-                        <ul className="space-y-3 text-muted-foreground">
-                            <li className="flex items-start gap-3">
-                                <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                                Product teams defining brand identity and user experience
-                            </li>
-                            <li className="flex items-start gap-3">
-                                <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                                Filmmakers collecting reference shots, vibes, and inspiration
-                            </li>
-                            <li className="flex items-start gap-3">
-                                <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                                Creative agencies presenting concepts to clients
-                            </li>
-                            <li className="flex items-start gap-3">
-                                <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                                Entrepreneurs pitching their vision to investors
-                            </li>
-                        </ul>
+                    <div className="space-y-4 order-2 md:order-1">
+                        <Accordion items={featuresItems} />
+                    </div>
+                    <div className="space-y-6 order-1 md:order-2">
+                        <h3 className="text-3xl font-bold text-primary">
+                            "Transform scattered thoughts into a coherent, instantly consumable narrative"
+                        </h3>
+                        <div className="w-full h-64 bg-muted rounded-lg border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
+                            <div className="text-center space-y-2">
+                                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                                    <Video className="w-8 h-8 text-primary" />
+                                </div>
+                                <p className="text-sm text-muted-foreground">Product Demo Placeholder</p>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* Section 3: Left Accordion */}
+                <motion.div
+                    initial={{ opacity: 0, x: -50 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.8 }}
+                    viewport={{ once: true }}
+                    className="grid md:grid-cols-2 gap-12 items-center"
+                >
+                    <div className="space-y-6">
+                        <h3 className="text-3xl font-bold text-primary">
+                            "A dynamic, living Vision Map that speaks to your creative process"
+                        </h3>
+                        <div className="w-full h-64 bg-muted rounded-lg border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
+                            <div className="text-center space-y-2">
+                                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                                    <Users className="w-8 h-8 text-primary" />
+                                </div>
+                                <p className="text-sm text-muted-foreground">Team Collaboration Placeholder</p>
+                            </div>
+                        </div>
                     </div>
                     <div className="space-y-4">
-                        <h3 className="text-2xl font-semibold">How It Works</h3>
-                        <ul className="space-y-3 text-muted-foreground">
-                            <li className="flex items-start gap-3">
-                                <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">1</span>
-                                Create a new vision map or &quot;sheet&quot;
-                            </li>
-                            <li className="flex items-start gap-3">
-                                <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">2</span>
-                                Add nodes with rich media content
-                            </li>
-                            <li className="flex items-start gap-3">
-                                <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">3</span>
-                                Connect ideas and draw relationships
-                            </li>
-                            <li className="flex items-start gap-3">
-                                <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">4</span>
-                                Share with your team or present to stakeholders
-                            </li>
-                        </ul>
+                        <Accordion items={brandItems} />
+                    </div>
+                </motion.div>
+
+                {/* Use Cases Section */}
+                <motion.div
+                    initial={{ opacity: 0, y: 50 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8 }}
+                    viewport={{ once: true }}
+                    className="text-center space-y-8 pt-16"
+                >
+                    <h2 className="text-4xl font-display font-light">Use Cases</h2>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                        {[
+                            "Explaining the vibe of a product and feel you want to create",
+                            "Application flows and user experience mapping", 
+                            "General idea management and creative workflows",
+                            "A workspace to work with art, fragrances and your own art",
+                            "Shooting of a show or movie - reference shots, vibes, lighting, coloring, music",
+                            "Pitch presentations that go beyond static slides"
+                        ].map((useCase, index) => (
+                            <motion.div
+                                key={index}
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.6, delay: index * 0.1 }}
+                                viewport={{ once: true }}
+                                className="p-6 bg-card border rounded-lg hover:shadow-lg transition-shadow"
+                            >
+                                <div className="flex items-start gap-3">
+                                    <CheckCircle className="w-5 h-5 text-green-500 mt-1 flex-shrink-0" />
+                                    <p className="text-sm text-muted-foreground text-left">{useCase}</p>
+                                </div>
+                            </motion.div>
+                        ))}
                     </div>
                 </motion.div>
             </div>
@@ -796,19 +821,91 @@ function Pricing({ router }: { router: AppRouterInstance }) {
                         />
                     ))}
                 </div>
+            </div>
+        </motion.section >
+    );
+}
 
+function CallToAction() {
+    return (
+        <motion.section
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="py-20 mt-10 px-6 bg-gradient-to-r from-primary/5 to-primary/10"
+        >
+            <div className="max-w-4xl mx-auto text-center">
                 <motion.div
                     initial={{ y: 50, opacity: 0 }}
                     whileInView={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.6, delay: 0.4 }}
+                    transition={{ duration: 0.6 }}
                     viewport={{ once: true }}
-                    className="text-center mt-16"
+                    className="space-y-8"
                 >
-                    <p className="text-sm text-muted-foreground">
-                        Questions? <a href="mailto:support@visionmaps.com" className="text-primary hover:underline">Contact our team</a>
+                    <h2 className="text-5xl md:text-6xl font-display font-light">
+                        <span className="text-muted-foreground">Build clearer—</span>
+                        <br />
+                        <span className="text-primary font-semibold">with Vision Maps</span>
+                    </h2>
+                    
+                    <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                        Ready to transform how you communicate your ideas?
                     </p>
+                    
+                    <motion.div
+                        initial={{ y: 20, opacity: 0 }}
+                        whileInView={{ y: 0, opacity: 1 }}
+                        transition={{ duration: 0.6, delay: 0.2 }}
+                        viewport={{ once: true }}
+                        className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+                    >
+                        <Authenticated>
+                            <Button size="xl" className="w-full sm:w-auto" onClick={() => window.location.href = "/profile/visions"}>
+                                Start Creating
+                            </Button>
+                        </Authenticated>
+                        <Unauthenticated>
+                            <Button size="xl" className="w-full sm:w-auto" onClick={() => window.location.href = "/signup"}>
+                                Get Started Free
+                            </Button>
+                        </Unauthenticated>
+                        
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span>Contact us:</span>
+                            <a 
+                                href="mailto:support@visionmaps.com" 
+                                className="text-primary hover:underline font-medium"
+                            >
+                                support@visionmaps.com
+                            </a>
+                        </div>
+                    </motion.div>
+                    
+                    <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        whileInView={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.6, delay: 0.4 }}
+                        viewport={{ once: true }}
+                        className="pt-8"
+                    >
+                        <div className="flex items-center justify-center gap-8 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                                <span>Free forever plan</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                                <span>No credit card required</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                                <span>Start in seconds</span>
+                            </div>
+                        </div>
+                    </motion.div>
                 </motion.div>
             </div>
-        </motion.section >
+        </motion.section>
     );
 }

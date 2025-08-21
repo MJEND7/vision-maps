@@ -17,7 +17,7 @@ export default function LandingFooter() {
                 ease: "easeOut"
             }}
             viewport={{ once: true, margin: "-100px" }}
-            className="bg-background border-t mt-20"
+            className="bg-background border-t"
         >
             <div className="max-w-6xl mx-auto px-6 py-16">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
