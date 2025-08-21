@@ -237,11 +237,11 @@
     /* Moving gradient animation */
     .moving-gradient {
         background: linear-gradient(270deg,
-                #87ceeb 0%,
-                #000000 25%,
-                #87ceeb 50%,
-                #000000 75%,
-                #87ceeb 100%);
+                #E8ECF0 0%,
+                #87ceeb 25%,
+                #E8ECF0 50%,
+                #87ceeb 75%,
+                #E8ECF0 100%);
         background-size: 400% 400%;
         animation: gradientMove 3s ease-in-out infinite;
         -webkit-background-clip: text;

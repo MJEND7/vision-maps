@@ -22,6 +22,31 @@ export default function Home() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
         >
+            <motion.div className="sm:hidden absolute inline left-10 top-175 rotate-20">
+                <div className="relative">
+                    <motion.p className="text-2xl text-[#507FF8]/80 absolute top-1 -left-4.5 font-gaegu font-bold -rotate-15">
+                        Communicate your vision
+                        <span className="absolute">
+                            <svg className="fill-[#507FF8]/80" width="20" height="20" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path fillRule="evenodd" clipRule="evenodd" d="M35.6079 30.0564C28.1818 23.952 22.1645 16.6825 17.6428 8.21291C16.7384 6.52595 14.6341 5.88246 12.9298 6.78681C11.2428 7.69115 10.5992 9.79554 11.5036 11.4999C16.4775 20.7695 23.0515 28.7347 31.1907 35.4303C32.6689 36.6477 34.8775 36.439 36.0949 34.9607C37.3123 33.4651 37.0862 31.2738 35.6079 30.0564Z" />
+                                <path fillRule="evenodd" clipRule="evenodd" d="M31.6476 6.28254C32.0302 13.3086 32.3781 20.3347 32.8129 27.3608C32.9347 29.2738 34.5868 30.7347 36.4999 30.613C38.4129 30.4912 39.8738 28.8391 39.752 26.926C39.3173 19.9173 38.9694 12.9087 38.5867 5.88257C38.4824 3.97474 36.8303 2.50517 34.9172 2.613C33.0042 2.72082 31.5259 4.36428 31.6476 6.28254Z" />
+                                <path fillRule="evenodd" clipRule="evenodd" d="M57.4667 7.70873C53.0146 14.4218 47.9713 20.613 42.893 26.8739C41.6756 28.3695 41.9016 30.5609 43.3972 31.7609C44.8929 32.9783 47.0843 32.7522 48.2843 31.2565C53.5017 24.8391 58.6843 18.4565 63.2756 11.5521C64.3365 9.95214 63.8842 7.79569 62.2842 6.73483C60.7016 5.67396 58.5276 6.10873 57.4667 7.70873Z" />
+                                <path fillRule="evenodd" clipRule="evenodd" d="M74.7131 32.6652C62.6435 33.2043 49.8261 33.2217 37.7565 32.4565C35.8435 32.3521 34.1913 33.7956 34.0696 35.7261C33.9478 37.6391 35.4087 39.2913 37.3218 39.413C49.6348 40.1782 62.7132 40.1608 75.0262 39.6217C76.9392 39.5347 78.4347 37.9 78.3478 35.987C78.2608 34.0739 76.6261 32.5782 74.7131 32.6652Z" />
+                                <path fillRule="evenodd" clipRule="evenodd" d="M31.1812 34.8737C38.6247 43.9867 46.3291 52.9259 53.2335 62.4563C54.3639 64.0042 56.5379 64.3519 58.1031 63.2215C59.6509 62.091 59.9987 59.917 58.8682 58.3692C51.8769 48.7344 44.0857 39.691 36.5553 30.4736C35.3379 28.9953 33.1465 28.7693 31.6682 29.9867C30.1726 31.2041 29.9638 33.3954 31.1812 34.8737Z" />
+                                <path fillRule="evenodd" clipRule="evenodd" d="M33.4355 37.5179C35.3833 47.0136 35.9225 56.0919 36.0616 65.7093C36.079 67.6223 37.6616 69.1527 39.5747 69.1353C41.5051 69.1005 43.0355 67.5353 43.0007 65.6048C42.8616 55.5353 42.2877 46.0571 40.2529 36.1092C39.8529 34.231 38.0269 33.0135 36.1312 33.4135C34.253 33.7961 33.0355 35.6397 33.4355 37.5179Z" />
+                                <path fillRule="evenodd" clipRule="evenodd" d="M33.7495 36.7531C28.1147 48.0226 25.2103 60.5444 19.1756 71.5705C18.2538 73.2401 18.8798 75.3617 20.5667 76.2835C22.2537 77.2052 24.3582 76.5791 25.2799 74.9095C31.3495 63.8138 34.2885 51.2226 39.9755 39.8661C40.8277 38.1443 40.132 36.0574 38.4276 35.1878C36.7059 34.3356 34.619 35.0313 33.7495 36.7531Z" />
+                                <path fillRule="evenodd" clipRule="evenodd" d="M36.8506 34.1956C25.6332 36.1782 14.4332 37.0825 3.14621 38.4217C1.23317 38.6477 -0.123351 40.3695 0.102736 42.2826C0.328823 44.1956 2.05072 45.5521 3.96377 45.3261C15.3725 43.9869 26.7116 43.0478 38.0681 41.0478C39.9463 40.6999 41.2159 38.8912 40.8855 37.013C40.5376 35.1173 38.7462 33.8478 36.8506 34.1956Z" />
+                                <path fillRule="evenodd" clipRule="evenodd" d="M44.6564 28.9096C42.3433 28.8053 40.152 28.6487 37.8911 28.3182C35.9781 28.04 34.2215 29.3617 33.9433 31.2574C33.665 33.153 34.9866 34.927 36.8823 35.2052C39.3866 35.5705 41.8041 35.7444 44.3432 35.8487C46.2563 35.9357 47.891 34.4574 47.9605 32.5269C48.0475 30.6139 46.5694 28.9966 44.6564 28.9096Z" />
+                            </svg>
+                        </span>
+                    </motion.p>
+                    <motion.span>
+                        <svg className="fill-[#507FF8]/80" width="310" height="100" viewBox="0 0 310 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path fillRule="evenodd" clipRule="evenodd" d="M184.059 42.102C143.9 52.1272 104.061 63.5928 64.7754 76.5239C46.0979 82.6721 23.9105 87.7131 6.73874 97.6565C5.88377 98.1547 6.2582 98.953 6.29804 99.0323C6.37866 99.1948 6.6817 99.727 7.42217 99.5811C7.50289 99.5662 8.04625 99.353 8.25498 99.274C13.5444 97.2606 18.7855 95.132 24.0884 93.1576C42.395 86.3328 60.8938 80.0707 79.4727 74.0219C104.132 65.992 129.236 58.8788 154.249 52.0405C167.941 48.2984 182.224 45.5777 195.841 41.3213C200.919 40.0886 206.003 38.88 211.092 37.6913C232.368 32.7311 253.793 28.5085 275.277 24.5887C282.185 23.328 287.481 22.4789 294.223 21.1562C296.783 20.6552 300.823 19.7699 303.634 19.1506C304.046 19.0612 305.097 18.8207 305.533 18.7217C305.578 18.7193 305.622 18.7089 305.67 18.6975C305.838 18.6578 305.915 18.6269 305.931 18.6232C306.847 18.2583 306.546 17.3793 306.49 17.249C306.479 17.2219 306.155 16.496 305.331 16.6617C305.134 16.7 303.732 17.0238 303.192 17.1433C300.397 17.7589 296.373 18.6404 293.826 19.1426C287.096 20.4624 281.804 21.3106 274.908 22.5685C253.392 26.4959 231.934 30.722 210.626 35.6897C208.024 36.2978 205.419 36.9108 202.819 37.5308C202.678 37.3237 202.421 37.114 201.964 37.1041C201.537 37.0955 198.631 37.6867 197.497 37.8583C189.1 39.1296 189.351 39.1039 180.158 40.6948C166.234 43.1022 164.099 43.4053 149.74 46.431C123.659 51.9257 97.7314 58.1231 71.8147 64.3306C59.0208 67.3996 45.5186 71.515 32.137 72.9746C36.301 71.4559 40.5133 70.0694 44.7052 68.6328C59.019 63.7296 73.4736 59.3674 88.0386 55.2579C122.977 45.4011 158.184 36.4309 193.947 30.1123C186.455 31.9634 178.988 33.9096 171.504 35.7968C141.04 43.4871 110.095 50.4635 80.1388 60.0143C79.6028 60.1878 79.3058 60.765 79.4755 61.3034C79.6461 61.8459 80.2262 62.1435 80.7632 61.9741C110.679 52.4327 141.581 45.4706 172.006 37.7898C183.31 34.9386 194.578 31.9565 205.942 29.3572C209.842 28.467 213.768 27.6889 217.672 26.8147C218.445 26.6443 220.463 26.3267 220.731 26.1956C221.324 25.9073 221.35 25.4112 221.336 25.1738C221.323 25.0331 221.202 24.2341 220.178 24.1809C213.192 23.817 201.157 26.7613 194.718 27.8895C158.501 34.2312 122.854 43.3013 87.4811 53.2781C72.8812 57.4001 58.3916 61.7748 44.0389 66.6914C39.0244 68.4074 33.9818 70.0582 29.0261 71.9334C28.2261 72.237 26.4085 72.8323 25.55 73.2089C25.1912 73.3657 24.9427 73.5259 24.8392 73.6222C24.4351 73.9967 24.4423 74.4005 24.5039 74.6604C24.5473 74.8614 24.7978 75.5454 25.8204 75.5059C41.4013 74.9022 57.3298 69.9164 72.2924 66.3293C98.1932 60.1256 124.101 53.9329 150.166 48.442C164.489 45.4247 166.615 45.1196 180.511 42.7188C181.882 42.4784 183.044 42.2792 184.059 42.102Z" />
+                        </svg>
+                    </motion.span>
+                </div>
+            </motion.div>
 
             <motion.div className="sm:inline absolute hidden left-25 top-50">
                 <div className="relative">
@@ -88,6 +113,7 @@ export default function Home() {
             <LandingNav showLandingSections />
 
             <Header router={router} />
+
             <Features />
             <About />
             <Pricing router={router} />
@@ -105,6 +131,7 @@ function Header({ router }: { router: AppRouterInstance }) {
             transition={{ duration: 1, delay: 0.5 }}
             className="text-center flex items-center justify-center flex-col h-[720px] sm:h-[900px] mb-15"
         >
+
             <motion.h1
                 initial={{ y: 100, opacity: 0, scale: 0.8 }}
                 animate={{ y: 0, opacity: 1, scale: 1 }}
@@ -135,9 +162,10 @@ function Header({ router }: { router: AppRouterInstance }) {
                     transition={{ duration: 0.8, delay: 2 }}
                 >
                     Platform.
-                </motion.span>            </motion.h1>
-            <motion.h2 className="max-w-[300px] sm:max-w-[700px] text-md sm:text-2xl text-muted-foreground mb-5">
-                A platform for idea development, communication and articulation. Capturing the Essence of your vision.
+                </motion.span>
+            </motion.h1>
+            <motion.h2 className="max-w-[300px] sm:max-w-[700px] text-lg sm:text-2xl text-primary/80 mb-1">
+                The best way to tack your ideation.
             </motion.h2>
             <WastedTimeTimer />
 
@@ -200,7 +228,7 @@ function Features() {
         {
             icon: <Palette className="w-8 h-8" />,
             title: "Visual Canvas",
-            description: "Create unlimited nodes on a free-form canvas with drawing tools and connectors."
+            description: "Create unlimited nodes on a free-form canvas with drawing tools and connectors.",
         },
         {
             icon: <Video className="w-8 h-8" />,
@@ -215,7 +243,7 @@ function Features() {
         {
             icon: <Zap className="w-8 h-8" />,
             title: "AI Assistant",
-            description: "Get help creating nodes and researching ideas with our built-in AI helper."
+            description: "Get help creating your vision and researching ideas with our built-in AI helper."
         },
         {
             icon: <Users className="w-8 h-8" />,
@@ -251,8 +279,7 @@ function Features() {
                         Everything you need to capture, communicate, and collaborate on your vision
                     </p>
                 </motion.div>
-
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-15">
                     {features.map((feature, index) => (
                         <motion.div
                             key={feature.title}
@@ -260,11 +287,11 @@ function Features() {
                             whileInView={{ y: 0, opacity: 1 }}
                             transition={{ duration: 0.6, delay: index * 0.1 }}
                             viewport={{ once: true }}
-                            className="p-6 rounded-xl border bg-card hover:shadow-lg transition-shadow"
+                            className={`group p-2 border-black hover:scale-105 transition-all ease-in-out`}
                         >
-                            <div className="text-primary mb-4">{feature.icon}</div>
-                            <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
-                            <p className="text-muted-foreground">{feature.description}</p>
+                            <div className={`${(index % 2) ? "sm:rotate-0 rotate-180" : ""} text-primary mb-4`}>{feature.icon}</div>
+                            <h3 className={`${(index % 2) ? "text-right sm:text-left" : ""} text-2xl font-semibold font-gaegu mb-3`}>{feature.title}</h3>
+                            <p className={`${(index % 2) ? "text-right sm:text-left" : ""} group-hover:underline group-hover:text-primary transition-all ease-in-out text-muted-foreground`}>{feature.description}</p>
                         </motion.div>
                     ))}
                 </div>
@@ -298,7 +325,7 @@ function About() {
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
             id="about"
-            className="py-20 px-6 bg-muted/30"
+            className="py-20 px-6 bg-background"
         >
             <div className="max-w-4xl mx-auto">
                 <motion.div
@@ -530,7 +557,7 @@ function Pricing({ router }: { router: AppRouterInstance }) {
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
             id="pricing"
-            className="py-20 px-6"
+            className="pt-20 px-6"
         >
             <div className="max-w-6xl mx-auto">
                 <motion.div
