@@ -14,10 +14,10 @@ export const ROUTES = {
   SSO_CALLBACK: '/sso-callback',
   
   // Profile routes  
-  PROFILE_VISIONS: '/profile/visions',
-  
-  // Legacy routes (for backward compatibility)
-  VISIONS: '/visions',
+  PROFILE: {
+    VISIONS: "/dashboard/visions",
+    PROFILE: "/dashboard/profile"
+  },
   
   // Server routes
   SERVER: '/server',

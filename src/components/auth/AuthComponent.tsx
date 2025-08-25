@@ -84,14 +84,14 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
             if (isSignIn && signIn) {
                 await signIn.authenticateWithRedirect({
                     strategy,
-                    redirectUrl: ROUTES.PROFILE_VISIONS,
-                    redirectUrlComplete: ROUTES.PROFILE_VISIONS,
+                    redirectUrl: ROUTES.PROFILE.VISIONS,
+                    redirectUrlComplete: ROUTES.PROFILE.VISIONS,
                 });
             } else if (signUp) {
                 await signUp.authenticateWithRedirect({
                     strategy,
                     redirectUrl: ROUTES.SSO_CALLBACK,
-                    redirectUrlComplete: ROUTES.VISIONS,
+                    redirectUrlComplete: ROUTES.PROFILE.VISIONS,
                 });
             } else {
                 throw new Error("Failed to get a version of this component (oauth)")

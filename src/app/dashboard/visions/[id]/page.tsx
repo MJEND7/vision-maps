@@ -8,29 +8,9 @@ import { useProfileUser } from '@/contexts/ProfileUserContext';
 export default function VisionDetailPage() {
   const { user } = useProfileUser();
   const params = useParams();
-  const visionId = params.vision_id as string;
+  const visionId = params.id as string;
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border p-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-4"
-          >
-            <h1 className="text-2xl font-display font-bold">Vision Detail</h1>
-          </motion.div>
-          
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              Welcome, {user?.firstName || user?.username || 'User'}
-            </span>
-            <UserAvatar />
-          </div>
-        </div>
-      </header>
-
       <main className="max-w-7xl mx-auto p-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -44,6 +24,5 @@ export default function VisionDetailPage() {
           </p>
         </motion.div>
       </main>
-    </div>
   );
 }

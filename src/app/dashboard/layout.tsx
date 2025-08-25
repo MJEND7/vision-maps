@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { ROUTES } from '@/lib/constants';
 import { ProfileUserProvider } from '@/contexts/ProfileUserContext';
+import ProfileNav from '@/components/profile/ProfileNav';
 
 export default function ProfileLayout({
     children,
@@ -20,11 +21,20 @@ export default function ProfileLayout({
         }
     }, [isLoaded, isSignedIn, router]);
 
+    const newVision = async () => {
+        let id = "";
+
+        //Create vision in convex
+
+        router.push(`${ROUTES.PROFILE.VISIONS}/${id}`)
+    }
+
+
     // Show loading spinner while checking auth status
     if (!isLoaded) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             </div>
         );
     }
@@ -36,7 +46,13 @@ export default function ProfileLayout({
 
     return (
         <ProfileUserProvider user={user}>
-            {children}
+            <div className="min-h-screen bg-background">
+                <div className="py-[36px]">
+                    <ProfileNav onNew={newVision} />
+                </div>
+
+                {children}
+            </div>
         </ProfileUserProvider>
     );
 }

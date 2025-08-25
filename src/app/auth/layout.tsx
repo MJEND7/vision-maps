@@ -17,7 +17,7 @@ export default function AuthLayout({
 
     useEffect(() => {
         if (isLoaded && isSignedIn) {
-            router.push(ROUTES.PROFILE_VISIONS);
+            router.push(ROUTES.PROFILE.VISIONS);
         }
     }, [isLoaded, isSignedIn, router]);
 

@@ -214,7 +214,7 @@ function Header({ router }: { router: AppRouterInstance }) {
                 </div>
                 <Authenticated>
                     <Button size={"xl"} onClick={() => {
-                        router.push(ROUTES.PROFILE_VISIONS)
+                        router.push(ROUTES.PROFILE.VISIONS)
                     }}>
                         Your Visions
                     </Button>
@@ -876,7 +876,7 @@ function CallToAction() {
                         className="flex flex-col sm:flex-row gap-4 justify-center items-center"
                     >
                         <Authenticated>
-                            <Button size="xl" className="w-full sm:w-auto" onClick={() => window.location.href = ROUTES.PROFILE_VISIONS}>
+                            <Button size="xl" className="w-full sm:w-auto" onClick={() => window.location.href = ROUTES.PROFILE.VISIONS}>
                                 Start Creating
                             </Button>
                         </Authenticated>
