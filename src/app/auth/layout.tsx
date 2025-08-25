@@ -1,15 +1,56 @@
 "use client";
 
-import AuthComponent from '@/components/auth/AuthComponent'
 import { useRouter } from 'next/navigation';
 import { motion } from "motion/react"
+import LightRays from '@/backgrounds/LightRays/LightRays';
+import { useUser } from '@clerk/nextjs';
+import { ROUTES } from '@/lib/constants';
+import { useEffect } from 'react';
 
-export default function SignUpPage() {
+export default function AuthLayout({
+    children,
+}: Readonly<{
+    children: React.ReactNode;
+}>) {
+    const { isLoaded, isSignedIn } = useUser();
     const router = useRouter();
 
+    useEffect(() => {
+        if (isLoaded && isSignedIn) {
+            router.push(ROUTES.PROFILE_VISIONS);
+        }
+    }, [isLoaded, isSignedIn, router]);
+
+    // Show loading spinner while checking auth status
+    if (!isLoaded) {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
+
+    // Don't render auth pages if user is already signed in
+    if (isSignedIn) {
+        return null;
+    }
     return (
         <div className="min-h-screen bg-transparent flex flex-col">
             {/* Main Content */}
+            <div className="w-screen h-[300px] dark:inline hidden overflow-none sm:h-screen bg-transparent absolute sm:top-0 top-15">
+                <LightRays
+                    raysOrigin="top-center"
+                    raysSpeed={1.5}
+                    lightSpread={0.8}
+                    rayLength={0.8}
+                    followMouse={true}
+                    mouseInfluence={0.1}
+                    noiseAmount={0.1}
+                    distortion={0.05}
+                    className="custom-rays"
+                />
+
+            </div>
             <motion.div className="sm:inline absolute hidden left-55 top-20">
                 <div className="relative">
                     <motion.p className="w-[500px] text-3xl text-[#FFA9D9]/80 absolute top-10 -left-4.5 font-gaegu font-bold -rotate-15">
@@ -72,10 +113,7 @@ export default function SignUpPage() {
                 </div>
             </motion.div>
             <div className="flex-1 flex sm:items-center justify-center sm:p-4">
-                <AuthComponent
-                    variant={"signin"}
-                    onSwitchVariant={() => router.push("/signup")}
-                />
+            {children}
             </div>
         </div>
     )

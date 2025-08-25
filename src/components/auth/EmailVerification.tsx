@@ -6,6 +6,7 @@ import { Button } from "../ui/button";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { ROUTES } from "@/lib/constants";
 
 import type { SignUpResource, SetActive } from '@clerk/types';
 
@@ -75,7 +76,7 @@ export default function EmailVerification({ email, signUp, setActive }: EmailVer
 
       if (completeSignUp.status === "complete") {
         await setActive({ session: completeSignUp.createdSessionId! });
-        router.push("/");
+        router.push(ROUTES.HOME);
       } else {
         const errorMessage = "Verification failed. Please try again.";
         setError(errorMessage);

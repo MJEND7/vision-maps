@@ -9,6 +9,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import EmailVerification from "./EmailVerification";
 import { toast } from "sonner";
+import { ROUTES } from "@/lib/constants";
 
 interface AuthComponentProps {
     variant: "signin" | "signup";
@@ -48,7 +49,7 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
 
                 if (result.status === "complete") {
                     await setSignInActive({ session: result.createdSessionId });
-                    router.push("/");
+                    router.push(ROUTES.HOME);
                 } else {
                     const errorMessage = "Sign in failed. Please try again.";
                     setError(errorMessage);
@@ -83,14 +84,14 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
             if (isSignIn && signIn) {
                 await signIn.authenticateWithRedirect({
                     strategy,
-                    redirectUrl: "/visions",
-                    redirectUrlComplete: "/visions",
+                    redirectUrl: ROUTES.PROFILE_VISIONS,
+                    redirectUrlComplete: ROUTES.PROFILE_VISIONS,
                 });
             } else if (signUp) {
                 await signUp.authenticateWithRedirect({
                     strategy,
-                    redirectUrl: "/sso-callback",
-                    redirectUrlComplete: "/visions",
+                    redirectUrl: ROUTES.SSO_CALLBACK,
+                    redirectUrlComplete: ROUTES.VISIONS,
                 });
             } else {
                 throw new Error("Failed to get a version of this component (oauth)")
@@ -117,7 +118,7 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
         >
             <div className="absolute -top-0 left-0 z-10">
                 <Button
-                    onClick={() => router.push("/")}
+                    onClick={() => router.push(ROUTES.HOME)}
                     className="flex rounded-bl-none rounded-tr-none items-center justify-center w-15 h-12 bg-card border border-border rounded-tl-none sm:rounded-tl-xl rounded-br-xl shadow-lg hover:bg-accent transition-colors"
                 >
                     <svg

@@ -3,8 +3,10 @@
 import { useParams } from 'next/navigation';
 import { motion } from 'motion/react';
 import UserAvatar from '@/components/ui/user-avatar';
+import { useProfileUser } from '@/contexts/ProfileUserContext';
 
 export default function VisionDetailPage() {
+  const { user } = useProfileUser();
   const params = useParams();
   const visionId = params.vision_id as string;
 
@@ -21,6 +23,9 @@ export default function VisionDetailPage() {
           </motion.div>
           
           <div className="flex items-center gap-4">
+            <span className="text-sm text-muted-foreground">
+              Welcome, {user?.firstName || user?.username || 'User'}
+            </span>
             <UserAvatar />
           </div>
         </div>

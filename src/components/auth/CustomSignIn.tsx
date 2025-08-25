@@ -8,6 +8,7 @@ import { Input } from "../ui/input";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { ROUTES } from "@/lib/constants";
 
 interface CustomSignInProps {
     onSwitchToSignUp: () => void;
@@ -38,7 +39,7 @@ export default function CustomSignIn({ onSwitchToSignUp }: CustomSignInProps) {
 
             if (result.status === "complete") {
                 await setActive({ session: result.createdSessionId });
-                router.push("/");
+                router.push(ROUTES.HOME);
             } else {
                 const errorMessage = "Sign in failed. Please try again.";
                 setError(errorMessage);
@@ -60,8 +61,8 @@ export default function CustomSignIn({ onSwitchToSignUp }: CustomSignInProps) {
         try {
             await signIn.authenticateWithRedirect({
                 strategy: "oauth_google",
-                redirectUrl: "/sso-callback",
-                redirectUrlComplete: "/sso-callback",
+                redirectUrl: ROUTES.SSO_CALLBACK,
+                redirectUrlComplete: ROUTES.SSO_CALLBACK,
             });
         } catch (err: unknown) {
             const errorMessage = (err as { errors?: { message: string }[] })?.errors?.[0]?.message || "Google sign in failed";
@@ -78,8 +79,8 @@ export default function CustomSignIn({ onSwitchToSignUp }: CustomSignInProps) {
         try {
             await signIn.authenticateWithRedirect({
                 strategy: "oauth_github",
-                redirectUrl: "/sso-callback",
-                redirectUrlComplete: "/sso-callback",
+                redirectUrl: ROUTES.SSO_CALLBACK,
+                redirectUrlComplete: ROUTES.SSO_CALLBACK,
             });
         } catch (err: unknown) {
             const errorMessage = (err as { errors?: { message: string }[] })?.errors?.[0]?.message || "GitHub sign in failed";
@@ -99,7 +100,7 @@ export default function CustomSignIn({ onSwitchToSignUp }: CustomSignInProps) {
             {/* Back button cutout */}
             <div className="absolute -top-0 left-0 z-10">
                 <motion.button
-                    onClick={() => router.push("/")}
+                    onClick={() => router.push(ROUTES.HOME)}
                     className="flex items-center justify-center w-12 h-12 bg-card border border-border rounded-tl-xl rounded-br-xl shadow-lg hover:bg-accent transition-colors"
                 >
                     <svg

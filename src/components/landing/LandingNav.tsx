@@ -11,6 +11,7 @@ import { Menu, X } from "lucide-react";
 import { Authenticated, Unauthenticated } from "convex/react";
 import UserAvatar from "../ui/user-avatar";
 import MissingAvatar from "@/icons/missing_avatar";
+import { ROUTES } from "@/lib/constants";
 
 export default function LandingNav({
     showLandingSections = false,
@@ -123,7 +124,7 @@ export default function LandingNav({
                 <div className="flex w-full max-w-[160px] items-center gap-2">
                     <Link
                         key={"Home"}
-                        href={"#home"}
+                        href={ROUTES.LANDING.HOME}
                         onClick={() => setMenuOpen(false)}
                         className="flex gap-3 items-center"
                     >
@@ -145,9 +146,9 @@ export default function LandingNav({
                     </Link>
                     <div className="sm:flex hidden justify-center gap-3">
                         {[
-                            { name: "Features", href: "#features" },
-                            { name: "About", href: "#about" },
-                            { name: "Pricing", href: "#pricing" },
+                            { name: "Features", href: ROUTES.LANDING.FEATURES },
+                            { name: "About", href: ROUTES.LANDING.ABOUT },
+                            { name: "Pricing", href: ROUTES.LANDING.PRICING },
                         ].map((item) => (
                             <Link
                                 key={item.name}
@@ -164,15 +165,22 @@ export default function LandingNav({
                 <div className="flex">
                     {/* Auth / Buttons - Hide UserButton on mobile when showLandingSections is true */}
                     <div className="hidden sm:flex items-center gap-2">
-                        <Link href="/signup">
-                            <Button size="lg">Sign up</Button>
-                        </Link>
+                        <Unauthenticated>
+                            <Link href={ROUTES.SIGNUP}>
+                                <Button size="lg">Sign up</Button>
+                            </Link>
+                        </Unauthenticated>
+                        <Authenticated>
+                            <Link href={ROUTES.PROFILE_VISIONS}>
+                                <Button size="lg">Dashboard</Button>
+                            </Link>
+                        </Authenticated>
                         <div className="flex w-8 h-8">
                             <Authenticated>
                                 <UserAvatar />
                             </Authenticated>
                             <Unauthenticated>
-                                <Link className="cursor-pointer" href="/signin">
+                                <Link className="cursor-pointer" href={ROUTES.SIGNIN}>
                                     <MissingAvatar />
                                 </Link>
                             </Unauthenticated>
@@ -194,7 +202,7 @@ export default function LandingNav({
                                     <UserAvatar />
                                 </Authenticated>
                                 <Unauthenticated>
-                                    <Link className="cursor-pointer" href="/signin">
+                                    <Link className="cursor-pointer" href={ROUTES.SIGNIN}>
                                         <MissingAvatar />
                                     </Link>
                                 </Unauthenticated>
@@ -218,9 +226,9 @@ export default function LandingNav({
                             {/* Nav Links */}
                             <div className="flex flex-col gap-2 px-4">
                                 {[
-                                    { name: "Features", href: "#features" },
-                                    { name: "About", href: "#about" },
-                                    { name: "Pricing", href: "#pricing" },
+                                    { name: "Features", href: ROUTES.LANDING.FEATURES },
+                                    { name: "About", href: ROUTES.LANDING.ABOUT },
+                                    { name: "Pricing", href: ROUTES.LANDING.PRICING },
                                 ].map((item) => (
                                     <Link
                                         key={item.name}
@@ -241,13 +249,13 @@ export default function LandingNav({
 
                                 <div className="flex w-full justify-end gap-2">
                                     {!user ? (
-                                        <Link href="/signup" className="w-full">
+                                        <Link href={ROUTES.SIGNUP} className="w-full">
                                             <Button size={"lg"} className="w-full" variant="outline">
                                                 Sign up
                                             </Button>
                                         </Link>
                                     ) : (
-                                        <Link href="/visions" className="w-full">
+                                        <Link href={ROUTES.VISIONS} className="w-full">
                                             <Button size={"lg"} className="w-full" variant="outline">
                                                 Visions
                                             </Button>
@@ -258,7 +266,7 @@ export default function LandingNav({
                                         <ThemeSwitcher />
                                     )}
                                 </div>
-                                <Link href="/signup">
+                                <Link href={ROUTES.SIGNUP}>
                                     <Button size={"lg"} className="w-full">Sign up</Button>
                                 </Link>
 

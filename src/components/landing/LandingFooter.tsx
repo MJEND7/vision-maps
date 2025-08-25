@@ -3,6 +3,7 @@
 import { motion } from "motion/react";
 import Logo from "@/icons/logo";
 import Link from "next/link";
+import { ROUTES } from "@/lib/constants";
 
 export default function LandingFooter() {
     return (
@@ -36,7 +37,7 @@ export default function LandingFooter() {
                     <div>
                         <h4 className="font-semibold text-foreground mb-4">Contact</h4>
                         <div className="space-y-2">
-                            <Link href="mailto:support@visionmaps.com" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
+                            <Link href={ROUTES.EXTERNAL.SUPPORT_EMAIL} className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
                                 Contact
                             </Link>
                             <Link href="#" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">

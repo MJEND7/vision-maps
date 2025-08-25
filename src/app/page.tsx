@@ -13,6 +13,8 @@ import WastedTimeTimer from "@/components/WastedTimeTimer";
 import { Authenticated, Unauthenticated } from "convex/react";
 import { useRouter } from "next/navigation";
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import LightRays from "@/backgrounds/LightRays/LightRays";
+import { ROUTES } from "@/lib/constants";
 
 export default function Home() {
     const router = useRouter();
@@ -25,7 +27,7 @@ export default function Home() {
         >
             <motion.div className="sm:hidden absolute inline left-10 top-175 rotate-20">
                 <div className="relative">
-                    <motion.p className="text-2xl text-[#507FF8]/80 absolute top-1 -left-4.5 font-gaegu font-bold -rotate-15">
+                    <motion.p className="text-2xl text-[#507FF8]/80 absolute top-1 -left-5.5 font-gaegu font-bold -rotate-15">
                         Communicate your vision
                         <span className="absolute">
                             <svg className="fill-[#507FF8]/80" width="20" height="20" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -42,7 +44,7 @@ export default function Home() {
                         </span>
                     </motion.p>
                     <motion.span>
-                        <svg className="fill-[#507FF8]/80" width="310" height="100" viewBox="0 0 310 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="fill-[#507FF8]/80" width="300" height="100" viewBox="0 0 310 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path fillRule="evenodd" clipRule="evenodd" d="M184.059 42.102C143.9 52.1272 104.061 63.5928 64.7754 76.5239C46.0979 82.6721 23.9105 87.7131 6.73874 97.6565C5.88377 98.1547 6.2582 98.953 6.29804 99.0323C6.37866 99.1948 6.6817 99.727 7.42217 99.5811C7.50289 99.5662 8.04625 99.353 8.25498 99.274C13.5444 97.2606 18.7855 95.132 24.0884 93.1576C42.395 86.3328 60.8938 80.0707 79.4727 74.0219C104.132 65.992 129.236 58.8788 154.249 52.0405C167.941 48.2984 182.224 45.5777 195.841 41.3213C200.919 40.0886 206.003 38.88 211.092 37.6913C232.368 32.7311 253.793 28.5085 275.277 24.5887C282.185 23.328 287.481 22.4789 294.223 21.1562C296.783 20.6552 300.823 19.7699 303.634 19.1506C304.046 19.0612 305.097 18.8207 305.533 18.7217C305.578 18.7193 305.622 18.7089 305.67 18.6975C305.838 18.6578 305.915 18.6269 305.931 18.6232C306.847 18.2583 306.546 17.3793 306.49 17.249C306.479 17.2219 306.155 16.496 305.331 16.6617C305.134 16.7 303.732 17.0238 303.192 17.1433C300.397 17.7589 296.373 18.6404 293.826 19.1426C287.096 20.4624 281.804 21.3106 274.908 22.5685C253.392 26.4959 231.934 30.722 210.626 35.6897C208.024 36.2978 205.419 36.9108 202.819 37.5308C202.678 37.3237 202.421 37.114 201.964 37.1041C201.537 37.0955 198.631 37.6867 197.497 37.8583C189.1 39.1296 189.351 39.1039 180.158 40.6948C166.234 43.1022 164.099 43.4053 149.74 46.431C123.659 51.9257 97.7314 58.1231 71.8147 64.3306C59.0208 67.3996 45.5186 71.515 32.137 72.9746C36.301 71.4559 40.5133 70.0694 44.7052 68.6328C59.019 63.7296 73.4736 59.3674 88.0386 55.2579C122.977 45.4011 158.184 36.4309 193.947 30.1123C186.455 31.9634 178.988 33.9096 171.504 35.7968C141.04 43.4871 110.095 50.4635 80.1388 60.0143C79.6028 60.1878 79.3058 60.765 79.4755 61.3034C79.6461 61.8459 80.2262 62.1435 80.7632 61.9741C110.679 52.4327 141.581 45.4706 172.006 37.7898C183.31 34.9386 194.578 31.9565 205.942 29.3572C209.842 28.467 213.768 27.6889 217.672 26.8147C218.445 26.6443 220.463 26.3267 220.731 26.1956C221.324 25.9073 221.35 25.4112 221.336 25.1738C221.323 25.0331 221.202 24.2341 220.178 24.1809C213.192 23.817 201.157 26.7613 194.718 27.8895C158.501 34.2312 122.854 43.3013 87.4811 53.2781C72.8812 57.4001 58.3916 61.7748 44.0389 66.6914C39.0244 68.4074 33.9818 70.0582 29.0261 71.9334C28.2261 72.237 26.4085 72.8323 25.55 73.2089C25.1912 73.3657 24.9427 73.5259 24.8392 73.6222C24.4351 73.9967 24.4423 74.4005 24.5039 74.6604C24.5473 74.8614 24.7978 75.5454 25.8204 75.5059C41.4013 74.9022 57.3298 69.9164 72.2924 66.3293C98.1932 60.1256 124.101 53.9329 150.166 48.442C164.489 45.4247 166.615 45.1196 180.511 42.7188C181.882 42.4784 183.044 42.2792 184.059 42.102Z" />
                         </svg>
                     </motion.span>
@@ -111,6 +113,20 @@ export default function Home() {
                     </motion.p>
                 </div>
             </motion.div>
+            <div className="w-screen h-[300px] dark:inline hidden overflow-none sm:h-screen bg-transparent absolute sm:top-0 top-15">
+                <LightRays
+                    raysOrigin="top-center"
+                    raysSpeed={1.5}
+                    lightSpread={0.8}
+                    rayLength={0.8}
+                    followMouse={true}
+                    mouseInfluence={0.1}
+                    noiseAmount={0.1}
+                    distortion={0.05}
+                    className="custom-rays"
+                />
+
+            </div>
             <LandingNav showLandingSections />
 
             <Header router={router} />
@@ -131,7 +147,7 @@ function Header({ router }: { router: AppRouterInstance }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1, delay: 0.5 }}
-            className="text-center flex items-center justify-center flex-col h-[720px] sm:h-[900px] mb-15"
+            className="text-center flex items-center justify-center flex-col h-[650px] sm:h-[900px] mb-15"
         >
 
             <motion.h1
@@ -198,18 +214,17 @@ function Header({ router }: { router: AppRouterInstance }) {
                 </div>
                 <Authenticated>
                     <Button size={"xl"} onClick={() => {
-                        router.push("/profile/visions")
+                        router.push(ROUTES.PROFILE_VISIONS)
                     }}>
                         Your Visions
                     </Button>
                 </Authenticated>
                 <Unauthenticated>
                     <Button size={"xl"} onClick={() => {
-                        router.push("/signup")
+                        router.push(ROUTES.SIGNUP)
                     }}>
                         Join for free
                     </Button>
-
                 </Unauthenticated>
                 <div className="relative">
                     <motion.div className="absolute left-20">
@@ -327,7 +342,7 @@ function About() {
 
     const brandItems = [
         {
-            title: "Brand & Strategic Vision", 
+            title: "Brand & Strategic Vision",
             content: "Vision Maps is more than just a tool—it's a revolutionary way of communicating ideas. Our aim is to build a brand centered around ideation and creative expression that transforms how founders and business owners convey their visions."
         },
         {
@@ -436,7 +451,7 @@ function About() {
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
                         {[
                             "Explaining the vibe of a product and feel you want to create",
-                            "Application flows and user experience mapping", 
+                            "Application flows and user experience mapping",
                             "General idea management and creative workflows",
                             "A workspace to work with art, fragrances and your own art",
                             "Shooting of a show or movie - reference shots, vibes, lighting, coloring, music",
@@ -718,7 +733,7 @@ function Pricing({ router }: { router: AppRouterInstance }) {
                                                     size="lg"
                                                     onClick={() => {
                                                         if (plan.id && plan.name !== 'Free') {
-                                                            router.push("/signup")
+                                                            router.push(ROUTES.SIGNUP)
                                                         }
                                                     }}
                                                 >
@@ -798,7 +813,7 @@ function Pricing({ router }: { router: AppRouterInstance }) {
                                             size="lg"
                                             onClick={() => {
                                                 if (plan.id && plan.name !== 'Free') {
-                                                    router.push("/signup")
+                                                    router.push(ROUTES.SIGNUP)
                                                 }
                                             }}
                                         >
@@ -848,11 +863,11 @@ function CallToAction() {
                         <br />
                         <span className="text-primary font-semibold">with Vision Maps</span>
                     </h2>
-                    
+
                     <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                         Ready to transform how you communicate your ideas?
                     </p>
-                    
+
                     <motion.div
                         initial={{ y: 20, opacity: 0 }}
                         whileInView={{ y: 0, opacity: 1 }}
@@ -861,27 +876,27 @@ function CallToAction() {
                         className="flex flex-col sm:flex-row gap-4 justify-center items-center"
                     >
                         <Authenticated>
-                            <Button size="xl" className="w-full sm:w-auto" onClick={() => window.location.href = "/profile/visions"}>
+                            <Button size="xl" className="w-full sm:w-auto" onClick={() => window.location.href = ROUTES.PROFILE_VISIONS}>
                                 Start Creating
                             </Button>
                         </Authenticated>
                         <Unauthenticated>
-                            <Button size="xl" className="w-full sm:w-auto" onClick={() => window.location.href = "/signup"}>
+                            <Button size="xl" className="w-full sm:w-auto" onClick={() => window.location.href = ROUTES.SIGNUP}>
                                 Get Started Free
                             </Button>
                         </Unauthenticated>
-                        
+
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <span>Contact us:</span>
-                            <a 
-                                href="mailto:support@visionmaps.com" 
+                            <a
+                                href="mailto:support@visionmaps.com"
                                 className="text-primary hover:underline font-medium"
                             >
                                 support@visionmaps.com
                             </a>
                         </div>
                     </motion.div>
-                    
+
                     <motion.div
                         initial={{ scale: 0.8, opacity: 0 }}
                         whileInView={{ scale: 1, opacity: 1 }}

@@ -40,7 +40,7 @@ export function AccordionItem({ title, content, isOpen, onToggle }: AccordionIte
             transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
             className="overflow-hidden"
           >
-            <div className="pb-4 text-sm text-muted-foreground">
+            <div className="pb-4 text-lg text-muted-foreground">
               {content}
             </div>
           </motion.div>

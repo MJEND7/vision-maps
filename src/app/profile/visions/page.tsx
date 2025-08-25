@@ -1,19 +1,11 @@
 "use client";
 
-import { useUser } from '@clerk/nextjs';
 import { UserButton } from '@clerk/nextjs';
 import { motion } from 'motion/react';
+import { useProfileUser } from '@/contexts/ProfileUserContext';
 
 export default function SheetsPage() {
-  const { user, isLoaded } = useUser();
-
-  if (!isLoaded) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  const { user } = useProfileUser();
 
   return (
     <div className="min-h-screen bg-background">
