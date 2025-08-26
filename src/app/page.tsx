@@ -25,7 +25,7 @@ export default function Home() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
         >
-            <motion.div className="sm:hidden absolute inline left-10 top-175 rotate-20">
+            <motion.div className="sm:hidden absolute inline left-10 top-155 rotate-20">
                 <div className="relative">
                     <motion.p className="text-2xl text-[#507FF8]/80 absolute top-1 -left-5.5 font-gaegu font-bold -rotate-15">
                         Communicate your vision
@@ -358,7 +358,7 @@ function About() {
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
             id="about"
-            className="py-20 px-6 bg-background"
+            className="py-20 px-6 bg-background overflow-hidden"
         >
             <div className="max-w-6xl mx-auto space-y-16">
                 {/* Section 1: Left Quote/Image */}

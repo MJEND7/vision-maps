@@ -22,7 +22,6 @@ export default function ProfileNav({
 }) {
     const { isLoaded, user } = useUser();
     const [menuOpen, setMenuOpen] = useState(false);
-    const [showLoginHint, setShowLoginHint] = useState(true);
     const menuRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -47,22 +46,7 @@ export default function ProfileNav({
         };
     }, [menuOpen]);
 
-    useEffect(() => {
-        function handleScroll() {
-            const scrollTop = window.scrollY;
-            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-            const scrolledPercent = (scrollTop / docHeight) * 100;
 
-            if (scrolledPercent < 0.5) {
-                setShowLoginHint(true);
-            } else {
-                setShowLoginHint(false);
-            }
-        }
-
-        window.addEventListener("scroll", handleScroll);
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, []);
 
     return (
         <div className="flex gap-1 items-center justify-center w-full p-2 fixed top-0 z-[100]">
@@ -121,27 +105,25 @@ export default function ProfileNav({
                     </div>
 
                     {/* Mobile Menu Toggle */}
-                    {showLandingSections && (
-                        <div className="sm:hidden flex items-center gap-2">
-                            <button
-                                ref={buttonRef}
-                                className="sm:hidden p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-                                onClick={() => setMenuOpen(!menuOpen)}
-                            >
-                                {menuOpen ? <X size={24} /> : <Menu size={24} />}
-                            </button>
-                            <div className="flex w-8 h-8">
-                                <Authenticated>
-                                    <UserAvatar />
-                                </Authenticated>
-                                <Unauthenticated>
-                                    <Link className="cursor-pointer" href={ROUTES.SIGNIN}>
-                                        <MissingAvatar />
-                                    </Link>
-                                </Unauthenticated>
-                            </div>
+                    <div className="sm:hidden flex items-center gap-2">
+                        <button
+                            ref={buttonRef}
+                            className="sm:hidden p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                            onClick={() => setMenuOpen(!menuOpen)}
+                        >
+                            {menuOpen ? <X size={24} /> : <Menu size={24} />}
+                        </button>
+                        <div className="flex w-8 h-8">
+                            <Authenticated>
+                                <UserAvatar />
+                            </Authenticated>
+                            <Unauthenticated>
+                                <Link className="cursor-pointer" href={ROUTES.SIGNIN}>
+                                    <MissingAvatar />
+                                </Link>
+                            </Unauthenticated>
                         </div>
-                    )}
+                    </div>
                 </div>
 
                 {/* Mobile Dropdown Menu with AnimatePresence */}
@@ -159,9 +141,8 @@ export default function ProfileNav({
                             {/* Nav Links */}
                             <div className="flex flex-col gap-2 px-4">
                                 {[
-                                    { name: "Features", href: ROUTES.LANDING.FEATURES },
-                                    { name: "About", href: ROUTES.LANDING.ABOUT },
-                                    { name: "Pricing", href: ROUTES.LANDING.PRICING },
+                                    { name: "Visions", href: ROUTES.PROFILE.VISIONS },
+                                    { name: "Profile", href: ROUTES.PROFILE.PROFILE },
                                 ].map((item) => (
                                     <Link
                                         key={item.name}
@@ -175,34 +156,15 @@ export default function ProfileNav({
                             </div>
 
                             {/* Mobile Auth Buttons */}
+
                             {/* Divider */}
                             < div className="my-3 border-t border-gray-200 dark:border-zinc-700" />
 
                             <div className="flex flex-col gap-2 px-4">
-
-                                <div className="flex w-full justify-end gap-2">
-                                    {!user ? (
-                                        <Link href={ROUTES.SIGNUP} className="w-full">
-                                            <Button size={"lg"} className="w-full" variant="outline">
-                                                Sign up
-                                            </Button>
-                                        </Link>
-                                    ) : (
-                                        <Link href={ROUTES.VISIONS} className="w-full">
-                                            <Button size={"lg"} className="w-full" variant="outline">
-                                                Visions
-                                            </Button>
-                                        </Link>
-                                    )}
-                                    {/* Theme Switcher in Mobile Menu */}
-                                    {isLoaded && (
-                                        <ThemeSwitcher />
-                                    )}
-                                </div>
-                                <Link href={ROUTES.SIGNUP}>
-                                    <Button size={"lg"} className="w-full">Sign up</Button>
-                                </Link>
-
+                                {/* Theme Switcher in Mobile Menu */}
+                                {isLoaded && (
+                                    <ThemeSwitcher />
+                                )}
                             </div>
                         </motion.div>
                     )}

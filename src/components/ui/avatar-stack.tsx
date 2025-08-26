@@ -9,14 +9,14 @@ const AvatarStack = ({ users }: { users: UserData[] }) => {
     return (
         <div className="flex -space-x-2 overflow-hidden">
             {visibleUsers.map((user, index) => (
-                <Avatar key={index} className="border-2 border-white">
+                <Avatar key={index} className="border-2 border-accent">
                     <AvatarImage src={user.imageUrl} alt={getUserAvatarAltText(user)} />
                     <AvatarFallback>{getUserAvatarFallbackInitials(user)}</AvatarFallback>
                 </Avatar>
             ))}
 
             {remainingUsersCount > 0 && (
-                <Avatar className="border-2 border-white bg-gray-200 text-gray-700 flex items-center justify-center text-xs font-medium">
+                <Avatar className="border-2 border-primary/10 bg-primary/10 text-primary flex items-center justify-center text-xs font-medium">
                     <AvatarFallback>+{remainingUsersCount}</AvatarFallback>
                 </Avatar>
             )}
