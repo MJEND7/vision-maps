@@ -22,7 +22,7 @@ export default function ProfileLayout({
     }, [isLoaded, isSignedIn, router]);
 
     const newVision = async () => {
-        let id = "";
+        const id = "";
 
         //Create vision in convex
 

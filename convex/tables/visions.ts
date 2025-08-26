@@ -1,0 +1,25 @@
+import { defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export enum VisionAccessRole {
+    Owner = "manager", // Delete access
+    Editor = "editor"// Everything else rn
+}
+
+export class Visions {
+    static TABLE_NAME = "visions"
+    static TABLE_CONNECTED_USERS_NAME = "vision_users"
+    static Table = defineTable({
+        title: v.string(),
+        banner: v.string(),
+        description: v.optional(v.string()),
+        updatedAt: v.string(),
+        createdAt: v.string(),
+        organization: v.optional(v.string())
+    });
+    static TableConnectedUsers = defineTable({
+        userId: v.string(),
+        role: v.string(), // owner or editor
+        visionId: v.id(Visions.TABLE_NAME)
+    });
+}

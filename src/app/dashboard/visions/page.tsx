@@ -27,15 +27,6 @@ export default function SheetsPage() {
     const [viewMode, setViewMode] = useState(typeof window !== 'undefined' && window.innerWidth < 768 ? "table" : "grid");
     const [searchQuery, setSearchQuery] = useState("");
 
-
-    const handleShare = () => {
-        console.log("Share vision - to be implemented");
-    };
-
-    const handleExport = () => {
-        console.log("Export vision - to be implemented");
-    };
-
     return (
         <main className="max-w-7xl space-y-5 mx-auto p-4">
             <motion.div
