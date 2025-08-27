@@ -210,13 +210,13 @@ export default function SheetsPage() {
                                                         <MoreHorizontal className="w-4 h-4" />
                                                     </button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
+                                                <DropdownMenuContent className="text-muted-foreground" align="end">
                                                     <DropdownMenuItem onClick={() => handleShare(vision._id)}>
-                                                        <Share className="w-4 h-4 mr-2" />
+                                                        <Share className="hover:text-primary w-4 h-4 mr-2" />
                                                         Share
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => handleExport(vision._id)}>
-                                                        <Download className="w-4 h-4 mr-2" />
+                                                        <Download className="hover:text-primary w-4 h-4 mr-2" />
                                                         Export
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
