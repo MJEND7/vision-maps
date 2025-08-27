@@ -135,10 +135,10 @@ export default function SheetsPage() {
                             placeholder="Search visions..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-8 h-[32px] placeholder:text-xs text-sm rounded-md"
+                            className="pl-8 h-[40px] sm:h-[32px] placeholder:text-xs text-sm rounded-md"
                         />
                     </div>
-                    <div className="flex items-center border border-border h-[32px] rounded-md">
+                    <div className="flex items-center border border-border h-[40px] sm:h-[32px] rounded-md">
                         <button
                             onClick={() => setLocalViewMode("grid")}
                             className={`h-full w-10 flex items-center justify-center rounded-l-sm transition-colors ${viewMode === "grid"
