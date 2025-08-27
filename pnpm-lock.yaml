@@ -106,6 +106,12 @@ devDependencies:
   '@types/react-dom':
     specifier: ^19
     version: 19.1.8(@types/react@19.1.11)
+  '@typescript-eslint/eslint-plugin':
+    specifier: ^8.41.0
+    version: 8.41.0(@typescript-eslint/parser@8.41.0)(eslint@9.34.0)(typescript@5.9.2)
+  '@typescript-eslint/parser':
+    specifier: ^8.41.0
+    version: 8.41.0(eslint@9.34.0)(typescript@5.9.2)
   eslint:
     specifier: ^9
     version: 9.34.0

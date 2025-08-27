@@ -255,7 +255,7 @@ export default function LandingNav({
                                             </Button>
                                         </Link>
                                     ) : (
-                                        <Link href={ROUTES.VISIONS} className="w-full">
+                                        <Link href={ROUTES.PROFILE.VISIONS} className="w-full">
                                             <Button size={"lg"} className="w-full" variant="outline">
                                                 Visions
                                             </Button>

@@ -3,6 +3,7 @@ import { components } from "./_generated/api";
 import { v } from "convex/values";
 import { Presence } from "@convex-dev/presence";
 import { requireAuth } from "./utils/auth";
+import { ActiveUsers } from "./tables/user";
 
 export const presence = new Presence(components.presence);
 
@@ -48,7 +49,7 @@ export const listRoom = query({
             })
         );
 
-        return enrichedPresence;
+        return enrichedPresence as ActiveUsers;
     },
 });
 
@@ -83,7 +84,7 @@ export const list = query({
             })
         );
 
-        return enrichedPresence;
+        return enrichedPresence as ActiveUsers; 
     },
 });
 

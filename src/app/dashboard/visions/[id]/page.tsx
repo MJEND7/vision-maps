@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { motion } from 'motion/react';
 import { useProfileUser } from '@/contexts/ProfileUserContext';
-import FacePile from '@/components/ui/face-pile';
+import { PresenceFacePile } from '@/components/ui/face-pile';
 
 export default function VisionDetailPage() {
     const { user } = useProfileUser();
@@ -16,7 +16,7 @@ export default function VisionDetailPage() {
 
     return (
         <main className="max-w-7xl mx-auto p-6">
-            <FacePile visionId={visionId} />
+            <PresenceFacePile visionId={visionId} />
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}

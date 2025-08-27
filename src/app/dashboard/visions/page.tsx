@@ -15,7 +15,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
 import { Id } from '@/../convex/_generated/dataModel';
 import { toast } from 'sonner';
-import FacePile from '@/components/ui/face-pile';
+import { StaticFacePile } from '@/components/ui/face-pile';
 
 export default function SheetsPage() {
     const router = useRouter();
@@ -54,18 +54,20 @@ export default function SheetsPage() {
         router.push(`${ROUTES.PROFILE.VISIONS}/${id}`)
     }
 
-    const handleDelete = (visionId: Id<"visions">, e: React.MouseEvent) => {
+    const handleDelete = (visionId: Id<"visions">) => {
         setVisionToDelete(visionId);
         setIsDeleteOpen(true);
     }
 
-    const handleExport = (visionId: Id<"visions">, e: React.MouseEvent) => {
+    const handleExport = (visionId: Id<"visions">) => {
         // TODO: Implement export functionality
+        console.log(visionId)
         toast.success("Export feature coming soon!");
     }
 
-    const handleShare = (visionId: Id<"visions">, e: React.MouseEvent) => {
+    const handleShare = (visionId: Id<"visions">) => {
         // TODO: Implement share functionality
+        console.log(visionId)
         toast.success("Share feature coming soon!");
     }
 
@@ -209,18 +211,18 @@ export default function SheetsPage() {
                                                     </button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onClick={(e) => handleShare(vision._id, e)}>
+                                                    <DropdownMenuItem onClick={() => handleShare(vision._id)}>
                                                         <Share className="w-4 h-4 mr-2" />
                                                         Share
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={(e) => handleExport(vision._id, e)}>
+                                                    <DropdownMenuItem onClick={() => handleExport(vision._id)}>
                                                         <Download className="w-4 h-4 mr-2" />
                                                         Export
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem
                                                         variant="destructive"
-                                                        onClick={(e) => handleDelete(vision._id, e)}
+                                                        onClick={() => handleDelete(vision._id)}
                                                     >
                                                         <Trash2 className="w-4 h-4 mr-2" />
                                                         Delete
@@ -232,7 +234,7 @@ export default function SheetsPage() {
                                             <p className="text-xs text-primary/30">
                                                 Updated {timeSinceFromDateString(vision.createdAt || new Date())}
                                             </p>
-                                            <FacePile variant={"static"} visionId={vision._id} />
+                                            <StaticFacePile visionId={vision._id} />
                                         </div>
                                     </div>
                                 </div>
@@ -273,25 +275,25 @@ export default function SheetsPage() {
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <FacePile variant={"static"} visionId={vision._id} />
+                                                <StaticFacePile visionId={vision._id} />
                                                 {/* Desktop: Show inline buttons */}
                                                 <div className="hidden sm:flex items-center gap-1">
                                                     <button
-                                                        onClick={(e) => handleShare(vision._id, e)}
+                                                        onClick={() => handleShare(vision._id)}
                                                         className="p-1.5 hover:bg-muted rounded transition-colors"
                                                         title="Share"
                                                     >
                                                         <Share className="w-4 h-4" />
                                                     </button>
                                                     <button
-                                                        onClick={(e) => handleExport(vision._id, e)}
+                                                        onClick={() => handleExport(vision._id)}
                                                         className="p-1.5 hover:bg-muted rounded transition-colors"
                                                         title="Export"
                                                     >
                                                         <Download className="w-4 h-4" />
                                                     </button>
                                                     <button
-                                                        onClick={(e) => handleDelete(vision._id, e)}
+                                                        onClick={() => handleDelete(vision._id)}
                                                         className="p-1.5 hover:bg-destructive/10 text-destructive rounded transition-colors"
                                                         title="Delete"
                                                     >
@@ -313,18 +315,18 @@ export default function SheetsPage() {
                                                             </button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onClick={(e) => handleShare(vision._id, e)}>
+                                                            <DropdownMenuItem onClick={() => handleShare(vision._id)}>
                                                                 <Share className="w-4 h-4 mr-2" />
                                                                 Share
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={(e) => handleExport(vision._id, e)}>
+                                                            <DropdownMenuItem onClick={() => handleExport(vision._id)}>
                                                                 <Download className="w-4 h-4 mr-2" />
                                                                 Export
                                                             </DropdownMenuItem>
                                                             <DropdownMenuSeparator />
                                                             <DropdownMenuItem
                                                                 variant="destructive"
-                                                                onClick={(e) => handleDelete(vision._id, e)}
+                                                                onClick={() => handleDelete(vision._id)}
                                                             >
                                                                 <Trash2 className="w-4 h-4 mr-2" />
                                                                 Delete

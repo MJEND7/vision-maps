@@ -1,5 +1,3 @@
-import { UserData } from "@clerk/types";
-
 export function getUserAvatarFallbackInitials(firstName: string, lastName: string): string {
   const firstInitial = firstName ? firstName[0] : '';
   const lastInitial = lastName ? lastName[0] : '';

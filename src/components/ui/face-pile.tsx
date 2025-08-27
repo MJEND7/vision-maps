@@ -6,64 +6,35 @@ import usePresence from "@convex-dev/presence/react";
 import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/../convex/_generated/api";
-import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { timeSinceFromDateString } from "@/utils/date";
 import { useState } from "react";
 import { Search, UserPlus } from "lucide-react";
 import { Input } from "./input";
 import { Button } from "./button";
+import { ActiveUsers } from "../../../convex/tables/user";
+import { UserResource } from "@clerk/types";
 
-const facePileVariants = cva(
-    "flex -space-x-2",
-    {
-        variants: {
-            variant: {
-                presence: "",
-                static: "",
-            },
-        },
-        defaultVariants: {
-            variant: "presence",
-        },
-    }
-);
+type User = {
+    name: string;
+    image: string | null;
+    email: string | null;
+    userId: string;
+    online: boolean;
+    lastDisconnected: number;
+};
 
-interface FacePileProps extends VariantProps<typeof facePileVariants> {
-    visionId: string;
+interface CoreFacePileProps {
+    users: User[];
     maxVisible?: number;
-    roomToken?: string;
+    currentUser?: UserResource | null;
 }
 
-export default function FacePile({ visionId, maxVisible = 3, variant }: FacePileProps) {
-    const { user: currentUser } = useUser();
+function CoreFacePile({ users, maxVisible = 3, currentUser }: CoreFacePileProps) {
     const [searchQuery, setSearchQuery] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-    // Use the presence hook for presence variant
-    let users: {
-        name: string;
-        image: string | null;
-        email: string | null;
-        userId: string;
-        online: boolean;
-        lastDisconnected: number;
-    }[] | undefined = [];
-
-    if (variant == "static") {
-        users = useQuery(
-            api.presence.listRoom,
-            { roomToken: `vision:${visionId}` }
-        );
-    } else {
-        users = usePresence(
-            api.presence as any,
-            `vision:${visionId}`,
-            currentUser?.id || "anonymous",
-        ) as any;
-    }
-
-    if (!users) {
+    if (!users || users.length === 0) {
         return (
             <div className={"w-7 h-7"}/>
         );
@@ -77,17 +48,11 @@ export default function FacePile({ visionId, maxVisible = 3, variant }: FacePile
         (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
-    if (users.length === 0) {
-        return (
-            <div className={"w-7 h-7"}/>
-        );
-    }
-
     return (
         <TooltipProvider>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                    <div className={cn(facePileVariants({ variant }), "cursor-pointer")}>
+                    <div className={cn("flex -space-x-2", "cursor-pointer")}>
                         {visibleUsers.map((user, index) => (
                             <Tooltip key={user.userId || index}>
                                 <TooltipTrigger asChild>
@@ -168,7 +133,7 @@ export default function FacePile({ visionId, maxVisible = 3, variant }: FacePile
                             {filteredUsers.length === 0 && searchQuery && (
                                 <div className="space-y-4">
                                     <div className="text-center py-4 text-muted-foreground">
-                                        <p className="text-sm">No users found matching "{searchQuery}"</p>
+                                        <p className="text-sm">No users found matching &quot;{searchQuery}&quot;</p>
                                     </div>
                                     <Button variant="outline" size="sm" className="w-full">
                                         <UserPlus className="h-4 w-4 mr-2" />
@@ -183,3 +148,36 @@ export default function FacePile({ visionId, maxVisible = 3, variant }: FacePile
         </TooltipProvider>
     );
 }
+
+interface StaticFacePileProps {
+    visionId: string;
+    maxVisible?: number;
+}
+
+export function StaticFacePile({ visionId, maxVisible }: StaticFacePileProps) {
+    const { user: currentUser } = useUser();
+    const users = useQuery(
+        api.presence.listRoom,
+        { roomToken: `vision:${visionId}` }
+    );
+
+    return <CoreFacePile users={users || []} maxVisible={maxVisible} currentUser={currentUser} />;
+}
+
+interface PresenceFacePileProps {
+    visionId: string;
+    maxVisible?: number;
+}
+
+export function PresenceFacePile({ visionId, maxVisible }: PresenceFacePileProps) {
+    const { user: currentUser } = useUser();
+    const users = usePresence(
+        api.presence as any,
+        `vision:${visionId}`,
+        currentUser?.id || "anonymous",
+    ) as ActiveUsers;
+
+    return <CoreFacePile users={users || []} maxVisible={maxVisible} currentUser={currentUser} />;
+}
+
+export default StaticFacePile;
