@@ -102,10 +102,10 @@ export default function SheetsPage() {
                     </Button>
                 </div>
             </motion.div>
-            <div className="flex flex-col-reverse sm:flex-row gap-4 items-start sm:items-center justify-between">
-                <div className="flex gap-2 items-center">
+            <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
+                <div className="flex w-full gap-2 items-center">
                     <Select value={selectedOrg} onValueChange={setSelectedOrg}>
-                        <SelectTrigger className="max-w-[180px]">
+                        <SelectTrigger size='sm' className='sm:w-auto w-full'>
                             <SelectValue placeholder="All organizations" />
                         </SelectTrigger>
                         <SelectContent>
@@ -117,7 +117,7 @@ export default function SheetsPage() {
                     </Select>
 
                     <Select value={sortBy} onValueChange={setSortBy}>
-                        <SelectTrigger className="max-w-[150px]">
+                        <SelectTrigger size="sm">
                             <SelectValue placeholder="Sort by" />
                         </SelectTrigger>
                         <SelectContent>
@@ -128,7 +128,7 @@ export default function SheetsPage() {
                     </Select>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="sm:w-auto w-full flex gap-2">
                     <div className="relative w-full sm:w-[300px]">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
                         <Input
@@ -136,13 +136,13 @@ export default function SheetsPage() {
                             placeholder="Search visions..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10"
+                            className="pl-8 h-[32px] placeholder:text-xs text-sm rounded-md"
                         />
                     </div>
-                    <div className="flex items-center border border-border rounded-lg">
+                    <div className="flex items-center border border-border h-[32px] rounded-md">
                         <button
                             onClick={() => setViewMode("grid")}
-                            className={`h-full w-10 flex items-center justify-center rounded-l-lg transition-colors ${viewMode === "grid"
+                            className={`h-full w-10 flex items-center justify-center rounded-l-sm transition-colors ${viewMode === "grid"
                                 ? "bg-accent text-accent-foreground"
                                 : "hover:bg-accent/50"
                                 }`}
@@ -151,7 +151,7 @@ export default function SheetsPage() {
                         </button>
                         <button
                             onClick={() => setViewMode("table")}
-                            className={`h-full w-10 flex items-center justify-center rounded-r-lg transition-colors ${viewMode === "table"
+                            className={`h-full w-10 flex items-center justify-center rounded-r-sm transition-colors ${viewMode === "table"
                                 ? "bg-accent text-accent-foreground"
                                 : "hover:bg-accent/50"
                                 }`}
@@ -190,7 +190,7 @@ export default function SheetsPage() {
                                     </div>
                                     <div className="w-full">
                                         <div className="flex justify-between items-start">
-                                            <div>
+                                            <div className='w-full'>
                                                 <p className="text-sm sm:text-md text-primary">
                                                     {vision.title || 'No description provided.'}
                                                 </p>
@@ -242,7 +242,7 @@ export default function SheetsPage() {
                         ))}
                     </div>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                         {visions.map((vision) => (
                             <div
                                 key={vision._id}
@@ -261,23 +261,15 @@ export default function SheetsPage() {
                                             {vision.title || 'Untitled Vision'}
                                         </h1>
                                     </button>
-                                    <div className="flex-1 flex flex-col gap-3 justify-between bg-accent rounded-none rounded-r-xl p-4">
-                                        <div className="flex items-start justify-between">
-                                            <div className="text-left space-y-2">
-                                                <p className="text-sm sm:text-[1.1rem] text-primary">
-                                                    {vision.title || 'No description provided.'}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {vision.description || 'No description provided.'}
-                                                </p>
-                                                <p className="text-primary/30 text-xs">
-                                                    Updated {timeSinceFromDateString(vision.createdAt || new Date())}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
+                                    <div className="flex-1 flex flex-col justify-between bg-accent rounded-none rounded-r-xl px-3 py-2">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-left text-sm sm:text-[1.1rem] text-primary">
+                                                {vision.title || 'No description provided.'}
+                                            </p>
+                                            <div className="flex items-center ">
                                                 <StaticFacePile visionId={vision._id} />
                                                 {/* Desktop: Show inline buttons */}
-                                                <div className="hidden sm:flex items-center gap-1">
+                                                <div className="hidden sm:flex items-center">
                                                     <button
                                                         onClick={() => handleShare(vision._id)}
                                                         className="p-1.5 hover:bg-muted rounded transition-colors"
@@ -335,6 +327,14 @@ export default function SheetsPage() {
                                                     </DropdownMenu>
                                                 </div>
                                             </div>
+                                        </div>
+                                        <div className="text-left space-y-1">
+                                            <p className="text-xs text-muted-foreground">
+                                                {vision.description || 'No description provided.'}
+                                            </p>
+                                            <p className="text-primary/30 text-xs">
+                                                Updated {timeSinceFromDateString(vision.createdAt || new Date())}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
