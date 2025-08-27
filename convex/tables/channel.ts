@@ -2,6 +2,7 @@ import { defineTable } from "convex/server";
 import { v } from "convex/values";
 import { Visions } from "./visions";
 
+// Group of frames around a given context
 export class Channel {
     static TABLE_NAME = "channels" as "channels"
     static Table = defineTable({

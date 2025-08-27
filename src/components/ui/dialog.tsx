@@ -46,12 +46,12 @@ const DialogTrigger = ({
     if (asChild && React.isValidElement(children)) {
         return React.cloneElement(children, {
             ...props,
-            //@ts-ignore
+            //@ts-expect-error
             onClick: (e: React.MouseEvent) => {
                 onOpenChange(true)
-                //@ts-ignore
+                //@ts-expect-error
                 if (children.props.onClick) {
-                    //@ts-ignore
+                    //@ts-expect-error
                     children.props.onClick(e)
                 }
             }

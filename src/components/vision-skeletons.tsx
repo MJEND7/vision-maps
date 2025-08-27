@@ -1,5 +1,4 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { Map } from "lucide-react";
 
 export function VisionTableSkeleton() {
     return (

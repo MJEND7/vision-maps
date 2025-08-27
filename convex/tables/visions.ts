@@ -6,6 +6,7 @@ export enum VisionAccessRole {
     Editor = "editor"// Everything else rn
 }
 
+// Group of channels that build a vision
 export class Visions {
     static TABLE_NAME = "visions" as "visions"
     static TABLE_CONNECTED_USERS_NAME = "vision_users"

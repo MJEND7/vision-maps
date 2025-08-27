@@ -15,6 +15,7 @@ export enum NodeVariants {
   Notion = "Notion",
   Figma = "Figma",
   GitHub = "GitHub",
+  AI = "AI", // For the AI class value will be the datapoint storing the model used
 }
 
 export class Nodes {
@@ -26,6 +27,9 @@ export class Nodes {
         threads: v.array(v.id(Nodes.TABLE_NAME)), // Connected nodes
         y: v.number(),
         x: v.number(),
+        height: v.number(), // PX's
+        width: v.number(), // PX's
+        weight: v.number(), // Way of allowing the user to ORDER there importance
         updatedAt: v.string(),
         createdAt: v.string(),
         frame: v.optional(v.id(Frame.TABLE_NAME)),
