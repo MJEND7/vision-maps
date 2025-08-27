@@ -43,10 +43,7 @@ export default function ProfileNav() {
 
     return (
         <div className="flex gap-1 items-center justify-center w-full p-2 fixed top-0 z-[40]">
-            <motion.header
-                initial={{ y: -50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.6 }}
+            <header
                 className="relative sm:max-w-[900px] w-full sm:rounded-l-4xl rounded-4xl sm:rounded-r-xl backdrop-blur-[5px] dark:bg-background/50 dark:backdrop-blur-md bg-accent/50 border px-5 py-2 flex items-center justify-between"
             >
                 <div className="flex w-full max-w-[160px] items-center gap-2">
@@ -55,13 +52,10 @@ export default function ProfileNav() {
                         onClick={() => setMenuOpen(false)}
                         className="flex gap-3 items-center"
                     >
-                        <motion.div
-                            initial={{ rotate: -180, scale: 0 }}
-                            animate={{ rotate: 0, scale: 1 }}
-                            transition={{ duration: 0.8, delay: 0.3, type: "spring" }}
+                        <div
                         >
                             <Logo size={35} />
-                        </motion.div>
+                        </div>
                         <motion.p
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
@@ -161,7 +155,7 @@ export default function ProfileNav() {
                         </motion.div>
                     )}
                 </AnimatePresence>
-            </motion.header>
+            </header>
             <div
                 className="hidden sm:flex  items-center justify-between w-auto rounded-r-4xl rounded-l-xl backdrop-blur-[5px] dark:bg-background/50 dark:backdrop-blur-md bg-accent/50 border pl-2 pr-3 py-2"
             >

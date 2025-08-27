@@ -1,11 +1,15 @@
 "use client";
 
-import { motion } from 'motion/react';
-import { VisionTableSkeleton, VisionGridSkeleton } from '@/components/vision-skeletons';
-import { Grid3X3, List, Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useUser } from '@clerk/nextjs';
+import { useEffect, useState } from "react";
+import { motion } from "motion/react";
+import {
+    VisionTableSkeleton,
+    VisionGridSkeleton,
+} from "@/components/vision-skeletons";
+import { Grid3X3, List, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useUser } from "@clerk/nextjs";
 
 export default function VisionsLayout({
     children,
@@ -14,8 +18,17 @@ export default function VisionsLayout({
 }) {
     const { isLoaded } = useUser();
     const LOCAL_VIEW_MODE = "visions-view-mode";
-    const viewMode = localStorage.getItem(LOCAL_VIEW_MODE) || "grid";
 
+    // State for view mode
+    const [viewMode, setViewMode] = useState<"grid" | "table">();
+
+    // Load from localStorage only on client
+    useEffect(() => {
+        const stored = localStorage.getItem(LOCAL_VIEW_MODE);
+        if (stored === "grid" || stored === "table") {
+            setViewMode(stored);
+        }
+    }, []);
 
     if (!isLoaded) {
         return (
@@ -43,7 +56,10 @@ export default function VisionsLayout({
 
                     <div className="sm:w-auto w-full flex gap-2">
                         <div className="relative w-full sm:w-[300px]">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+                            <Search
+                                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
+                                size={16}
+                            />
                             <Input
                                 type="text"
                                 placeholder="Search visions..."
@@ -55,8 +71,8 @@ export default function VisionsLayout({
                             <button
                                 disabled
                                 className={`h-full w-10 flex items-center justify-center rounded-l-sm transition-colors ${viewMode === "grid"
-                                    ? "bg-accent text-accent-foreground"
-                                    : "hover:bg-accent/50"
+                                        ? "bg-accent text-accent-foreground"
+                                        : "hover:bg-accent/50"
                                     }`}
                             >
                                 <Grid3X3 size={16} />
@@ -64,8 +80,8 @@ export default function VisionsLayout({
                             <button
                                 disabled
                                 className={`h-full w-10 flex items-center justify-center rounded-r-sm transition-colors ${viewMode === "table"
-                                    ? "bg-accent text-accent-foreground"
-                                    : "hover:bg-accent/50"
+                                        ? "bg-accent text-accent-foreground"
+                                        : "hover:bg-accent/50"
                                     }`}
                             >
                                 <List size={16} />
@@ -74,7 +90,13 @@ export default function VisionsLayout({
                     </div>
                 </div>
 
-                {viewMode === "grid" ? <VisionGridSkeleton /> : <VisionTableSkeleton />}
+                {viewMode === "grid" ? (
+                    <VisionGridSkeleton />
+                ) : viewMode == "table" ? (
+                    <VisionTableSkeleton />
+                ) : (
+                    null
+                )}
             </main>
         );
     }
