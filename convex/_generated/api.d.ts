@@ -9,13 +9,17 @@
  */
 
 import type * as channels from "../channels.js";
+import type * as comments from "../comments.js";
 import type * as frames from "../frames.js";
 import type * as http from "../http.js";
 import type * as nodes from "../nodes.js";
+import type * as notifications from "../notifications.js";
 import type * as presence from "../presence.js";
 import type * as tables_channel from "../tables/channel.js";
+import type * as tables_comments from "../tables/comments.js";
 import type * as tables_frame from "../tables/frame.js";
 import type * as tables_nodes from "../tables/nodes.js";
+import type * as tables_notifications from "../tables/notifications.js";
 import type * as tables_user from "../tables/user.js";
 import type * as tables_visions from "../tables/visions.js";
 import type * as user from "../user.js";
@@ -40,13 +44,17 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   channels: typeof channels;
+  comments: typeof comments;
   frames: typeof frames;
   http: typeof http;
   nodes: typeof nodes;
+  notifications: typeof notifications;
   presence: typeof presence;
   "tables/channel": typeof tables_channel;
+  "tables/comments": typeof tables_comments;
   "tables/frame": typeof tables_frame;
   "tables/nodes": typeof tables_nodes;
+  "tables/notifications": typeof tables_notifications;
   "tables/user": typeof tables_user;
   "tables/visions": typeof tables_visions;
   user: typeof user;

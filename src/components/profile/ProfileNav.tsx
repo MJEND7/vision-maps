@@ -10,6 +10,7 @@ import { Menu, X } from "lucide-react";
 import { Authenticated, Unauthenticated } from "convex/react";
 import UserAvatar from "../ui/user-avatar";
 import MissingAvatar from "@/icons/missing_avatar";
+import NotificationsDropdown from "../ui/notifications-dropdown";
 import { ROUTES } from "@/lib/constants";
 
 export default function ProfileNav() {
@@ -85,6 +86,9 @@ export default function ProfileNav() {
                 <div className="flex">
                     {/* Auth / Buttons - Hide UserButton on mobile when showLandingSections is true */}
                     <div className="hidden sm:flex items-center gap-2">
+                        <Authenticated>
+                            <NotificationsDropdown />
+                        </Authenticated>
                         <div className="flex w-8 h-8">
                             <UserAvatar />
                         </div>
@@ -139,6 +143,11 @@ export default function ProfileNav() {
                                         {item.name}
                                     </Link>
                                 ))}
+                                <Authenticated>
+                                    <div className="px-4 py-2">
+                                        <NotificationsDropdown />
+                                    </div>
+                                </Authenticated>
                             </div>
 
                             {/* Mobile Auth Buttons */}
