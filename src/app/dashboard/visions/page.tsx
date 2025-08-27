@@ -19,9 +19,11 @@ import { StaticFacePile } from '@/components/ui/face-pile';
 
 export default function SheetsPage() {
     const router = useRouter();
+    const LOCAL_VIEW_MODE = "visions-view-mode"
+    const localViewMode = localStorage.getItem(LOCAL_VIEW_MODE);
     const [selectedOrg, setSelectedOrg] = useState("all");
     const [sortBy, setSortBy] = useState("updatedAt");
-    const [viewMode, setViewMode] = useState(typeof window !== 'undefined' && window.innerWidth < 768 ? "table" : "grid");
+    const [viewMode, setViewMode] = useState(localViewMode ? localViewMode : "table");
     const [searchQuery, setSearchQuery] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -35,6 +37,11 @@ export default function SheetsPage() {
         }, 300);
         return () => clearTimeout(timer);
     }, [searchQuery]);
+    
+    const setLocalViewMode = (m: string) => {
+        localStorage.setItem(LOCAL_VIEW_MODE, m)
+        setViewMode(m)
+    }
 
     // Convex queries and mutations
     const visionsData = useQuery(api.visions.list, {
@@ -141,7 +148,7 @@ export default function SheetsPage() {
                     </div>
                     <div className="flex items-center border border-border h-[32px] rounded-md">
                         <button
-                            onClick={() => setViewMode("grid")}
+                            onClick={() => setLocalViewMode("grid")}
                             className={`h-full w-10 flex items-center justify-center rounded-l-sm transition-colors ${viewMode === "grid"
                                 ? "bg-accent text-accent-foreground"
                                 : "hover:bg-accent/50"
@@ -150,7 +157,7 @@ export default function SheetsPage() {
                             <Grid3X3 size={16} />
                         </button>
                         <button
-                            onClick={() => setViewMode("table")}
+                            onClick={() => setLocalViewMode("table")}
                             className={`h-full w-10 flex items-center justify-center rounded-r-sm transition-colors ${viewMode === "table"
                                 ? "bg-accent text-accent-foreground"
                                 : "hover:bg-accent/50"
@@ -261,7 +268,7 @@ export default function SheetsPage() {
                                             {vision.title || 'Untitled Vision'}
                                         </h1>
                                     </button>
-                                    <div className="flex-1 flex flex-col justify-between bg-accent rounded-none rounded-r-xl px-3 py-2">
+                                    <div className="flex-1 flex flex-col gap-2 bg-accent rounded-none rounded-r-xl px-3 py-2">
                                         <div className="flex items-center justify-between">
                                             <p className="text-left text-sm sm:text-[1.1rem] text-primary">
                                                 {vision.title || 'No description provided.'}
