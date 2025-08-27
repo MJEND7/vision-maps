@@ -129,7 +129,7 @@
         -webkit-overflow-scrolling: touch;
     }
 
-    body {
+    .background-grid {
         @apply overflow-x-hidden bg-white dark:bg-background;
         @apply bg-background text-foreground font-sans;
         /* Prevent overscroll bounce */
@@ -160,7 +160,7 @@
         background-position: left top, left top, center;
     }
 
-    .dark body {
+    .dark .background-grid {
         /* Dark mode background */
         background-image:
             linear-gradient(to right,

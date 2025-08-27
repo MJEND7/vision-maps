@@ -16,7 +16,7 @@ import { api } from '@/../convex/_generated/api';
 import { Id } from '@/../convex/_generated/dataModel';
 import { toast } from 'sonner';
 import { StaticFacePile } from '@/components/ui/face-pile';
-import { VisionTableSkeleton, VisionGridSkeleton, RoutingIndicator } from '@/components/vision-skeletons';
+import { VisionTableSkeleton, VisionGridSkeleton } from '@/components/vision-skeletons';
 
 export default function SheetsPage() {
     const router = useRouter();
@@ -29,7 +29,6 @@ export default function SheetsPage() {
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [visionToDelete, setVisionToDelete] = useState<Id<"visions"> | null>(null);
-    const [isRouting, setRouting] = useState(false)
 
     // Debounce search query
     useEffect(() => {
@@ -57,7 +56,6 @@ export default function SheetsPage() {
 
     const newVision = async () => {
         //Create blank vision in convex
-        setRouting(true)
         const id = await createVision({});
         router.push(`${ROUTES.PROFILE.VISIONS}/${id}`)
     }
@@ -81,10 +79,6 @@ export default function SheetsPage() {
 
     const visions = visionsData?.visions || [];
     const isLoading = visionsData === undefined;
-
-    if (isRouting) {
-        return <RoutingIndicator />;
-    }
 
     return (
         <main className="max-w-7xl space-y-5 mx-auto p-4">
