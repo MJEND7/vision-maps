@@ -12,6 +12,7 @@ import { useState } from "react";
 import { Search, UserPlus } from "lucide-react";
 import { Input } from "./input";
 import { Button } from "./button";
+import { Skeleton } from "./skeleton";
 import { ActiveUsers } from "../../../convex/tables/user";
 import { UserResource } from "@clerk/types";
 
@@ -28,11 +29,22 @@ interface CoreFacePileProps {
     users: User[];
     maxVisible?: number;
     currentUser?: UserResource | null;
+    isLoading?: boolean;
 }
 
-function CoreFacePile({ users, maxVisible = 3, currentUser }: CoreFacePileProps) {
+function CoreFacePile({ users, maxVisible = 3, currentUser, isLoading }: CoreFacePileProps) {
     const [searchQuery, setSearchQuery] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+    if (isLoading) {
+        return (
+            <div className="flex -space-x-2">
+                {Array.from({ length: maxVisible }, (_, i) => (
+                    <Skeleton key={i} className="sm:w-7 sm:h-7 h-5 w-5 rounded-full border border-accent" />
+                ))}
+            </div>
+        );
+    }
 
     if (!users || users.length === 0) {
         return (
@@ -161,7 +173,7 @@ export function StaticFacePile({ visionId, maxVisible }: StaticFacePileProps) {
         { roomToken: `vision:${visionId}` }
     );
 
-    return <CoreFacePile users={users || []} maxVisible={maxVisible} currentUser={currentUser} />;
+    return <CoreFacePile users={users || []} maxVisible={maxVisible} currentUser={currentUser} isLoading={users === undefined} />;
 }
 
 interface PresenceFacePileProps {
@@ -177,7 +189,7 @@ export function PresenceFacePile({ visionId, maxVisible }: PresenceFacePileProps
         currentUser?.id || "anonymous",
     ) as ActiveUsers;
 
-    return <CoreFacePile users={users || []} maxVisible={maxVisible} currentUser={currentUser} />;
+    return <CoreFacePile users={users || []} maxVisible={maxVisible} currentUser={currentUser} isLoading={users === undefined} />;
 }
 
 export default StaticFacePile;

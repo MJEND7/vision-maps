@@ -16,6 +16,7 @@ import { api } from '@/../convex/_generated/api';
 import { Id } from '@/../convex/_generated/dataModel';
 import { toast } from 'sonner';
 import { StaticFacePile } from '@/components/ui/face-pile';
+import { VisionTableSkeleton, VisionGridSkeleton, RoutingIndicator } from '@/components/vision-skeletons';
 
 export default function SheetsPage() {
     const router = useRouter();
@@ -79,13 +80,10 @@ export default function SheetsPage() {
     }
 
     const visions = visionsData?.visions || [];
+    const isLoading = visionsData === undefined;
 
     if (isRouting) {
-        return (
-            <div className="h-screen max-w-7xl space-y-5 mx-auto p-4 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            </div>
-        )
+        return <RoutingIndicator />;
     }
 
     return (
@@ -169,7 +167,9 @@ export default function SheetsPage() {
                 </div>
             </div>
             {
-                visions.length === 0 ? (
+                isLoading ? (
+                    viewMode === "grid" ? <VisionGridSkeleton /> : <VisionTableSkeleton />
+                ) : visions.length === 0 ? (
                     <div className="text-center text-gray-500 py-10">
                         No visions to display yet. Create one!
                     </div>
