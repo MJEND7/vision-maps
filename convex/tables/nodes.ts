@@ -31,5 +31,7 @@ export class Nodes {
         frame: v.optional(v.id(Frame.TABLE_NAME)),
         channel: v.optional(v.id(Channel.TABLE_NAME)),
         vision: v.optional(v.id(Visions.TABLE_NAME))
-    });
+    }).index("by_frame", ["frame"])
+      .index("by_channel", ["channel"])
+      .index("by_vision", ["vision"]);
 }

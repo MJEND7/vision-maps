@@ -21,14 +21,6 @@ export default function ProfileLayout({
         }
     }, [isLoaded, isSignedIn, router]);
 
-    const newVision = async () => {
-        const id = "";
-
-        //Create vision in convex
-
-        router.push(`${ROUTES.PROFILE.VISIONS}/${id}`)
-    }
-
 
     // Show loading spinner while checking auth status
     if (!isLoaded) {
@@ -46,9 +38,9 @@ export default function ProfileLayout({
 
     return (
         <ProfileUserProvider user={user}>
-            <div className="min-h-screen bg-background">
+            <div className="h-full min-h-screen bg-background">
                 <div className="py-[36px]">
-                    <ProfileNav onNew={newVision} />
+                    <ProfileNav/>
                 </div>
 
                 {children}

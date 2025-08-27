@@ -11,5 +11,6 @@ export class Frame {
         createdAt: v.string(),
         channel: v.optional(v.id(Channel.TABLE_NAME)),
         vision: v.optional(v.id(Visions.TABLE_NAME))
-    });
+    }).index("by_channel", ["channel"])
+      .index("by_vision", ["vision"]);
 }

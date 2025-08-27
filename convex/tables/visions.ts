@@ -2,12 +2,12 @@ import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export enum VisionAccessRole {
-    Owner = "manager", // Delete access
+    Owner = "owner", // Delete access
     Editor = "editor"// Everything else rn
 }
 
 export class Visions {
-    static TABLE_NAME = "visions"
+    static TABLE_NAME = "visions" as "visions"
     static TABLE_CONNECTED_USERS_NAME = "vision_users"
     static Table = defineTable({
         title: v.string(),
@@ -21,5 +21,6 @@ export class Visions {
         userId: v.string(),
         role: v.string(), // owner or editor
         visionId: v.id(Visions.TABLE_NAME)
-    });
+    }).index("by_visionId", ["visionId"])
+      .index("by_userId", ["userId"]);
 }

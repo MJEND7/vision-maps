@@ -1,6 +1,7 @@
-export function timeSinceFromDateString(date: Date): string {
+export function timeSinceFromDateString(date: Date | string): string {
   const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const diffMs = now.getTime() - dateObj.getTime();
   const diffSeconds = Math.floor(diffMs / 1000);
   const diffMinutes = Math.floor(diffSeconds / 60);
   const diffHours = Math.floor(diffMinutes / 60);
@@ -13,11 +14,11 @@ export function timeSinceFromDateString(date: Date): string {
     return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
   } else {
     // Format as time + date
-    const hours = date.getHours().toString().padStart(2, "0");
-    const minutes = date.getMinutes().toString().padStart(2, "0");
-    const day = date.getDate().toString().padStart(2, "0");
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const year = date.getFullYear();
+    const hours = dateObj.getHours().toString().padStart(2, "0");
+    const minutes = dateObj.getMinutes().toString().padStart(2, "0");
+    const day = dateObj.getDate().toString().padStart(2, "0");
+    const month = (dateObj.getMonth() + 1).toString().padStart(2, "0");
+    const year = dateObj.getFullYear();
 
     return `${hours}:${minutes} on ${day}/${month}/${year}`;
   }

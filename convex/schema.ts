@@ -3,6 +3,7 @@ import { Visions } from "./tables/visions";
 import { Channel } from "./tables/channel";
 import { Frame } from "./tables/frame";
 import { Nodes } from "./tables/nodes";
+import { User } from "./tables/user";
 
 // The schema is entirely optional.
 // You can delete this file (schema.ts) and the
@@ -14,4 +15,5 @@ export default defineSchema({
     channels: Channel.Table,
     frames: Frame.Table,
     nodes: Nodes.Table,
+    users: User.Table,
 });

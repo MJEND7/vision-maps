@@ -178,7 +178,10 @@
         background-size: 20px 20px, 20px 20px, cover;
         background-position: left top, left top, center;
     }
-
+    
+    button {
+        @apply cursor-pointer;
+    }
 }
 
 @layer utilities {

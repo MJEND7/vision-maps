@@ -4,28 +4,80 @@ import { motion } from 'motion/react';
 import { useRouter } from 'next/navigation';
 import { ROUTES } from '@/lib/constants';
 import { timeSinceFromDateString } from '@/utils/date';
-import AvatarStack from '@/components/ui/avatar-stack';
-import { useState } from 'react';
-import { useProfileUser } from '@/contexts/ProfileUserContext';
-import { Map, Scan, Search, Grid3X3, List } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Map, Scan, Search, Grid3X3, List, Plus, Trash2, MoreHorizontal, Download, Share } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/../convex/_generated/api';
+import { Id } from '@/../convex/_generated/dataModel';
+import { toast } from 'sonner';
+import FacePile from '@/components/ui/face-pile';
 
 export default function SheetsPage() {
-    const { user } = useProfileUser();
     const router = useRouter();
-    const [visions, setVisions] = useState([{
-        id: 1,
-        title: "A Vision",
-        description: "A visions to rule them all",
-        activeUsers: [user, user, user, user],
-        createdAt: new Date()
-    }])
-
     const [selectedOrg, setSelectedOrg] = useState("all");
-    const [sortBy, setSortBy] = useState("updated");
+    const [sortBy, setSortBy] = useState("updatedAt");
     const [viewMode, setViewMode] = useState(typeof window !== 'undefined' && window.innerWidth < 768 ? "table" : "grid");
     const [searchQuery, setSearchQuery] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [visionToDelete, setVisionToDelete] = useState<Id<"visions"> | null>(null);
+    const [isRouting, setRouting] = useState(false)
+
+    // Debounce search query
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Convex queries and mutations
+    const visionsData = useQuery(api.visions.list, {
+        search: debouncedSearch || undefined,
+        organization: selectedOrg === "all" ? undefined : selectedOrg,
+        sortBy: sortBy as "updatedAt" | "createdAt" | "title",
+        limit: 50
+    });
+
+    const createVision = useMutation(api.visions.create);
+    const deleteVision = useMutation(api.visions.remove);
+
+    const newVision = async () => {
+        //Create blank vision in convex
+        setRouting(true)
+        const id = await createVision({});
+        router.push(`${ROUTES.PROFILE.VISIONS}/${id}`)
+    }
+
+    const handleDelete = (visionId: Id<"visions">, e: React.MouseEvent) => {
+        setVisionToDelete(visionId);
+        setIsDeleteOpen(true);
+    }
+
+    const handleExport = (visionId: Id<"visions">, e: React.MouseEvent) => {
+        // TODO: Implement export functionality
+        toast.success("Export feature coming soon!");
+    }
+
+    const handleShare = (visionId: Id<"visions">, e: React.MouseEvent) => {
+        // TODO: Implement share functionality
+        toast.success("Share feature coming soon!");
+    }
+
+    const visions = visionsData?.visions || [];
+
+    if (isRouting) {
+        return (
+            <div className="h-screen max-w-7xl space-y-5 mx-auto p-4 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+        )
+    }
 
     return (
         <main className="max-w-7xl space-y-5 mx-auto p-4">
@@ -33,16 +85,19 @@ export default function SheetsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="bg-card border border-border rounded-lg p-6"
+                className="bg-card border border-border rounded-lg p-4 sm:p-6"
             >
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                        <h2 className="text-xl font-semibold">Your Vision Maps</h2>
-                        <p className="text-muted-foreground text-sm">
+                        <h2 className="sm:text-xl text-lg font-semibold">Your Vision Maps</h2>
+                        <p className="text-muted-foreground text-xs sm:text-sm">
                             Welcome to your vision dashboard. This is where you&apos;ll manage your visions.
                         </p>
                     </div>
-
+                    <Button size={"lg"} className="rounded-lg" onClick={newVision}>
+                        <Plus className="w-4 h-4" />
+                        New Vision
+                    </Button>
                 </div>
             </motion.div>
             <div className="flex flex-col-reverse sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -64,10 +119,9 @@ export default function SheetsPage() {
                             <SelectValue placeholder="Sort by" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="updated">Last updated</SelectItem>
-                            <SelectItem value="created">Date created</SelectItem>
-                            <SelectItem value="name">Name</SelectItem>
-                            <SelectItem value="size">Size</SelectItem>
+                            <SelectItem value="updatedAt">Last updated</SelectItem>
+                            <SelectItem value="createdAt">Date created</SelectItem>
+                            <SelectItem value="title">Name</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -111,88 +165,214 @@ export default function SheetsPage() {
                         No visions to display yet. Create one!
                     </div>
                 ) : viewMode === "grid" ? (
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                    <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3`}>
                         {visions.map((vision) => (
-                            <button
-                                key={vision.id}
-                                onClick={() => router.push(`${ROUTES.PROFILE.VISIONS}/${vision.id}`)}
-                                className="sm:w-[400px] group cursor-pointer hover:shadow-xl transition-all ease-in-out shadow-lg flex flex-col justify-between rounded-3xl border"
+                            <div
+                                key={vision._id}
+                                className="hover:shadow-xl transition-all ease-in-out shadow-lg flex flex-col justify-between rounded-3xl border"
                             >
-                                <div className="relative flex h-[200px] items-center justify-center">
+                                <button
+                                    onClick={() => router.push(`${ROUTES.PROFILE.VISIONS}/${vision._id}`)}
+                                    className="group relative flex h-[200px] items-center justify-center hover:shadow-inner rounded-3xl">
                                     <div className="absolute right-5 top-5 transition-all duration-300 ease-in-out opacity-0 invisible group-hover:opacity-100 group-hover:visible">
                                         <Scan />
                                     </div>
                                     <h1 className="text-lg">
                                         {vision.title || 'Untitled Vision'}
                                     </h1>
-                                </div>
+                                </button>
                                 <hr />
-                                <div className="flex gap-3 items-center bg-accent rounded-b-3xl space-y-1 p-3 text-left text-xs">
-                                    <div className=' rounded-lg bg-background p-2'>
+                                <div className="flex gap-3 items-start bg-accent rounded-b-3xl space-y-1 px-3 py-2 text-left text-xs">
+                                    <div className='text-white mt-1 rounded-md bg-blue-400 p-2'>
                                         <Map size={15} />
                                     </div>
                                     <div className="w-full">
-                                        <p className="w-full truncate">
-                                            {vision.description || 'No description provided.'}
-                                        </p>
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <p className="text-sm sm:text-md text-primary">
+                                                    {vision.title || 'No description provided.'}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {vision.description || 'No description provided.'}
+                                                </p>
+                                            </div>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                        }}
+                                                        className="p-1 hover:bg-muted rounded transition-colors"
+                                                    >
+                                                        <MoreHorizontal className="w-4 h-4" />
+                                                    </button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={(e) => handleShare(vision._id, e)}>
+                                                        <Share className="w-4 h-4 mr-2" />
+                                                        Share
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={(e) => handleExport(vision._id, e)}>
+                                                        <Download className="w-4 h-4 mr-2" />
+                                                        Export
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem
+                                                        variant="destructive"
+                                                        onClick={(e) => handleDelete(vision._id, e)}
+                                                    >
+                                                        <Trash2 className="w-4 h-4 mr-2" />
+                                                        Delete
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
                                         <div className="flex items-center justify-between">
-                                            <p className="text-primary/30">
+                                            <p className="text-xs text-primary/30">
                                                 Updated {timeSinceFromDateString(vision.createdAt || new Date())}
                                             </p>
-                                            <AvatarStack users={vision.activeUsers || []} />
+                                            <FacePile variant={"static"} visionId={vision._id} />
                                         </div>
                                     </div>
                                 </div>
-                            </button>
+                            </div>
                         ))}
                     </div>
                 ) : (
                     <div className="space-y-4">
                         {visions.map((vision) => (
-                            <button
-                                key={vision.id}
-                                onClick={() => router.push(`${ROUTES.PROFILE.VISIONS}/${vision.id}`)}
-                                className="w-full group cursor-pointer hover:shadow-xl transition-all ease-in-out shadow-lg rounded-xl border bg-card"
+                            <div
+                                key={vision._id}
+                                className="w-full group  hover:shadow-xl transition-all ease-in-out shadow-lg rounded-xl border bg-card"
                             >
                                 <div className="flex flex-row">
-                                    <div className="relative flex w-[200px] h-[120px] sm:h-[100px] sm:w-[200px] items-center justify-center">
+                                    <button
+                                        onClick={() => router.push(`${ROUTES.PROFILE.VISIONS}/${vision._id}`)}
+                                        className="relative flex w-[100px] sm:h-[100px] sm:w-[250px] items-center justify-center">
                                         <div className="absolute left-2 top-2">
-                                            <div className=' rounded-sm bg-accent p-1'>
+                                            <div className='rounded-sm text-white bg-blue-400 p-1'>
                                                 <Map size={15} />
                                             </div>
                                         </div>
                                         <h1 className="text-lg font-medium">
                                             {vision.title || 'Untitled Vision'}
                                         </h1>
-                                    </div>
-                                    <div className="flex-1 flex flex-col justify-between">
-                                        <div className="sm:w-auto w-[200px] flex gap-3 items-start bg-accent rounded-none rounded-r-xl p-3 text-left text-xs h-full">
-                                            <div className="flex-1 space-y-2">
-                                                <p className="text-sm text-muted-foreground">
+                                    </button>
+                                    <div className="flex-1 flex flex-col gap-3 justify-between bg-accent rounded-none rounded-r-xl p-4">
+                                        <div className="flex items-start justify-between">
+                                            <div className="text-left space-y-2">
+                                                <p className="text-sm sm:text-[1.1rem] text-primary">
+                                                    {vision.title || 'No description provided.'}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
                                                     {vision.description || 'No description provided.'}
                                                 </p>
-                                                <div className="flex sm:flex-row flex-col-reverse items-start justify-between gap-5">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <p className="text-primary/30 text-xs">
-                                                            Updated {timeSinceFromDateString(vision.createdAt || new Date())}
-                                                        </p>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <AvatarStack users={vision.activeUsers || []} />
-                                                        <span className="sm:inline hidden text-xs text-muted-foreground">
-                                                            {vision.activeUsers?.length || 0} collaborators
-                                                        </span>
-                                                    </div>
+                                                <p className="text-primary/30 text-xs">
+                                                    Updated {timeSinceFromDateString(vision.createdAt || new Date())}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <FacePile variant={"static"} visionId={vision._id} />
+                                                {/* Desktop: Show inline buttons */}
+                                                <div className="hidden sm:flex items-center gap-1">
+                                                    <button
+                                                        onClick={(e) => handleShare(vision._id, e)}
+                                                        className="p-1.5 hover:bg-muted rounded transition-colors"
+                                                        title="Share"
+                                                    >
+                                                        <Share className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleExport(vision._id, e)}
+                                                        className="p-1.5 hover:bg-muted rounded transition-colors"
+                                                        title="Export"
+                                                    >
+                                                        <Download className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleDelete(vision._id, e)}
+                                                        className="p-1.5 hover:bg-destructive/10 text-destructive rounded transition-colors"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                                {/* Mobile: Show 3-dot menu */}
+                                                <div className="sm:hidden">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                }}
+                                                                className="p-1.5 hover:bg-muted rounded transition-colors"
+                                                            >
+                                                                <MoreHorizontal className="w-4 h-4" />
+                                                            </button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={(e) => handleShare(vision._id, e)}>
+                                                                <Share className="w-4 h-4 mr-2" />
+                                                                Share
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={(e) => handleExport(vision._id, e)}>
+                                                                <Download className="w-4 h-4 mr-2" />
+                                                                Export
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem
+                                                                variant="destructive"
+                                                                onClick={(e) => handleDelete(vision._id, e)}
+                                                            >
+                                                                <Trash2 className="w-4 h-4 mr-2" />
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </button>
+                            </div>
                         ))}
                     </div>
                 )
             }
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Vision</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete this vision? This action cannot be undone and will delete all associated channels, frames, and nodes.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>Cancel</Button>
+                        <Button
+                            variant="destructive"
+                            onClick={async () => {
+                                if (!visionToDelete) return;
+                                try {
+                                    await deleteVision({ id: visionToDelete });
+                                    toast.success("Vision deleted successfully!");
+                                    setIsDeleteOpen(false);
+                                    setVisionToDelete(null);
+                                } catch (error) {
+                                    toast.error("Failed to delete vision");
+                                    console.error(error);
+                                }
+                            }}
+                        >
+                            Delete Vision
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </main>
     );
 }

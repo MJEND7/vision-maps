@@ -5,22 +5,15 @@ import Logo from "@/icons/logo";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { Button } from "../ui/button";
 import { useState, useRef, useEffect } from "react";
-import { Menu, Plus, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Authenticated, Unauthenticated } from "convex/react";
 import UserAvatar from "../ui/user-avatar";
 import MissingAvatar from "@/icons/missing_avatar";
 import { ROUTES } from "@/lib/constants";
 
-export default function ProfileNav({
-    showLandingSections = false,
-    onNew
-}: {
-    showLandingSections?: boolean;
-    onNew: () => void
-}) {
-    const { isLoaded, user } = useUser();
+export default function ProfileNav() {
+    const { isLoaded } = useUser();
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
@@ -49,7 +42,7 @@ export default function ProfileNav({
 
 
     return (
-        <div className="flex gap-1 items-center justify-center w-full p-2 fixed top-0 z-[100]">
+        <div className="flex gap-1 items-center justify-center w-full p-2 fixed top-0 z-[40]">
             <motion.header
                 initial={{ y: -50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -80,8 +73,8 @@ export default function ProfileNav({
                     </Link>
                     <div className="sm:flex hidden justify-center gap-2">
                         {[
-                            { name: "Visions", href: ROUTES.LANDING.FEATURES },
-                            { name: "Profile", href: ROUTES.LANDING.ABOUT },
+                            { name: "Visions", href: ROUTES.PROFILE.VISIONS },
+                            { name: "Profile", href: ROUTES.PROFILE.PROFILE },
                         ].map((item) => (
                             <Link
                                 key={item.name}
@@ -98,7 +91,6 @@ export default function ProfileNav({
                 <div className="flex">
                     {/* Auth / Buttons - Hide UserButton on mobile when showLandingSections is true */}
                     <div className="hidden sm:flex items-center gap-2">
-                        <Button onClick={onNew} size="lg"><Plus /> New Vision</Button>
                         <div className="flex w-8 h-8">
                             <UserAvatar />
                         </div>

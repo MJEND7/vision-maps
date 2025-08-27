@@ -63,7 +63,7 @@ export default function LandingNav({
     }, []);
 
     return (
-        <div className="flex gap-1 items-center justify-center w-full p-2 fixed top-0 z-[100]">
+        <div className="flex gap-1 items-center justify-center w-full p-2 fixed top-0 z-[40]">
             <motion.header
                 initial={{ y: -50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
