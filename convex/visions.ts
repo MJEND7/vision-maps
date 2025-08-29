@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAuth, requireVisionAccess } from "./utils/auth";
-import { VisionAccessRole } from "./tables/visions";
+import { Vision, VisionAccessRole } from "./tables/visions";
 import { createDefaultChannel } from "./utils/channel";
 
 export const create = mutation({
@@ -10,7 +10,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await requireAuth(ctx);
-    const now = new Date().toISOString();
+    const now = Date.now();
 
     if (!identity.userId) {
         throw new Error("Failed to get userId")
@@ -21,7 +21,6 @@ export const create = mutation({
       banner: "",
       description: "",
       organization: args.organization || "",
-      createdAt: now,
       updatedAt: now,
     });
 
@@ -112,7 +111,7 @@ export const get = query({
   args: {
     id: v.id("visions"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<Vision> => {
     await requireVisionAccess(ctx, args.id);
     
     const vision = await ctx.db.get(args.id);
@@ -181,8 +180,8 @@ export const list = query({
           bValue = b.title.toLowerCase();
           break;
         case "createdAt":
-          aValue = new Date(a.createdAt);
-          bValue = new Date(b.createdAt);
+          aValue = new Date(a._creationTime);
+          bValue = new Date(b._creationTime);
           break;
         case "updatedAt":
         default:

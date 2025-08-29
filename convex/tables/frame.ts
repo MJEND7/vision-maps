@@ -11,8 +11,8 @@ export class Frame {
         title: v.string(),
         updatedAt: v.string(),
         createdAt: v.string(),
-        channel: v.optional(v.id(Channel.TABLE_NAME)),
-        vision: v.optional(v.id(Visions.TABLE_NAME))
+        channel: v.id(Channel.TABLE_NAME),
+        vision: v.id(Visions.TABLE_NAME)
     }).index("by_channel", ["channel"])
-      .index("by_vision", ["vision"]);
+        .index("by_vision", ["vision"]);
 }

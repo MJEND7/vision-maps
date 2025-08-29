@@ -5,17 +5,17 @@ import { Channel } from "./channel";
 import { Frame } from "./frame";
 
 export enum NodeVariants {
-  Image = "Image",
-  Video = "Video",
-  Link = "Link",
-  Audio = "Audio",
-  Text = "Text",
-  YouTube = "YouTube",
-  Spotify = "Spotify",
-  Notion = "Notion",
-  Figma = "Figma",
-  GitHub = "GitHub",
-  AI = "AI", // For the AI class value will be the datapoint storing the model used
+    Image = "Image",
+    Video = "Video",
+    Link = "Link",
+    Audio = "Audio",
+    Text = "Text",
+    YouTube = "YouTube",
+    Spotify = "Spotify",
+    Notion = "Notion",
+    Figma = "Figma",
+    GitHub = "GitHub",
+    AI = "AI", // For the AI class value will be the datapoint storing the model used
 }
 
 export class Nodes {
@@ -33,9 +33,9 @@ export class Nodes {
         updatedAt: v.string(),
         createdAt: v.string(),
         frame: v.optional(v.id(Frame.TABLE_NAME)),
-        channel: v.optional(v.id(Channel.TABLE_NAME)),
-        vision: v.optional(v.id(Visions.TABLE_NAME))
+        channel: v.id(Channel.TABLE_NAME),
+        vision: v.id(Visions.TABLE_NAME)
     }).index("by_frame", ["frame"])
-      .index("by_channel", ["channel"])
-      .index("by_vision", ["vision"]);
+        .index("by_channel", ["channel"])
+        .index("by_vision", ["vision"]);
 }

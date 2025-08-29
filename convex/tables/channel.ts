@@ -10,6 +10,6 @@ export class Channel {
         description: v.optional(v.string()),
         updatedAt: v.string(),
         createdAt: v.string(),
-        vision: v.optional(v.id(Visions.TABLE_NAME))
+        vision: v.id(Visions.TABLE_NAME)
     }).index("by_vision", ["vision"]);
 }
