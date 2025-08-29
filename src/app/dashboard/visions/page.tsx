@@ -160,7 +160,7 @@ export default function SheetsPage() {
                         </div>
                     </div>
 
-                    {viewMode === "grid" ? <VisionGridSkeleton /> : viewMode === "table" ? <VisionTableSkeleton /> : ( null ) }
+                    {viewMode === "grid" ? <VisionGridSkeleton /> : viewMode === "table" ? <VisionTableSkeleton /> : (null)}
                 </main>
             </>
         );
@@ -266,13 +266,18 @@ export default function SheetsPage() {
                                     className="hover:shadow-xl transition-all ease-in-out shadow-lg flex flex-col justify-between rounded-3xl border"
                                 >
                                     <button
-                                        onClick={() => router.push(`${ROUTES.PROFILE.VISIONS}/${vision._id}`)}
-                                        className="group relative flex h-[200px] items-center justify-center hover:shadow-inner rounded-3xl">
+                                        onClick={() =>
+                                            router.push(`${ROUTES.PROFILE.VISIONS}/${vision._id}`)
+                                        }
+                                        style={{ backgroundImage: `url(${vision.banner})` }}
+                                        className="group relative flex h-[200px] items-center justify-center 
+             hover:shadow-inner rounded-t-3xl bg-cover bg-center"
+                                    >
                                         <div className="absolute right-5 top-5 transition-all duration-300 ease-in-out opacity-0 invisible group-hover:opacity-100 group-hover:visible">
                                             <Scan />
                                         </div>
-                                        <h1 className="text-lg">
-                                            {vision.title || 'Untitled Vision'}
+                                        <h1 className={`${vision.banner ? "hidden" : ""} text-lg`}>
+                                            {vision.title || "Untitled Vision"}
                                         </h1>
                                     </button>
                                     <hr />
@@ -324,7 +329,7 @@ export default function SheetsPage() {
                                             </div>
                                             <div className="flex items-center justify-between">
                                                 <p className="text-xs text-primary/30">
-                                                    Updated {timeSinceFromDateString(vision.createdAt || new Date())}
+                                                    Updated {timeSinceFromDateString(new Date(vision.updatedAt) || new Date())}
                                                 </p>
                                                 <StaticFacePile visionId={vision._id} />
                                             </div>
@@ -342,14 +347,15 @@ export default function SheetsPage() {
                                 >
                                     <div className="flex flex-row">
                                         <button
+                                            style={{ backgroundImage: `url(${vision.banner})` }}
                                             onClick={() => router.push(`${ROUTES.PROFILE.VISIONS}/${vision._id}`)}
-                                            className="relative flex w-[100px] sm:h-[100px] sm:w-[250px] items-center justify-center">
+                                            className="relative bg-cover rounded-l-xl flex w-[100px] sm:h-[100px] sm:w-[250px] items-center justify-center">
                                             <div className="absolute left-2 top-2">
                                                 <div className='rounded-sm text-white bg-blue-400 p-1'>
                                                     <Map size={15} />
                                                 </div>
                                             </div>
-                                            <h1 className="text-lg font-medium">
+                                            <h1 className={`${vision.banner ? "hidden" : ""} text-lg`}>
                                                 {vision.title || 'Untitled Vision'}
                                             </h1>
                                         </button>
@@ -361,27 +367,30 @@ export default function SheetsPage() {
                                                 <div className="flex items-center ">
                                                     <StaticFacePile visionId={vision._id} />
                                                     {/* Desktop: Show inline buttons */}
-                                                    <div className="hidden sm:flex items-center">
+                                                    <div className="hidden sm:flex gap-3 items-center">
                                                         <button
                                                             onClick={() => handleShare(vision._id)}
-                                                            className="p-1.5 hover:bg-muted rounded transition-colors"
+                                                            className="flex flex-col items-center text-xs p-1.5 hover:bg-muted rounded transition-colors"
                                                             title="Share"
                                                         >
                                                             <Share className="w-4 h-4" />
+                                                            Share
                                                         </button>
                                                         <button
                                                             onClick={() => handleExport(vision._id)}
-                                                            className="p-1.5 hover:bg-muted rounded transition-colors"
+                                                            className="flex flex-col items-center text-xs p-1.5 hover:bg-muted rounded transition-colors"
                                                             title="Export"
                                                         >
                                                             <Download className="w-4 h-4" />
+                                                            Export
                                                         </button>
                                                         <button
                                                             onClick={() => handleDelete(vision._id)}
-                                                            className="p-1.5 hover:bg-destructive/10 text-destructive rounded transition-colors"
+                                                            className="flex flex-col items-center text-xs p-1.5 hover:bg-destructive/10 text-destructive rounded transition-colors"
                                                             title="Delete"
                                                         >
                                                             <Trash2 className="w-4 h-4" />
+                                                            Delete
                                                         </button>
                                                     </div>
                                                     {/* Mobile: Show 3-dot menu */}
@@ -425,7 +434,7 @@ export default function SheetsPage() {
                                                     {vision.description || 'No description provided.'}
                                                 </p>
                                                 <p className="text-primary/30 text-xs">
-                                                    Updated {timeSinceFromDateString(vision.createdAt || new Date())}
+                                                    Updated {timeSinceFromDateString(new Date(vision.updatedAt) || new Date())}
                                                 </p>
                                             </div>
                                         </div>

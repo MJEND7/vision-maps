@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.dev https://challenges.cloudflare.com https://*.cloudflare.com https://*.convex.cloud wss://*.convex.cloud",
+              "connect-src 'self' https://*.uploadthing.com https://*.clerk.accounts.dev https://*.clerk.dev https://challenges.cloudflare.com https://*.cloudflare.com https://*.convex.cloud wss://*.convex.cloud",
               "frame-src 'self' https://*.stripe.com https://*.clerk.accounts.dev https://*.clerk.dev https://challenges.cloudflare.com",
               "worker-src 'self' blob:"
             ].join("; ")

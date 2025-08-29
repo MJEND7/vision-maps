@@ -37,7 +37,7 @@ function TitleCard({ isLoading, vision, OpenSettings }: { isLoading: boolean, vi
                     {vision?.title}
                 </h1>
                 <button onClick={() => OpenSettings(vision._id.toString())}>
-                    <Settings size={15} />
+                    <Settings size={18} />
                 </button>
             </div>
             <h2 className="text-left text-xs text-muted-foreground truncate">
@@ -156,9 +156,9 @@ export default function VisionDetailPage() {
 
             {/* Middle */}
             <div className="overflow-hidden w-full bg-background">
-                <div className="flex w-full pt-2 px-2 h-8 bg-accent">
+                <div className="flex w-full pt-2 px-2 h-10 bg-accent">
                     {tabs.map((t, i) => (
-                        <button key={i} onClick={() => setSelectedTab(t)} className="w-[150px] flex bg-background rounded-t-lg p-2 justify-between items-center">
+                        <button key={i} onClick={() => setSelectedTab(t)} className="w-[180px] flex bg-background rounded-t-lg p-2 justify-between items-center">
                             <p className="flex items-center gap-1 text-xs truncate">
                                 {renderTabIcon(t.type)}
                                 {t.title}

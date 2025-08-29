@@ -10,14 +10,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { useUploadThing } from "@/utils/uploadthing";
-import { Camera, Search, MoreVertical, Crown, Edit2, UserPlus, X, Upload, ImageIcon } from "lucide-react";
+import { Camera, Search, MoreVertical, Crown, Edit2, UserPlus, X, Upload, ImageIcon, Trash2, Save } from "lucide-react";
 import { VisionAccessRole } from "../../../convex/tables/visions";
 import { Textarea } from "../ui/textarea";
 
 export default function SettingsComponent({ id }: { id?: string }) {
     const [searchTerm, setSearchTerm] = useState("");
-    const [editingTitle, setEditingTitle] = useState(false);
-    const [editingDescription, setEditingDescription] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
     const [titleValue, setTitleValue] = useState("");
     const [descriptionValue, setDescriptionValue] = useState("");
     const [isUploading, setIsUploading] = useState(false);
@@ -30,7 +29,7 @@ export default function SettingsComponent({ id }: { id?: string }) {
     const updateMemberRole = useMutation(api.visions.updateMemberRole);
     const removeMember = useMutation(api.visions.removeMember);
 
-    const { startUpload } = useUploadThing("visionBanner", {
+    const { startUpload } = useUploadThing("imageUploader", {
         onClientUploadComplete: (res) => {
             const uploadedFile = res[0];
             if (uploadedFile && visionId) {
@@ -55,6 +54,38 @@ export default function SettingsComponent({ id }: { id?: string }) {
         }
     };
 
+    const handleBannerRemove = async () => {
+        if (!vision?.banner || !visionId) return;
+        
+        setIsUploading(true);
+        try {
+            // Delete from UploadThing storage
+            const response = await fetch('/api/uploadthing/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ fileUrl: vision.banner }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete file from storage');
+            }
+
+            // Update vision in database
+            await updateVision({
+                id: visionId,
+                banner: "",
+            });
+
+            toast.success("Banner removed successfully!");
+        } catch (error) {
+            toast.error("Failed to remove banner: " + (error as Error).message);
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length > 0) {
@@ -62,26 +93,40 @@ export default function SettingsComponent({ id }: { id?: string }) {
         }
     };
 
-    const handleTitleSave = async () => {
-        if (visionId && titleValue.trim()) {
-            await updateVision({
-                id: visionId,
-                title: titleValue.trim(),
-            });
-            setEditingTitle(false);
-            toast.success("Title updated!");
+    const handleEditToggle = async () => {
+        if (isEditing) {
+            // Save mode - save any changes
+            const updates: any = {};
+            
+            if (titleValue.trim() !== (vision?.title || "")) {
+                updates.title = titleValue.trim();
+            }
+            
+            if (descriptionValue !== (vision?.description || "")) {
+                updates.description = descriptionValue;
+            }
+            
+            if (Object.keys(updates).length > 0 && visionId) {
+                await updateVision({
+                    id: visionId,
+                    ...updates,
+                });
+                toast.success("Vision updated!");
+            }
+            
+            setIsEditing(false);
+        } else {
+            // Edit mode - enter editing
+            setTitleValue(vision?.title || "");
+            setDescriptionValue(vision?.description || "");
+            setIsEditing(true);
         }
     };
 
-    const handleDescriptionSave = async () => {
-        if (visionId) {
-            await updateVision({
-                id: visionId,
-                description: descriptionValue,
-            });
-            setEditingDescription(false);
-            toast.success("Description updated!");
-        }
+    const handleCancel = () => {
+        setTitleValue(vision?.title || "");
+        setDescriptionValue(vision?.description || "");
+        setIsEditing(false);
     };
 
     const handleRoleUpdate = async (userId: string, newRole: string) => {
@@ -122,41 +167,51 @@ export default function SettingsComponent({ id }: { id?: string }) {
         return <div className="p-6">Loading...</div>;
     }
 
-    const handleTitleEdit = () => {
-        setTitleValue(vision.title);
-        setEditingTitle(true);
-    };
-
-    const handleDescriptionEdit = () => {
-        setDescriptionValue(vision.description || "");
-        setEditingDescription(true);
-    };
 
     return (
         <div className="p-6 space-y-8">
             {/* Vision Info Section */}
             <div className="space-y-6">
-                <h2 className="text-lg font-semibold">Vision Settings</h2>
+                <h2 className="text-lg font-semibold">Settings</h2>
 
                 {/* Banner Upload */}
                 <div className="space-y-3">
                     <label className="text-sm font-medium">Banner</label>
                     <div
-                        className="relative group border-2 border-dashed border-gray-300 rounded-xl p-8 hover:border-gray-400 transition-colors cursor-pointer"
+                        className="relative group border-2 border-dashed border-gray-300 rounded-xl hover:border-gray-400 transition-colors cursor-pointer"
                         onClick={() => fileInputRef.current?.click()}
                     >
                         {vision.banner ? (
-                            <div className="relative aspect-video w-full max-w-2xl">
+                            <div className="relative aspect-video w-full max-h-[200px] p-2">
                                 <img
                                     src={vision.banner}
                                     alt="Vision banner"
                                     className="w-full h-full object-cover rounded-lg"
                                 />
-                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                                    <div className="text-white text-center">
-                                        <Camera className="w-8 h-8 mx-auto mb-2" />
-                                        <p>Click to change banner</p>
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex flex-col items-center justify-center gap-2">
+                                    <div className="flex gap-4">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                fileInputRef.current?.click();
+                                            }}
+                                            className="text-white hover:text-gray-200 transition-colors p-2 rounded-lg bg-black/30 hover:bg-black/50"
+                                            title="Change banner"
+                                        >
+                                            <Camera className="w-6 h-6" />
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleBannerRemove();
+                                            }}
+                                            className="text-white hover:text-white transition-colors p-2 rounded-lg bg-black/30 hover:bg-red-600/50"
+                                            title="Remove banner"
+                                        >
+                                            <Trash2 className="w-6 h-6" />
+                                        </button>
                                     </div>
+                                    <p className="text-white text-sm">Change or remove banner</p>
                                 </div>
                             </div>
                         ) : (
@@ -170,7 +225,7 @@ export default function SettingsComponent({ id }: { id?: string }) {
                             <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
                                 <div className="text-white text-center">
                                     <Upload className="w-8 h-8 mx-auto mb-2 animate-pulse" />
-                                    <p>Uploading...</p>
+                                    <p>Loading...</p>
                                 </div>
                             </div>
                         )}
@@ -184,34 +239,59 @@ export default function SettingsComponent({ id }: { id?: string }) {
                     />
                 </div>
 
+                {/* Edit/Save Button */}
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-md font-medium">Information</h3>
+                    <div className="flex items-center gap-2">
+                        <Button 
+                            onClick={handleEditToggle}
+                            size="sm"
+                            variant={isEditing ? "default" : "outline"}
+                            className="text-xs"
+                        >
+                            {isEditing ? (
+                                <>
+                                    <Save className="w-3 h-3 mr-1" />
+                                    Save
+                                </>
+                            ) : (
+                                <>
+                                    <Edit2 className="w-3 h-3 mr-1" />
+                                    Edit
+                                </>
+                            )}
+                        </Button>
+                        {isEditing && (
+                            <Button 
+                                onClick={handleCancel}
+                                size="sm"
+                                variant="ghost"
+                                className="text-xs"
+                            >
+                                <X className="w-3 h-3" />
+                            </Button>
+                        )}
+                    </div>
+                </div>
+
                 {/* Title */}
                 <div className="space-y-2">
                     <label className="text-sm font-medium">Title</label>
-                    {editingTitle ? (
-                        <div className="flex items-center gap-2">
-                            <Input
-                                value={titleValue}
-                                onChange={(e) => setTitleValue(e.target.value)}
-                                className="flex-1"
-                                placeholder="Vision title..."
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleTitleSave();
-                                    if (e.key === 'Escape') setEditingTitle(false);
-                                }}
-                                autoFocus
-                            />
-                            <Button className="text-xs h-full" onClick={handleTitleSave} size="sm">Save</Button>
-                            <Button className="h-full" onClick={() => setEditingTitle(false)} variant="outline" size="sm">
-                                <X size={20} />
-                            </Button>
-                        </div>
+                    {isEditing ? (
+                        <Input
+                            value={titleValue}
+                            onChange={(e) => setTitleValue(e.target.value)}
+                            className="flex-1"
+                            placeholder="Vision title..."
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleEditToggle();
+                                if (e.key === 'Escape') handleCancel();
+                            }}
+                            autoFocus
+                        />
                     ) : (
-                        <div
-                            className="group flex items-center gap-2 p-2 rounded-lg border hover:bg-gray-50 cursor-pointer"
-                            onClick={handleTitleEdit}
-                        >
-                            <span className="flex-1 text-sm">{vision.title}</span>
-                            <Edit2 className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="p-3 rounded-lg border bg-gray-50/50">
+                            <span className="text-sm">{vision.title}</span>
                         </div>
                     )}
                 </div>
@@ -219,35 +299,22 @@ export default function SettingsComponent({ id }: { id?: string }) {
                 {/* Description */}
                 <div className="space-y-2">
                     <label className="text-sm font-medium">Description</label>
-                    {editingDescription ? (
-                        <div className="space-y-2">
-                            <Textarea
-                                value={descriptionValue}
-                                onChange={(e) => setDescriptionValue(e.target.value)}
-                                className="text-sm w-full p-3 border rounded-lg resize-none"
-                                rows={3}
-                                placeholder="Describe your vision..."
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Escape') setEditingDescription(false);
-                                }}
-                                autoFocus
-                            />
-                            <div className="flex gap-2">
-                                <Button className="text-xs" onClick={handleDescriptionSave} size="sm">Save</Button>
-                                <Button className="text-xs" onClick={() => setEditingDescription(false)} variant="outline" size="sm">
-                                    Cancel
-                                </Button>
-                            </div>
-                        </div>
+                    {isEditing ? (
+                        <Textarea
+                            value={descriptionValue}
+                            onChange={(e) => setDescriptionValue(e.target.value)}
+                            className="text-sm w-full p-3 border rounded-lg resize-none"
+                            rows={3}
+                            placeholder="Describe your vision..."
+                            onKeyDown={(e) => {
+                                if (e.key === 'Escape') handleCancel();
+                            }}
+                        />
                     ) : (
-                        <div
-                            className="group p-3 rounded-lg border hover:bg-gray-50 cursor-pointer min-h-[60px] flex items-start gap-2"
-                            onClick={handleDescriptionEdit}
-                        >
-                            <span className="text-sm flex-1 text-gray-700">
+                        <div className="p-3 rounded-lg border bg-gray-50/50 min-h-[80px] flex items-start">
+                            <span className="text-sm text-gray-700">
                                 {vision.description || "Add a description..."}
                             </span>
-                            <Edit2 className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5" />
                         </div>
                     )}
                 </div>
