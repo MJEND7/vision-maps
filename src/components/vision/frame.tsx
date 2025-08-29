@@ -17,7 +17,7 @@ const initialNodes = [
 ];
 const initialEdges = [{ id: 'n1-n2', source: 'n1', target: 'n2' }];
 
-export default function Frame({ id }: { id?: string }) {
+export default function FrameComponent({ id }: { id?: string }) {
     const [nodes, setNodes] = useState(initialNodes);
     const [edges, setEdges] = useState(initialEdges);
     const [title, setTitle] = useState<string | null>("Frame 1");

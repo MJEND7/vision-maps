@@ -48,7 +48,7 @@ export const update = mutation({
     await requireVisionAccess(ctx, args.id, VisionAccessRole.Editor);
 
     const updates: any = {
-      updatedAt: new Date().toISOString(),
+      updatedAt: Date.now(),
     };
 
     if (args.title !== undefined) updates.title = args.title;
@@ -214,5 +214,136 @@ export const list = query({
       nextCursor,
       hasMore,
     };
+  },
+});
+
+export const getMembers = query({
+  args: {
+    visionId: v.id("visions"),
+  },
+  handler: async (ctx, args) => {
+    await requireVisionAccess(ctx, args.visionId);
+
+    const visionUsers = await ctx.db
+      .query("vision_users")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
+      .collect();
+
+    const members = [];
+    for (const visionUser of visionUsers) {
+      const user = await ctx.db
+        .query("users")
+        .withIndex("byExternalId", (q) => q.eq("externalId", visionUser.userId))
+        .first();
+
+      if (user) {
+        members.push({
+          id: user._id,
+          userId: visionUser.userId,
+          name: user.name,
+          email: user.email,
+          picture: user.picture,
+          role: visionUser.role,
+        });
+      }
+    }
+
+    return members;
+  },
+});
+
+export const addMember = mutation({
+  args: {
+    visionId: v.id("visions"),
+    userId: v.string(),
+    role: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireVisionAccess(ctx, args.visionId, VisionAccessRole.Owner);
+
+    const existingMember = await ctx.db
+      .query("vision_users")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .first();
+
+    if (existingMember) {
+      throw new Error("User is already a member of this vision");
+    }
+
+    if (args.role !== VisionAccessRole.Owner && args.role !== VisionAccessRole.Editor) {
+      throw new Error("Invalid role");
+    }
+
+    await ctx.db.insert("vision_users", {
+      userId: args.userId,
+      role: args.role,
+      visionId: args.visionId,
+    });
+  },
+});
+
+export const removeMember = mutation({
+  args: {
+    visionId: v.id("visions"),
+    userId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireVisionAccess(ctx, args.visionId, VisionAccessRole.Owner);
+
+    const visionUser = await ctx.db
+      .query("vision_users")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .first();
+
+    if (!visionUser) {
+      throw new Error("User is not a member of this vision");
+    }
+
+    const remainingOwners = await ctx.db
+      .query("vision_users")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
+      .filter((q) => q.eq(q.field("role"), VisionAccessRole.Owner))
+      .collect();
+
+    if (visionUser.role === VisionAccessRole.Owner && remainingOwners.length === 1) {
+      throw new Error("Cannot remove the last owner of a vision");
+    }
+
+    await ctx.db.delete(visionUser._id);
+  },
+});
+
+export const updateMemberRole = mutation({
+  args: {
+    visionId: v.id("visions"),
+    userId: v.string(),
+    newRole: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireVisionAccess(ctx, args.visionId, VisionAccessRole.Owner);
+
+    if (args.newRole !== VisionAccessRole.Owner && args.newRole !== VisionAccessRole.Editor) {
+      throw new Error("Invalid role");
+    }
+
+    const visionUser = await ctx.db
+      .query("vision_users")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .first();
+
+    if (!visionUser) {
+      throw new Error("User is not a member of this vision");
+    }
+
+    if (visionUser.role === VisionAccessRole.Owner && args.newRole === VisionAccessRole.Editor) {
+      throw new Error("Cannot demote owners to editors");
+    }
+
+    await ctx.db.patch(visionUser._id, {
+      role: args.newRole,
+    });
   },
 });

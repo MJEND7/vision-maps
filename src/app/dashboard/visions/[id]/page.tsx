@@ -31,7 +31,7 @@ function TitleCard({ isLoading, vision, OpenSettings }: { isLoading: boolean, vi
     }
 
     return (
-        <div className='w-full flex flex-col p-4'>
+        <div className='w-full flex flex-col gap-1 p-4'>
             <div className="w-full flex justify-between items-center">
                 <h1 className="flex gap-1 items-center text-left text-lg font-semibold">
                     {vision?.title}
@@ -40,7 +40,7 @@ function TitleCard({ isLoading, vision, OpenSettings }: { isLoading: boolean, vi
                     <Settings size={15} />
                 </button>
             </div>
-            <h2 className="text-left text-xs text-muted-foreground">
+            <h2 className="text-left text-xs text-muted-foreground truncate">
                 {vision?.description || "No description provided"}
             </h2>
         </div>
@@ -80,7 +80,7 @@ export default function VisionDetailPage() {
                 return <SettingsComponent id={selectedTab.id} />;
             default:
                 return (
-                    <p className="flex h-full w-full items-center justify-center text-center text-sm text-muted-foreground/30">
+                    <p className="flex h-full w-full items-center justify-center text-center text-sm text-primary/70 bg-accent">
                         No file selected
                     </p>
                 );
@@ -155,10 +155,10 @@ export default function VisionDetailPage() {
             </div>
 
             {/* Middle */}
-            <div className="overflow-hidden w-full bg-card">
-                <div className="flex w-full pt-2 px-2 h-8 border-b ">
+            <div className="overflow-hidden w-full bg-background">
+                <div className="flex w-full pt-2 px-2 h-8 bg-accent">
                     {tabs.map((t, i) => (
-                        <button key={i} onClick={() => setSelectedTab(t)} className="w-[150px] flex bg-accent rounded-t-lg p-2 justify-between items-center">
+                        <button key={i} onClick={() => setSelectedTab(t)} className="w-[150px] flex bg-background rounded-t-lg p-2 justify-between items-center">
                             <p className="flex items-center gap-1 text-xs truncate">
                                 {renderTabIcon(t.type)}
                                 {t.title}
