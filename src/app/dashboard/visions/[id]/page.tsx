@@ -2,9 +2,10 @@
 
 import { useParams } from 'next/navigation';
 import { DraggableTabs } from '@/components/ui/draggable-tabs';
+import { DraggableSidebar } from '@/components/ui/draggable-sidebar';
 import { PresenceFacePile } from '@/components/ui/face-pile';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, ChevronsDownUp, Frame, Play, Plus, Settings, TableProperties } from 'lucide-react';
+import { ChevronsDownUp, Frame, Play, Settings, TableProperties } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import FrameComponent from '@/components/vision/frame';
 import { useState, useEffect, useCallback } from 'react';
@@ -56,6 +57,8 @@ export default function VisionDetailPage() {
     const [tabOrder, setTabOrder] = useState<{ title: string, id: string, type: ViewMode }[]>([])
     const [openChannels, setOpenChannels] = useState<Set<string>>(new Set());
     const [framesByChannel, setFramesByChannel] = useState<Record<string, any[]>>({});
+    const [optimisticChannels, setOptimisticChannels] = useState<any[]>([]);
+    const [optimisticFrames, setOptimisticFrames] = useState<Record<string, any[]>>({});
     const [editingChannel, setEditingChannel] = useState<string | null>(null);
     const [editingChannelName, setEditingChannelName] = useState<string>('');
     const [editingFrame, setEditingFrame] = useState<string | null>(null);
@@ -75,8 +78,10 @@ export default function VisionDetailPage() {
 
     const createChannel = useMutation(api.channels.create);
     const updateChannel = useMutation(api.channels.update);
+    const reorderChannels = useMutation(api.channels.reorder);
     const createFrame = useMutation(api.frames.create);
     const updateFrame = useMutation(api.frames.update);
+    const reorderFrames = useMutation(api.frames.reorder);
 
     const [channelsToFetchFrames, setChannelsToFetchFrames] = useState<string[]>([]);
     const [delayedFetchEnabled, setDelayedFetchEnabled] = useState(false);
@@ -100,6 +105,17 @@ export default function VisionDetailPage() {
             setChannelsToFetchFrames(prev => prev.slice(1));
         }
     }, [frames, framesToFetch]);
+
+    // Sync optimistic state with server data
+    useEffect(() => {
+        if (channels) {
+            setOptimisticChannels(channels);
+        }
+    }, [channels]);
+
+    useEffect(() => {
+        setOptimisticFrames(framesByChannel);
+    }, [framesByChannel]);
 
     // Manage frame fetching priority: open channels first, others after delay
     useEffect(() => {
@@ -356,6 +372,61 @@ export default function VisionDetailPage() {
             return updated;
         });
     }, [selectedTab]);
+
+    const handleChannelReorder = useCallback((channelIds: string[]) => {
+        // Optimistic update - reorder locally first
+        setOptimisticChannels(prev => {
+            const channelMap = new Map(prev.map(c => [c._id, c]));
+            return channelIds.map(id => channelMap.get(id)).filter(Boolean);
+        });
+
+        // Debounced server sync will happen on drag end
+    }, []);
+
+    const handleFrameReorder = useCallback((channelId: string, frameIds: string[]) => {
+        // Optimistic update - reorder locally first
+        setOptimisticFrames(prev => {
+            const currentFrames = prev[channelId] || [];
+            const frameMap = new Map(currentFrames.map(f => [f._id, f]));
+            const reorderedFrames = frameIds.map(id => frameMap.get(id)).filter(Boolean);
+            
+            return {
+                ...prev,
+                [channelId]: reorderedFrames
+            };
+        });
+
+        // Debounced server sync will happen on drag end
+    }, []);
+
+    // Server sync functions (called on drag end)
+    const syncChannelOrder = useCallback(async (channelIds: string[]) => {
+        try {
+            await reorderChannels({
+                visionId,
+                channelIds: channelIds as Id<"channels">[],
+            });
+        } catch (error) {
+            console.error('Failed to reorder channels:', error);
+            // Revert optimistic update on error
+            if (channels) {
+                setOptimisticChannels(channels);
+            }
+        }
+    }, [reorderChannels, visionId, channels]);
+
+    const syncFrameOrder = useCallback(async (channelId: string, frameIds: string[]) => {
+        try {
+            await reorderFrames({
+                channelId: channelId as Id<"channels">,
+                frameIds: frameIds as Id<"frames">[],
+            });
+        } catch (error) {
+            console.error('Failed to reorder frames:', error);
+            // Revert optimistic update on error
+            setOptimisticFrames(framesByChannel);
+        }
+    }, [reorderFrames, framesByChannel]);
 
     if (!isLoaded || !isSignedIn) {
         return (
@@ -635,111 +706,43 @@ export default function VisionDetailPage() {
                                 <ChevronsDownUp />
                             </Button>
                         </div>
-                        <div className='space-y-1'>
-                            {channels?.map((channel) => (
-                                <div key={channel._id}>
-                                    <div
-                                        className="flex justify-between items-center gap-1 p-1"
-                                    >
-                                        <button
-                                            className={`${selectedTab?.id && selectedTab?.id == channel._id ? "bg-accent text-primary" : "group hover:text-primary text-muted-foreground"} 
-                                            rounded-md text-xs  flex items-center 
-                                            transition-colors ease-in-out w-full text-left`}
-                                        >
-                                            <button
-                                                onClick={() => toggleChannel(channel._id)}
-                                            >
-                                                <ChevronRight
-                                                    className={`group-hover:text-muted-foreground/80 text-muted-foreground/50 transition-transform ${openChannels.has(channel._id) ? 'rotate-90' : ''
-                                                        }`}
-                                                    size={18}
-                                                />
-                                            </button>
-                                            {editingChannel === channel._id ? (
-                                                <input
-                                                    type="text"
-                                                    value={editingChannelName}
-                                                    onChange={(e) => setEditingChannelName(e.target.value)}
-                                                    onBlur={() => saveChannelName(channel._id)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') {
-                                                            channel.title = editingChannelName;
-                                                            saveChannelName(channel._id);
-                                                        } else if (e.key === 'Escape') {
-                                                            cancelEditingChannel();
-                                                        }
-                                                    }}
-                                                    className="text-xs bg-background border border-border rounded px-1 py-0.5 w-full"
-                                                    autoFocus
-                                                />
-                                            ) : (
-                                                <button
-                                                    className="text-left max-w-[190px] truncate p-1"
-                                                    onClick={() => {
-                                                        openTab(ViewMode.CHANNEL, channel._id, channel.title);
-                                                    }}
-                                                    onDoubleClick={() => {
-                                                        startEditingChannel(channel._id, channel.title);
-                                                    }}
-                                                >
-                                                    {channel.title}
-                                                </button>
-                                            )}
-                                        </button>
-                                        <button
-                                            onClick={() => handleCreateFrame(channel._id)}
-                                            className="text-muted-foreground hover:text-primary"
-                                        >
-                                            <Plus size={15} />
-                                        </button>
-                                    </div>
-
-                                    {/* Show frames when channel is open */}
-                                    {openChannels.has(channel._id) && (
-                                        <div className="ml-10 space-y-1">
-                                            {framesByChannel[channel._id]?.map((frame) => (
-                                                <div key={frame._id} className={`${selectedTab?.id && selectedTab?.id == frame._id ? "bg-accent text-primary" : "text-muted-foreground/80 hover:text-primary"} p-1 rounded-md flex items-center`}>
-                                                    {editingFrame === frame._id ? (
-                                                        <input
-                                                            type="text"
-                                                            value={editingFrameName}
-                                                            onChange={(e) => setEditingFrameName(e.target.value)}
-                                                            onBlur={() => saveFrameName(frame._id)}
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === 'Enter') {
-                                                                    saveFrameName(frame._id);
-                                                                } else if (e.key === 'Escape') {
-                                                                    cancelEditingFrame();
-                                                                }
-                                                            }}
-                                                            className="text-xs bg-background border border-border rounded px-1 py-0.5 w-full ml-4"
-                                                            autoFocus
-                                                        />
-                                                    ) : (
-                                                        <button
-                                                            className="text-xs transition-colors block w-full text-left truncate"
-                                                            onClick={() => openTab(ViewMode.FRAME, frame._id, frame.title)}
-                                                            onDoubleClick={() => startEditingFrame(frame._id, frame.title)}
-                                                        >
-                                                            <Frame size={12} className="inline mr-1" />
-                                                            {frame.title}
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            )) || (
-                                                    <div className="text-xs text-muted-foreground/60">
-                                                        Loading frames...
-                                                    </div>
-                                                )}
-                                        </div>
-                                    )}
-                                </div>
-                            )) || (
-                                    <div className="text-xs text-muted-foreground/60">
-                                        {channels === undefined ? 'Loading channels...' : 'No channels yet'}
-                                    </div>
-                                )}
-                        </div>
+                        {optimisticChannels && optimisticChannels.length > 0 ? (
+                            <DraggableSidebar
+                                channels={optimisticChannels}
+                                framesByChannel={optimisticFrames}
+                                openChannels={openChannels}
+                                selectedTabId={selectedTab?.id}
+                                editingChannel={editingChannel}
+                                editingChannelName={editingChannelName}
+                                editingFrame={editingFrame}
+                                editingFrameName={editingFrameName}
+                                onChannelReorder={handleChannelReorder}
+                                onChannelReorderEnd={syncChannelOrder}
+                                onFrameReorder={handleFrameReorder}
+                                onFrameReorderEnd={syncFrameOrder}
+                                onToggleChannel={toggleChannel}
+                                onOpenTab={(type, id, title) => {
+                                    if (type === "channel") {
+                                        openTab(ViewMode.CHANNEL, id, title);
+                                    } else {
+                                        openTab(ViewMode.FRAME, id, title);
+                                    }
+                                }}
+                                onCreateFrame={handleCreateFrame}
+                                onEditChannel={startEditingChannel}
+                                onEditFrame={startEditingFrame}
+                                onSaveChannel={saveChannelName}
+                                onSaveFrame={saveFrameName}
+                                onCancelEditChannel={cancelEditingChannel}
+                                onCancelEditFrame={cancelEditingFrame}
+                                onEditChannelNameChange={setEditingChannelName}
+                                onEditFrameNameChange={setEditingFrameName}
+                            />
+                        ) : (
+                            <div className="text-xs text-muted-foreground/60 px-3">
+                                {channels === undefined ? 'Loading channels...' : 'No channels yet'}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

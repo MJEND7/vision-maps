@@ -19,8 +19,18 @@ export const create = mutation({
 
     const now = new Date().toISOString();
 
+    // Get the next sort order for this channel
+    const existingFrames = await ctx.db
+      .query("frames")
+      .withIndex("by_channel", (q) => q.eq("channel", args.channelId))
+      .collect();
+    
+    const maxSortOrder = Math.max(0, ...existingFrames.map(f => f.sortOrder || 0));
+    const newSortOrder = maxSortOrder + 1;
+
     const frameId = await ctx.db.insert("frames", {
       title: args.title,
+      sortOrder: newSortOrder,
       channel: args.channelId,
       vision: channel.vision,
       createdAt: now,
@@ -118,10 +128,52 @@ export const listByChannel = query({
     const frames = await ctx.db
       .query("frames")
       .withIndex("by_channel", (q) => q.eq("channel", args.channelId))
-      .order("desc")
       .collect();
 
+    // Sort by sortOrder, fallback to creation time for legacy data
+    frames.sort((a, b) => {
+      const orderA = a.sortOrder ?? 0;
+      const orderB = b.sortOrder ?? 0;
+      return orderA - orderB;
+    });
+
     return frames;
+  },
+});
+
+export const reorder = mutation({
+  args: {
+    channelId: v.id("channels"),
+    frameIds: v.array(v.id("frames")),
+  },
+  handler: async (ctx, args) => {
+    const channel = await ctx.db.get(args.channelId);
+    if (!channel) {
+      throw new Error("Channel not found");
+    }
+
+    if (channel.vision) {
+      await requireVisionAccess(ctx, channel.vision);
+    }
+
+    // Update sort order for each frame based on its position in the array
+    for (let i = 0; i < args.frameIds.length; i++) {
+      const frameId = args.frameIds[i];
+      const frame = await ctx.db.get(frameId);
+      
+      if (!frame) {
+        throw new Error(`Frame ${frameId} not found`);
+      }
+      
+      if (frame.channel !== args.channelId) {
+        throw new Error(`Frame ${frameId} does not belong to channel ${args.channelId}`);
+      }
+
+      await ctx.db.patch(frameId, {
+        sortOrder: i + 1,
+        updatedAt: new Date().toISOString(),
+      });
+    }
   },
 });
 
@@ -135,8 +187,14 @@ export const listByVision = query({
     const frames = await ctx.db
       .query("frames")
       .withIndex("by_vision", (q) => q.eq("vision", args.visionId))
-      .order("desc")
       .collect();
+
+    // Sort by sortOrder, fallback to creation time for legacy data
+    frames.sort((a, b) => {
+      const orderA = a.sortOrder ?? 0;
+      const orderB = b.sortOrder ?? 0;
+      return orderA - orderB;
+    });
 
     return frames;
   },

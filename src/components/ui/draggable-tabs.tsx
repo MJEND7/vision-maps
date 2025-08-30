@@ -58,9 +58,7 @@ function DraggableTab({
       transition={{ duration: 0.2 }}
       style={{ overflow: "hidden" }}
     >
-      <motion.button
-        onClick={onSelect}
-        onPointerDown={(e) => dragControls.start(e)}
+      <motion.div
         className={`
           relative w-[180px] flex bg-background p-2 rounded-t-lg justify-between items-center
           cursor-grab active:cursor-grabbing select-none
@@ -76,11 +74,15 @@ function DraggableTab({
           transition: { duration: 0.15 }
         }}
         whileTap={{ scale: 0.99 }}
+        onPointerDown={(e) => dragControls.start(e)}
       >
-        <div className="flex items-center gap-2 text-xs truncate flex-1">
+        <button
+          onClick={onSelect}
+          className="flex items-center gap-2 text-xs truncate flex-1 text-left"
+        >
           {renderTabIcon(tab.type)}
           <span className="truncate">{tab.title}</span>
-        </div>
+        </button>
 
         <motion.button
           onClick={handleRemove}
@@ -91,7 +93,7 @@ function DraggableTab({
           <X size={12} />
         </motion.button>
 
-      </motion.button>
+      </motion.div>
     </Reorder.Item>
   );
 }

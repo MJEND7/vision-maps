@@ -9,6 +9,7 @@ export class Frame {
     static TABLE_NAME = "frames"
     static Table = defineTable({
         title: v.string(),
+        sortOrder: v.optional(v.number()),
         updatedAt: v.string(),
         createdAt: v.string(),
         channel: v.id(Channel.TABLE_NAME),

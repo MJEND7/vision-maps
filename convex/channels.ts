@@ -13,9 +13,19 @@ export const create = mutation({
 
     const now = new Date().toISOString();
 
+    // Get the next sort order for this vision
+    const existingChannels = await ctx.db
+      .query("channels")
+      .withIndex("by_vision", (q) => q.eq("vision", args.visionId))
+      .collect();
+    
+    const maxSortOrder = Math.max(0, ...existingChannels.map(c => c.sortOrder || 0));
+    const newSortOrder = maxSortOrder + 1;
+
     const channelId = await ctx.db.insert("channels", {
       title: args.title,
       description: args.description,
+      sortOrder: newSortOrder,
       vision: args.visionId,
       createdAt: now,
       updatedAt: now,
@@ -108,6 +118,35 @@ export const get = query({
   },
 });
 
+export const reorder = mutation({
+  args: {
+    visionId: v.id("visions"),
+    channelIds: v.array(v.id("channels")),
+  },
+  handler: async (ctx, args) => {
+    await requireVisionAccess(ctx, args.visionId);
+
+    // Update sort order for each channel based on its position in the array
+    for (let i = 0; i < args.channelIds.length; i++) {
+      const channelId = args.channelIds[i];
+      const channel = await ctx.db.get(channelId);
+      
+      if (!channel) {
+        throw new Error(`Channel ${channelId} not found`);
+      }
+      
+      if (channel.vision !== args.visionId) {
+        throw new Error(`Channel ${channelId} does not belong to vision ${args.visionId}`);
+      }
+
+      await ctx.db.patch(channelId, {
+        sortOrder: i + 1,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  },
+});
+
 export const listByVision = query({
   args: {
     visionId: v.id("visions"),
@@ -118,8 +157,14 @@ export const listByVision = query({
     const channels = await ctx.db
       .query("channels")
       .withIndex("by_vision", (q) => q.eq("vision", args.visionId))
-      .order("desc")
       .collect();
+
+    // Sort by sortOrder, fallback to creation time for legacy data
+    channels.sort((a, b) => {
+      const orderA = a.sortOrder ?? 0;
+      const orderB = b.sortOrder ?? 0;
+      return orderA - orderB;
+    });
 
     return channels;
   },

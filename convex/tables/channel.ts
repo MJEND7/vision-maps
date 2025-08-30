@@ -8,6 +8,7 @@ export class Channel {
     static Table = defineTable({
         title: v.string(),
         description: v.optional(v.string()),
+        sortOrder: v.optional(v.number()),
         updatedAt: v.string(),
         createdAt: v.string(),
         vision: v.id(Visions.TABLE_NAME)
