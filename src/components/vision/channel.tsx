@@ -1,4 +1,4 @@
-export default function Channel({ id }: { id?: string }) {
+export default function Channel() {
     return (
         <div>
         </div>

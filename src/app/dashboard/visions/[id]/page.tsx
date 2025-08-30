@@ -84,7 +84,6 @@ export default function VisionDetailPage() {
     const reorderFrames = useMutation(api.frames.reorder);
 
     const [channelsToFetchFrames, setChannelsToFetchFrames] = useState<string[]>([]);
-    const [delayedFetchEnabled, setDelayedFetchEnabled] = useState(false);
 
     // Fetch frames for channels that are in our fetch list
     const framesToFetch = channelsToFetchFrames.length > 0 ? channelsToFetchFrames[0] : null;
@@ -139,7 +138,6 @@ export default function VisionDetailPage() {
 
             // After 2 seconds, queue remaining channels
             const timer = setTimeout(() => {
-                setDelayedFetchEnabled(true);
                 const remainingChannelIds = channels
                     .filter(c => !openChannels.has(c._id))
                     .map(c => c._id);
@@ -209,7 +207,7 @@ export default function VisionDetailPage() {
             if (savedTabs) {
                 try {
                     const tabsData = JSON.parse(savedTabs);
-                    const tabsMap = new Map(tabsData.map((tab: { title: string, id: string, type: ViewMode }) => [tab.id, tab]));
+                    const tabsMap = new Map(tabsData.map((tab: { title: string, id: string, type: ViewMode }) => [tab.id, tab])) as Map<string, { title: string, id: string, type: ViewMode }>;
                     setTabs(tabsMap);
                     setTabOrder(tabsData);
                 } catch (error) {
@@ -238,7 +236,7 @@ export default function VisionDetailPage() {
             // Clear localStorage when no tabs
             localStorage.removeItem(tabsStorageKey);
         }
-    }, [tabOrder, tabsStorageKey]);
+    }, [tabOrder, tabsStorageKey, tabs.size]);
 
     // Save selected tab to localStorage when it changes
     useEffect(() => {
@@ -437,9 +435,9 @@ export default function VisionDetailPage() {
     const renderContent = () => {
         switch (selectedTab?.type) {
             case ViewMode.CHANNEL:
-                return <Channel id={selectedTab.id} />;
+                return <Channel />;
             case ViewMode.FRAME:
-                return <FrameComponent id={selectedTab.id} />;
+                return <FrameComponent />;
             case ViewMode.SETTINGS:
                 return (
                     <SettingsComponent 
@@ -670,9 +668,36 @@ export default function VisionDetailPage() {
         });
     }
 
-    const handleTabReorder = (newOrder: { title: string, id: string, type: ViewMode }[]) => {
-        setTabOrder(newOrder);
+    const handleTabReorder = (newOrder: { title: string, id: string, type: string }[]) => {
+        const convertedOrder = newOrder.map(tab => ({
+            ...tab,
+            type: tab.type as ViewMode
+        }));
+        setTabOrder(convertedOrder);
     }
+
+    const handleTabSelect = (tab: { title: string, id: string, type: string }) => {
+        const convertedTab = {
+            ...tab,
+            type: tab.type as ViewMode
+        };
+        setSelectedTab(convertedTab);
+    }
+
+    // Convert tabs for DraggableTabs component
+    const tabsForDraggable = tabOrder.map(tab => ({
+        ...tab,
+        type: tab.type as string
+    }));
+
+    const selectedTabForDraggable = selectedTab ? {
+        ...selectedTab,
+        type: selectedTab.type as string
+    } : null;
+
+    const renderTabIconForDraggable = (type: string) => {
+        return renderTabIcon(type as ViewMode);
+    };
 
     return (
         <main className="h-screen flex">
@@ -689,7 +714,7 @@ export default function VisionDetailPage() {
                         vision={vision}
                     />
                     <hr />
-                    <div className="px-3 w-full space-y-5">
+                    <div className="px-3 w-full space-y-4">
                         <div className="w-full flex items-center justify-between">
                             <Button
                                 variant={"outline"}
@@ -750,12 +775,12 @@ export default function VisionDetailPage() {
             {/* Middle */}
             <div className="overflow-hidden w-full bg-background">
                 <DraggableTabs
-                    tabs={tabOrder}
-                    selectedTab={selectedTab}
-                    TabSelectAction={setSelectedTab}
+                    tabs={tabsForDraggable}
+                    selectedTab={selectedTabForDraggable}
+                    TabSelectAction={handleTabSelect}
                     TabRemoveAction={removeTab}
                     TabReorderAction={handleTabReorder}
-                    renderTabIconAction={renderTabIcon}
+                    renderTabIconAction={renderTabIconForDraggable}
                 />
                 {renderContent()}
             </div>

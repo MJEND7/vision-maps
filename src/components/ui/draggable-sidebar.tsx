@@ -90,7 +90,7 @@ function DraggableChannel({
 }) {
     const dragControls = useDragControls();
     const currentFrameOrder = useRef<string[]>([]);
-    const frameSyncTimeout = useRef<NodeJS.Timeout>();
+    const frameSyncTimeout = useRef<NodeJS.Timeout | null>(null);
 
     const handleFrameReorder = useCallback((reorderedFrames: FrameItem[]) => {
         const frameIds = reorderedFrames.map(f => f._id);
@@ -222,7 +222,6 @@ function DraggableFrame({
     onSave,
     onCancel,
     onNameChange,
-    onDragEnd,
 }: {
     frame: FrameItem;
     isSelected: boolean;
@@ -290,7 +289,7 @@ function DraggableFrame({
 
 export function DraggableSidebar(props: DraggableSidebarProps) {
     const currentChannelOrder = useRef<string[]>([]);
-    const channelSyncTimeout = useRef<NodeJS.Timeout>();
+    const channelSyncTimeout = useRef<NodeJS.Timeout | null>(null);
 
     const handleChannelReorder = useCallback((reorderedChannels: Channel[]) => {
         const channelIds = reorderedChannels.map(c => c._id);
@@ -311,12 +310,11 @@ export function DraggableSidebar(props: DraggableSidebarProps) {
     }, [props]);
 
     return (
-        <div className="space-y-1">
+        <div>
             <Reorder.Group
                 axis="y"
                 values={props.channels}
                 onReorder={handleChannelReorder}
-                className="space-y-1"
             >
                 {props.channels.map((channel) => (
                     <DraggableChannel

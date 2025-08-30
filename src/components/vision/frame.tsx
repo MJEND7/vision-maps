@@ -2,7 +2,6 @@ import {
   Background,
   BackgroundVariant,
   Controls,
-  MiniMap,
   ReactFlow,
   addEdge,
   applyEdgeChanges,
@@ -17,29 +16,28 @@ const initialNodes = [
 ];
 const initialEdges = [{ id: 'n1-n2', source: 'n1', target: 'n2' }];
 
-export default function FrameComponent({ id }: { id?: string }) {
+export default function FrameComponent() {
     const [nodes, setNodes] = useState(initialNodes);
     const [edges, setEdges] = useState(initialEdges);
-    const [title, setTitle] = useState<string | null>("Frame 1");
     
     // TODO fetch FRAME
 
     const onNodesChange = useCallback(
-        (changes) => setNodes((nodesSnapshot) => applyNodeChanges(changes, nodesSnapshot)),
+        (changes: any) => setNodes((nodesSnapshot) => applyNodeChanges(changes, nodesSnapshot)),
         [],
     );
     const onEdgesChange = useCallback(
-        (changes) => setEdges((edgesSnapshot) => applyEdgeChanges(changes, edgesSnapshot)),
+        (changes: any) => setEdges((edgesSnapshot) => applyEdgeChanges(changes, edgesSnapshot)),
         [],
     );
     const onConnect = useCallback(
-        (params) => setEdges((edgesSnapshot) => addEdge(params, edgesSnapshot)),
+        (params: any) => setEdges((edgesSnapshot) => addEdge(params, edgesSnapshot)),
         [],
     );
 
     return (
         <div className="w-full h-[93%] p-6">
-            <h2 className="text-xl font-semibold mb-4">{title}</h2>
+            <h2 className="text-xl font-semibold mb-4">Frame</h2>
             <ReactFlow
                 nodes={nodes}
                 edges={edges}

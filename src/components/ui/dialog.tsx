@@ -46,12 +46,12 @@ const DialogTrigger = ({
     if (asChild && React.isValidElement(children)) {
         return React.cloneElement(children, {
             ...props,
-            //@ts-expect-error
+            //@ts-expect-error - React cloneElement with dynamic props
             onClick: (e: React.MouseEvent) => {
                 onOpenChange(true)
-                //@ts-expect-error
+                //@ts-expect-error - Accessing props.onClick dynamically
                 if (children.props.onClick) {
-                    //@ts-expect-error
+                    //@ts-expect-error - Calling onClick from cloned element
                     children.props.onClick(e)
                 }
             }

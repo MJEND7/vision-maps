@@ -11,7 +11,7 @@ export const uploadThingFileRouter = {
       maxFileCount: 1,
     },
   })
-    .middleware(async ({ req }) => {
+    .middleware(async () => {
       try {
         const { userId } = await auth();
 
