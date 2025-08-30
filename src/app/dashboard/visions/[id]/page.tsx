@@ -234,6 +234,129 @@ export default function VisionDetailPage() {
         }
     }, [selectedTab, selectedTabStorageKey]);
 
+    // Tab cleanup callbacks (must be before early return to maintain hook order)
+    const handleChannelDeleted = useCallback((channelId: string) => {
+        // Close the channel tab if it exists
+        setTabs((currentTabs) => {
+            const newTabs = new Map(currentTabs);
+            newTabs.delete(channelId);
+            return newTabs;
+        });
+        
+        setTabOrder(prev => {
+            // Filter out the channel tab and any frame tabs that belong to this channel
+            const updatedOrder = prev.filter(tab => {
+                // Remove if it's the channel being deleted
+                if (tab.id === channelId) return false;
+                
+                // Remove if it's a frame that belongs to this channel
+                if (tab.type === ViewMode.FRAME && framesByChannel[channelId]?.some(frame => frame._id === tab.id)) {
+                    // Also remove from tabs Map
+                    setTabs(current => {
+                        const updated = new Map(current);
+                        updated.delete(tab.id);
+                        return updated;
+                    });
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            // Update selected tab if needed
+            if (selectedTab && (selectedTab.id === channelId || 
+                (selectedTab.type === ViewMode.FRAME && framesByChannel[channelId]?.some(frame => frame._id === selectedTab.id)))) {
+                if (updatedOrder.length > 0) {
+                    setSelectedTab(updatedOrder[updatedOrder.length - 1]);
+                } else {
+                    setSelectedTab(null);
+                }
+            }
+            
+            return updatedOrder;
+        });
+
+        // Remove the entire channel from framesByChannel to update sidebar
+        setFramesByChannel(prev => {
+            const updated = { ...prev };
+            delete updated[channelId];
+            return updated;
+        });
+
+        // Also remove from openChannels if it was open
+        setOpenChannels(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(channelId);
+            return newSet;
+        });
+    }, [selectedTab, framesByChannel]);
+
+    const handleFrameDeleted = useCallback((frameId: string) => {
+        // Remove from tabs
+        setTabs((currentTabs) => {
+            const newTabs = new Map(currentTabs);
+            newTabs.delete(frameId);
+            return newTabs;
+        });
+        
+        // Remove from tab order
+        setTabOrder(prev => {
+            const updatedOrder = prev.filter(tab => tab.id !== frameId);
+            
+            if (selectedTab?.id === frameId) {
+                if (updatedOrder.length > 0) {
+                    setSelectedTab(updatedOrder[updatedOrder.length - 1]);
+                } else {
+                    setSelectedTab(null);
+                }
+            }
+            
+            return updatedOrder;
+        });
+
+        // Remove from framesByChannel to update sidebar
+        setFramesByChannel(prev => {
+            const updated = { ...prev };
+            Object.keys(updated).forEach(channelId => {
+                updated[channelId] = updated[channelId].filter(frame => frame._id !== frameId);
+            });
+            return updated;
+        });
+    }, [selectedTab]);
+
+    const handleFramesDeleted = useCallback((frameIds: string[]) => {
+        // Remove from tabs
+        setTabs((currentTabs) => {
+            const newTabs = new Map(currentTabs);
+            frameIds.forEach(frameId => newTabs.delete(frameId));
+            return newTabs;
+        });
+        
+        // Remove from tab order
+        setTabOrder(prev => {
+            const updatedOrder = prev.filter(tab => !frameIds.includes(tab.id));
+            
+            if (selectedTab && frameIds.includes(selectedTab.id)) {
+                if (updatedOrder.length > 0) {
+                    setSelectedTab(updatedOrder[updatedOrder.length - 1]);
+                } else {
+                    setSelectedTab(null);
+                }
+            }
+            
+            return updatedOrder;
+        });
+
+        // Remove from framesByChannel to update sidebar
+        setFramesByChannel(prev => {
+            const updated = { ...prev };
+            Object.keys(updated).forEach(channelId => {
+                updated[channelId] = updated[channelId].filter(frame => !frameIds.includes(frame._id));
+            });
+            return updated;
+        });
+    }, [selectedTab]);
+
     if (!isLoaded || !isSignedIn) {
         return (
             null
@@ -247,7 +370,14 @@ export default function VisionDetailPage() {
             case ViewMode.FRAME:
                 return <FrameComponent id={selectedTab.id} />;
             case ViewMode.SETTINGS:
-                return <SettingsComponent id={selectedTab.id} />;
+                return (
+                    <SettingsComponent 
+                        id={selectedTab.id} 
+                        onChannelDeleted={handleChannelDeleted}
+                        onFrameDeleted={handleFrameDeleted}
+                        onFramesDeleted={handleFramesDeleted}
+                    />
+                );
             default:
                 return (
                     <p className="flex h-full w-full items-center justify-center text-center text-sm text-primary/70 bg-accent">
@@ -512,8 +642,8 @@ export default function VisionDetailPage() {
                                         className="flex justify-between items-center gap-1 p-1"
                                     >
                                         <button
-                                            className={`${selectedTab?.id && selectedTab?.id == channel._id ? "bg-accent" : ""} 
-                                            rounded-md text-xs text-muted-foreground flex items-center group hover:text-primary 
+                                            className={`${selectedTab?.id && selectedTab?.id == channel._id ? "bg-accent text-primary" : "group hover:text-primary text-muted-foreground"} 
+                                            rounded-md text-xs  flex items-center 
                                             transition-colors ease-in-out w-full text-left`}
                                         >
                                             <button
@@ -544,7 +674,7 @@ export default function VisionDetailPage() {
                                                 />
                                             ) : (
                                                 <button
-                                                    className="text-left w-full truncate p-1"
+                                                    className="text-left max-w-[190px] truncate p-1"
                                                     onClick={() => {
                                                         openTab(ViewMode.CHANNEL, channel._id, channel.title);
                                                     }}
@@ -568,7 +698,7 @@ export default function VisionDetailPage() {
                                     {openChannels.has(channel._id) && (
                                         <div className="ml-10 space-y-1">
                                             {framesByChannel[channel._id]?.map((frame) => (
-                                                <div key={frame._id} className={`${selectedTab?.id && selectedTab?.id == frame._id ? "bg-accent" : ""} p-1 rounded-md flex items-center`}>
+                                                <div key={frame._id} className={`${selectedTab?.id && selectedTab?.id == frame._id ? "bg-accent text-primary" : "text-muted-foreground/80 hover:text-primary"} p-1 rounded-md flex items-center`}>
                                                     {editingFrame === frame._id ? (
                                                         <input
                                                             type="text"
@@ -587,7 +717,7 @@ export default function VisionDetailPage() {
                                                         />
                                                     ) : (
                                                         <button
-                                                            className="text-xs text-muted-foreground/80 hover:text-primary transition-colors block w-full text-left"
+                                                            className="text-xs transition-colors block w-full text-left truncate"
                                                             onClick={() => openTab(ViewMode.FRAME, frame._id, frame.title)}
                                                             onDoubleClick={() => startEditingFrame(frame._id, frame.title)}
                                                         >

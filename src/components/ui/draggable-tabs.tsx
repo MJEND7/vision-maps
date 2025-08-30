@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, Reorder, useDragControls } from "motion/react";
+import { motion, Reorder, useDragControls, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import { useCallback } from "react";
 
@@ -47,10 +47,16 @@ function DraggableTab({
       dragControls={dragControls}
       className="relative"
       whileDrag={{ scale: 1.02, zIndex: 50 }}
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 20 }}
+      initial={{ width: 0, opacity: 0, x: -10 }}
+      animate={{ width: 180, opacity: 1, x: 0 }}
+      exit={{ 
+        width: 0, 
+        opacity: 0,
+        x: -10,
+        transition: { duration: 0.25, ease: "easeInOut" }
+      }}
       transition={{ duration: 0.2 }}
+      style={{ overflow: "hidden" }}
     >
       <motion.button
         onClick={onSelect}
@@ -63,11 +69,8 @@ function DraggableTab({
             ? 'bg-background z-10 shadow-sm' 
             : 'bg-muted/30 hover:bg-background/80'
           }
-          ${isSelected 
-            ? 'rounded-t-lg' 
-            : 'rounded-t-lg '
-          }
         `}
+        style={{ minWidth: "180px" }}
         whileHover={{ 
           y: isSelected ? 0 : -1,
           transition: { duration: 0.15 }
@@ -109,16 +112,18 @@ export function DraggableTabs({
         onReorder={TabReorderAction}
         className="flex gap-0"
       >
-        {tabs.map((tab) => (
-          <DraggableTab
-            key={tab.id}
-            tab={tab}
-            isSelected={selectedTab?.id === tab.id}
-            onSelect={() => TabSelectAction(tab)}
-            onRemove={() => TabRemoveAction(tab.id)}
-            renderTabIcon={renderTabIconAction}
-          />
-        ))}
+        <AnimatePresence mode="popLayout">
+          {tabs.map((tab) => (
+            <DraggableTab
+              key={tab.id}
+              tab={tab}
+              isSelected={selectedTab?.id === tab.id}
+              onSelect={() => TabSelectAction(tab)}
+              onRemove={() => TabRemoveAction(tab.id)}
+              renderTabIcon={renderTabIconAction}
+            />
+          ))}
+        </AnimatePresence>
       </Reorder.Group>
     </div>
   );

@@ -17,7 +17,19 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-export default function SettingsComponent({ id }: { id?: string }) {
+interface SettingsComponentProps {
+    id?: string;
+    onChannelDeleted?: (channelId: string) => void;
+    onFrameDeleted?: (frameId: string) => void;
+    onFramesDeleted?: (frameIds: string[]) => void;
+}
+
+export default function SettingsComponent({ 
+    id, 
+    onChannelDeleted, 
+    onFrameDeleted, 
+    onFramesDeleted 
+}: SettingsComponentProps) {
     const [searchTerm, setSearchTerm] = useState("");
     const [isEditing, setIsEditing] = useState(false);
     const [titleValue, setTitleValue] = useState("");
@@ -179,6 +191,10 @@ export default function SettingsComponent({ id }: { id?: string }) {
                 id: deleteChannelDialog.channel._id as Id<"channels">
             });
             toast.success(`Channel "${deleteChannelDialog.channel.title}" deleted successfully!`);
+            
+            // Close tabs for the deleted channel
+            onChannelDeleted?.(deleteChannelDialog.channel._id);
+            
             setDeleteChannelDialog({ isOpen: false, channel: null });
         } catch (error) {
             toast.error("Failed to delete channel: " + (error as Error).message);
@@ -216,10 +232,21 @@ export default function SettingsComponent({ id }: { id?: string }) {
 
     const confirmFramesDelete = async () => {
         try {
+            const frameIds = deleteFramesDialog.frames.map(f => f._id);
+            
             for (const frame of deleteFramesDialog.frames) {
                 await deleteFrame({ id: frame._id as Id<"frames"> });
             }
+            
             toast.success(`${deleteFramesDialog.frames.length} frame(s) deleted successfully!`);
+            
+            // Close tabs for deleted frames
+            if (frameIds.length === 1) {
+                onFrameDeleted?.(frameIds[0]);
+            } else {
+                onFramesDeleted?.(frameIds);
+            }
+            
             setSelectedFrames(new Set());
             setDeleteFramesDialog({ isOpen: false, frames: [] });
         } catch (error) {
@@ -269,9 +296,9 @@ export default function SettingsComponent({ id }: { id?: string }) {
     }
 
     return (
-        <div className="h-full flex flex-col">
+        <div className="h-[94%] overflow-scroll flex flex-col">
             {/* Vision Info Section */}
-            <div className="p-6 space-y-6 border-b">
+            <div className="p-4 space-y-4">
                 <h2 className="text-lg font-semibold">Settings</h2>
 
                 {/* Banner Upload */}
@@ -423,7 +450,7 @@ export default function SettingsComponent({ id }: { id?: string }) {
             {/* Tabbed Management Section */}
 
             {/* Tab Navigation */}
-            <div className="overflow-hidden p-4 space-y-2">
+            <div className=" p-4 space-y-2">
                 <div className="inline-flex gap-1 bg-muted p-1 rounded-lg w-auto">
                     <button
                         onClick={() => setActiveTab("users")}
