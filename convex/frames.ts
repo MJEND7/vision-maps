@@ -124,3 +124,20 @@ export const listByChannel = query({
     return frames;
   },
 });
+
+export const listByVision = query({
+  args: {
+    visionId: v.id("visions"),
+  },
+  handler: async (ctx, args) => {
+    await requireVisionAccess(ctx, args.visionId);
+
+    const frames = await ctx.db
+      .query("frames")
+      .withIndex("by_vision", (q) => q.eq("vision", args.visionId))
+      .order("desc")
+      .collect();
+
+    return frames;
+  },
+});

@@ -1,7 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireVisionAccess } from "./utils/auth";
-import { createDefaultFrame } from "./utils/frame";
 
 export const create = mutation({
   args: {
@@ -22,7 +21,7 @@ export const create = mutation({
       updatedAt: now,
     });
 
-    await createDefaultFrame(ctx, channelId, args.visionId);
+    //await createDefaultFrame(ctx, channelId, args.visionId);
 
     return channelId;
   },

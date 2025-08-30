@@ -182,6 +182,10 @@
         background-position: left top, left top, center;
     }
 
+        .inset-rounded { 
+            @apply [mask-image:radial-gradient(circle_20px_at_top_left,transparent_20px,black_21px)];
+        }
+
     button {
         @apply cursor-pointer;
     }

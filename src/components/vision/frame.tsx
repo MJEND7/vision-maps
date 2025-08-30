@@ -38,7 +38,7 @@ export default function FrameComponent({ id }: { id?: string }) {
     );
 
     return (
-        <div className="w-full h-full pb-6">
+        <div className="w-full h-[93%] p-6">
             <h2 className="text-xl font-semibold mb-4">{title}</h2>
             <ReactFlow
                 nodes={nodes}
