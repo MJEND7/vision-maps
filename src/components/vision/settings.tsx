@@ -305,7 +305,7 @@ export default function SettingsComponent({
                 <div className="space-y-3">
                     <label className="text-sm font-medium">Banner</label>
                     <div
-                        className="relative group border-2 border-dashed border-gray-300 rounded-xl hover:border-gray-400 transition-colors cursor-pointer"
+                        className="relative group border-2 border-dashed border-accent rounded-xl hover:border-gray-400 transition-colors cursor-pointer"
                         onClick={() => fileInputRef.current?.click()}
                     >
                         {vision.banner ? (
@@ -417,7 +417,7 @@ export default function SettingsComponent({
                             autoFocus
                         />
                     ) : (
-                        <div className="p-3 rounded-lg border bg-gray-50/50">
+                        <div className="px-3 py-2 rounded-lg border text-primary/80">
                             <span className="text-sm">{vision.title}</span>
                         </div>
                     )}
@@ -438,8 +438,8 @@ export default function SettingsComponent({
                             }}
                         />
                     ) : (
-                        <div className="p-3 rounded-lg border bg-gray-50/50 min-h-[80px] flex items-start">
-                            <span className="text-sm text-gray-700">
+                        <div className="px-3 py-2 rounded-lg border min-h-[80px] flex items-start">
+                            <span className="text-sm text-primary/80">
                                 {vision.description || "Add a description..."}
                             </span>
                         </div>
