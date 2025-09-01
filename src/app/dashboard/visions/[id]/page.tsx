@@ -435,7 +435,7 @@ export default function VisionDetailPage() {
     const renderContent = () => {
         switch (selectedTab?.type) {
             case ViewMode.CHANNEL:
-                return <Channel />;
+                return <Channel channelId={selectedTab.id} />;
             case ViewMode.FRAME:
                 return <FrameComponent />;
             case ViewMode.SETTINGS:

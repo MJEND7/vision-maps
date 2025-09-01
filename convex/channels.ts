@@ -1,6 +1,18 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireVisionAccess } from "./utils/auth";
+import { Doc, Id } from "./_generated/dataModel";
+
+export type NodeWithFrame = Doc<"nodes"> & {
+  frameTitle: string | null;
+};
+
+export type ChannelWithNodesResponse = {
+  channel: Doc<"channels">;
+  nodes: NodeWithFrame[];
+  isDone: boolean;
+  continueCursor: string | null;
+};
 
 export const create = mutation({
   args: {
@@ -30,8 +42,6 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
-
-    //await createDefaultFrame(ctx, channelId, args.visionId);
 
     return channelId;
   },
@@ -115,6 +125,61 @@ export const get = query({
     }
 
     return channel;
+  },
+});
+
+export const getWithNodes = query({
+  args: {
+    id: v.id("channels"),
+    paginationOpts: v.optional(v.object({
+      numItems: v.number(),
+      cursor: v.optional(v.string())
+    }))
+  },
+  handler: async (ctx, args) => {
+    const channel = await ctx.db.get(args.id);
+    if (!channel) {
+      throw new Error("Channel not found");
+    }
+
+    if (channel.vision) {
+      await requireVisionAccess(ctx, channel.vision);
+    }
+
+    // Query nodes in this channel, ordered by creation date (most recent first)
+    const nodesQuery = ctx.db
+      .query("nodes")
+      .withIndex("by_channel", (q) => q.eq("channel", args.id))
+      .order("desc");
+
+    // Apply pagination
+    const paginationResult = await nodesQuery.paginate({
+      numItems: args.paginationOpts?.numItems ?? 10,
+      cursor: args.paginationOpts?.cursor ?? null
+    });
+
+    // Fetch frame information for nodes that belong to frames
+    const nodesWithFrames = await Promise.all(
+      paginationResult.page.map(async (node) => {
+        let frameTitle = null;
+        if (node.frame) {
+          const frame = await ctx.db.get(node.frame as Id<"frames">);
+          frameTitle = frame?.title || null;
+        }
+        
+        return {
+          ...node,
+          frameTitle
+        };
+      })
+    );
+
+    return {
+      channel,
+      nodes: nodesWithFrames,
+      isDone: paginationResult.isDone,
+      continueCursor: paginationResult.continueCursor
+    };
   },
 });
 

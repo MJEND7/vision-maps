@@ -60,7 +60,7 @@ export default function SettingsComponent({
             if (uploadedFile && visionId) {
                 updateVision({
                     id: visionId,
-                    banner: uploadedFile.url,
+                    banner: uploadedFile.ufsUrl,
                 });
                 toast.success("Banner updated successfully!");
                 setIsUploading(false);
