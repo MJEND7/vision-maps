@@ -23,3 +23,14 @@ export function timeSinceFromDateString(date: Date | string): string {
     return `${hours}:${minutes} on ${day}/${month}/${year}`;
   }
 }
+
+export function formatDate(dateString?: string) {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString; // fallback if invalid
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}

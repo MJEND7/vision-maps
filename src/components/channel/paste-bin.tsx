@@ -8,6 +8,7 @@ import { FilePreview } from "./file-preview";
 import { useUploadThing } from "@/utils/uploadthing";
 import { X, FileText, Send } from "lucide-react";
 import Image from "next/image";
+import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LinkMetadata } from "./metadata";
 
 type MediaType = "image" | "audio" | "video" | "file" | "link";
 
@@ -23,12 +24,7 @@ interface MediaItem {
     customName?: string;
 }
 
-interface LinkMeta {
-    title?: string;
-    description?: string;
-    image?: string;
-    url: string;
-}
+interface LinkMeta extends LinkMetadata { }
 
 export default function PasteBin() {
     const [mediaItem, setMediaItem] = useState<MediaItem | null>(null);
@@ -57,24 +53,69 @@ export default function PasteBin() {
         return "file";
     };
 
+    const detectLinkType = (url: string): string => {
+        try {
+            const hostname = new URL(url).hostname.toLowerCase();
+
+            if (hostname.includes('github.com')) return 'GitHub';
+            if (hostname.includes('figma.com')) return 'Figma';
+            if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) return 'YouTube';
+            if (hostname.includes('notion.so') || hostname.includes('notion.com')) return 'Notion';
+            if (hostname.includes('twitter.com') || hostname.includes('x.com')) return 'Twitter';
+            if (hostname.includes('instagram.com')) return 'Instagram';
+            if (hostname.includes('tiktok.com')) return 'TikTok';
+            if (hostname.includes('spotify.com')) return 'Spotify';
+
+            return 'Link'; // Default to generic website
+        } catch (error) {
+            console.error('Error parsing URL:', url, error);
+            return 'Link';
+        }
+    };
+
     const fetchLinkMetadata = async (url: string): Promise<LinkMeta> => {
         try {
-            const response = await fetch(`https://api.linkpreview.net/?key=YOUR_API_KEY&q=${encodeURIComponent(url)}`);
+            const response = await fetch('/api/og', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ url }),
+            });
+
             const data = await response.json();
-            return {
-                title: data.title || new URL(url).hostname,
-                description: data.description || "",
-                image: data.image || "",
-                url
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'Failed to fetch metadata');
+            }
+
+            // Map backend platform types to frontend display types
+            const typeMapping: Record<string, string> = {
+                github: 'GitHub',
+                youtube: 'YouTube',
+                twitter: 'Twitter',
+                figma: 'Figma',
+                notion: 'Notion',
+                website: 'Link'
             };
-        } catch {
+
             return {
+                ...data.metadata,
+                type: typeMapping[data.platformType] || 'Link'
+            };
+        } catch (error) {
+            console.error('Error fetching metadata:', error);
+            const fallbackType = detectLinkType(url);
+            return {
+                type: fallbackType,
                 title: new URL(url).hostname,
                 description: "",
                 url
             };
         }
     };
+
+
 
     const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
         const clipboardData = e.clipboardData;
@@ -109,7 +150,7 @@ export default function PasteBin() {
 
     const handleLinkPaste = async (url: string) => {
         setMediaItem(null);
-        setLinkMeta({ url, title: "Loading..." });
+        setLinkMeta({ url, title: "Loading...", type: "" });
 
         const meta = await fetchLinkMetadata(url);
         setLinkMeta(meta);
@@ -198,165 +239,166 @@ export default function PasteBin() {
             <div className="relative">
                 {/* Floating helper / metadata container */}
                 <motion.div
-                    className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 flex items-end justify-center"
+                    className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 will-change-transform"
                     animate={{
                         width: linkMeta || mediaItem ? "100%" : isDragOver ? "100%" : "10rem",
-                        height: linkMeta || mediaItem ? "20rem" : isDragOver ? "8rem" : "2rem",
                         opacity: linkMeta || mediaItem ? 1 : isDragOver ? 1 : 0.8,
                     }}
                     transition={{
                         type: "spring",
                         stiffness: 300,
-                        damping: 30,
-                        mass: 0.8,
+                        damping: 35,
+                        mass: 0.9,
                     }}
                 >
                     <motion.div
-                        className="w-full h-full overflow-hidden rounded-xl shadow-md border border-accent bg-background flex flex-col"
+                        className="w-full overflow-hidden rounded-2xl shadow-md border border-accent bg-background backdrop-blur-sm"
                         animate={{
+                            height: linkMeta || mediaItem ? "auto" : isDragOver ? "8rem" : "2rem",
                             padding: linkMeta || mediaItem || isDragOver ? "0px" : "4px",
-                            alignItems: linkMeta || mediaItem || isDragOver ? "stretch" : "center",
-                            justifyContent: linkMeta || mediaItem || isDragOver ? "flex-start" : "center",
                             backgroundColor: isDragOver ? "hsl(var(--primary) / 0.05)" : "hsl(var(--background))",
                         }}
                         transition={{
                             type: "spring",
-                            stiffness: 400,
-                            damping: 25,
+                            stiffness: 280,
+                            damping: 30,
+                            mass: 1.0,
                         }}
+                        style={{ minHeight: linkMeta || mediaItem ? "auto" : isDragOver ? "8rem" : "2rem" }}
                     >
-                        <AnimatePresence mode="wait">
-                            {isDragOver ? (
-                                <motion.div
-                                    key="dragover"
-                                    className="p-8 text-center"
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.9 }}
-                                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                                >
-                                    <span className="text-sm text-muted-foreground">
-                                        Drop here to upload
-                                    </span>
-                                </motion.div>
-                            ) : !linkMeta && !mediaItem ? (
-                                <motion.span
-                                    key="helper"
-                                    className="text-[10px] text-muted-foreground font-medium flex items-center justify-center"
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
-                                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                                >
-                                    Press{" "}
-                                    <kbd className="px-1 py-0.5 mx-1 bg-accent rounded">Ctrl</kbd> +{" "}
-                                    <kbd className="px-1 py-0.5 mx-1 bg-accent rounded">V</kbd> to
-                                    paste
-                                </motion.span>
-                            ) : mediaItem ? (
-                                <motion.div
-                                    key="media"
-                                    className="p-3"
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -20 }}
-                                    transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.1 }}
-                                >
-                                    {mediaItem.isUploading && (
-                                        <div className="mb-2 text-xs text-muted-foreground">
-                                            Uploading...
-                                        </div>
-                                    )}
+                        <motion.div
+                            animate={{
+                                height: linkMeta || mediaItem ? "350px" : isDragOver ? "8rem" : "",
+                            }}
+                            transition={{
+                                type: "spring",
+                                stiffness: 280,
+                                damping: 30,
+                                mass: 1.0,
+                            }}
+                            className="flex flex-col items-center justify-center h-full">
+                            <AnimatePresence mode="wait">
+                                {isDragOver ? (
+                                    <motion.div
+                                        key="dragover"
+                                        className="flex items-center justify-center h-full p-4"
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.9 }}
+                                        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                                    >
+                                        <span className="text-sm text-muted-foreground">
+                                            Drop here to upload
+                                        </span>
+                                    </motion.div>
+                                ) : !linkMeta && !mediaItem ? (
+                                    <motion.div
+                                        key="helper"
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                                    >
+                                        <span className="text-[10px] text-muted-foreground font-medium flex items-center justify-center">
+                                            Press{" "}
+                                            <kbd className="px-1 py-0.5 mx-1 bg-accent rounded">Ctrl</kbd> +{" "}
+                                            <kbd className="px-1 py-0.5 mx-1 bg-accent rounded">V</kbd> to
+                                            paste
+                                        </span>
+                                    </motion.div>
+                                ) : mediaItem ? (
+                                    <motion.div
+                                        key="media"
+                                        className="w-full"
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -20 }}
+                                        transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.1 }}
+                                    >
+                                        <div className="p-6 space-y-4">
+                                            {mediaItem.isUploading && (
+                                                <div className="text-center">
+                                                    <div className="text-xs text-muted-foreground">
+                                                        Uploading...
+                                                    </div>
+                                                </div>
+                                            )}
 
-                                    {mediaItem.type === "image" && (
-                                        <div className="relative mb-3">
-                                            <Image
-                                                src={mediaItem.uploadedUrl || mediaItem.url!}
-                                                alt={mediaItem.fileName || "Pasted image"}
-                                                width={400}
-                                                height={200}
-                                                className="w-full h-48 object-cover rounded"
-                                            />
-                                        </div>
-                                    )}
+                                            <div className="flex justify-center items-center">
+                                                {mediaItem.type === "image" && (
+                                                    <div className="w-full max-w-sm mx-auto">
+                                                        <Image
+                                                            src={mediaItem.uploadedUrl || mediaItem.url!}
+                                                            alt={mediaItem.fileName || "Pasted image"}
+                                                            width={400}
+                                                            height={200}
+                                                            className="w-full h-48 object-cover rounded-lg"
+                                                        />
+                                                    </div>
+                                                )}
 
-                                    {mediaItem.type === "audio" && (
-                                        <div className="mb-3">
-                                            <AudioPlayer
-                                                src={mediaItem.uploadedUrl || mediaItem.url!}
-                                                title={mediaItem.customName || mediaItem.fileName}
-                                            />
-                                        </div>
-                                    )}
+                                                {mediaItem.type === "audio" && (
+                                                    <div className="w-full max-w-sm mx-auto">
+                                                        <AudioPlayer
+                                                            src={mediaItem.uploadedUrl || mediaItem.url!}
+                                                            title={mediaItem.customName || mediaItem.fileName}
+                                                        />
+                                                    </div>
+                                                )}
 
-                                    {mediaItem.type === "video" && (
-                                        <div className="mb-3">
-                                            <VideoPlayer
-                                                src={mediaItem.uploadedUrl || mediaItem.url!}
-                                                title={mediaItem.customName || mediaItem.fileName}
-                                            />
-                                        </div>
-                                    )}
+                                                {mediaItem.type === "video" && (
+                                                    <div className="w-full max-w-sm mx-auto">
+                                                        <VideoPlayer
+                                                            src={mediaItem.uploadedUrl || mediaItem.url!}
+                                                            title={mediaItem.customName || mediaItem.fileName}
+                                                        />
+                                                    </div>
+                                                )}
 
-                                    {mediaItem.type === "file" && (
-                                        <div className="mb-3">
-                                            <FilePreview
-                                                fileName={mediaItem.customName || mediaItem.fileName!}
-                                                fileSize={mediaItem.fileSize}
-                                                fileType={mediaItem.fileType}
-                                                downloadUrl={mediaItem.uploadedUrl}
-                                            />
-                                        </div>
-                                    )}
+                                                {mediaItem.type === "file" && (
+                                                    <div className="w-full max-w-sm mx-auto">
+                                                        <FilePreview
+                                                            fileName={mediaItem.customName || mediaItem.fileName!}
+                                                            fileSize={mediaItem.fileSize}
+                                                            fileType={mediaItem.fileType}
+                                                            downloadUrl={mediaItem.uploadedUrl}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
 
-                                    {shouldShowNameInput() && (
-                                        <div className="mb-3">
-                                            <Input
-                                                placeholder="Enter a name for this media..."
-                                                value={customName}
-                                                onChange={(e) => setCustomName(e.target.value)}
-                                                className="text-sm"
-                                            />
+                                            {shouldShowNameInput() && (
+                                                <div className="w-full max-w-sm mx-auto">
+                                                    <Input
+                                                        placeholder="Enter a name for this media..."
+                                                        value={customName}
+                                                        onChange={(e) => setCustomName(e.target.value)}
+                                                        className="text-sm"
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                </motion.div>
-                            ) : linkMeta ? (
-                                <motion.div
-                                    key="link"
-                                    className="p-3"
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -20 }}
-                                    transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.1 }}
-                                >
-                                    {linkMeta.image && (
-                                        <div className="mb-3">
-                                            <img
-                                                src={linkMeta.image}
-                                                alt={linkMeta.title}
-                                                className="w-full h-32 object-cover rounded"
-                                            />
+                                    </motion.div>
+                                ) : linkMeta ? (
+                                    <motion.div
+                                        key="link"
+                                        className="w-full"
+                                    >
+                                        <div className="px-5 flex justify-center">
+                                            <div className="w-full">
+                                                {linkMeta.type === 'GitHub' && <GitHubCard metadata={linkMeta} />}
+                                                {linkMeta.type === 'Figma' && <FigmaCard metadata={linkMeta} />}
+                                                {linkMeta.type === 'YouTube' && <YouTubeCard metadata={linkMeta} />}
+                                                {linkMeta.type === 'Twitter' && <TwitterCard metadata={linkMeta} />}
+                                                {linkMeta.type === 'Notion' && <NotionCard metadata={linkMeta} />}
+                                                {(linkMeta.type === 'Link' || !['GitHub', 'Figma', 'YouTube', 'Twitter', 'Notion'].includes(linkMeta.type)) &&
+                                                    <WebsiteCard metadata={linkMeta} />
+                                                }
+                                            </div>
                                         </div>
-                                    )}
-                                    <div className="flex-1">
-                                        <h3 className="font-semibold text-foreground">{linkMeta.title}</h3>
-                                        {linkMeta.description && (
-                                            <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                                                {linkMeta.description}
-                                            </p>
-                                        )}
-                                        <a
-                                            href={linkMeta.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-xs text-blue-500 hover:underline mt-2 inline-block"
-                                        >
-                                            {linkMeta.url}
-                                        </a>
-                                    </div>
-                                </motion.div>
-                            ) : null}
-                        </AnimatePresence>
+                                    </motion.div>
+                                ) : null}
+                            </AnimatePresence>
+                        </motion.div>
                     </motion.div>
                 </motion.div>
 
@@ -366,7 +408,7 @@ export default function PasteBin() {
                         {mediaItem || linkMeta ? (
                             <motion.div
                                 key="controls"
-                                className="h-11 flex items-center justify-between bg-background border rounded-full px-3 py-2"
+                                className="h-11 flex items-center justify-between bg-background border shadow-sm hover:shadow-lg transition-all ease-in-out rounded-full px-3 py-2"
                             >
                                 <motion.span
                                     className="text-sm text-muted-foreground truncate flex-1 mr-3"
