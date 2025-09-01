@@ -55,7 +55,7 @@ export default function SettingsComponent({
     const deleteChannel = useMutation(api.channels.remove);
     const deleteFrame = useMutation(api.frames.remove);
 
-    const { startUpload } = useUploadThing("imageUploader", {
+    const { startUpload } = useUploadThing("mediaUploader", {
         onClientUploadComplete: (res) => {
             const uploadedFile = res[0];
             if (uploadedFile && visionId) {
