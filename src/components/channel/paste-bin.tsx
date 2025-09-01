@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
@@ -8,7 +8,7 @@ import { FilePreview } from "./file-preview";
 import { useUploadThing } from "@/utils/uploadthing";
 import { X, FileText, Send } from "lucide-react";
 import Image from "next/image";
-import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LinkMetadata } from "./metadata";
+import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, SkeletonCard, LinkMetadata } from "./metadata";
 
 type MediaType = "image" | "audio" | "video" | "file" | "link";
 
@@ -29,9 +29,96 @@ interface LinkMeta extends LinkMetadata { }
 export default function PasteBin() {
     const [mediaItem, setMediaItem] = useState<MediaItem | null>(null);
     const [linkMeta, setLinkMeta] = useState<LinkMeta | null>(null);
+    const [isLoadingLinkMeta, setIsLoadingLinkMeta] = useState(false);
     const [isDragOver, setIsDragOver] = useState(false);
     const [customName, setCustomName] = useState("");
+    const [imageLoaded, setImageLoaded] = useState(false);
+    const [inputValue, setInputValue] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Load saved data from localStorage on mount
+    useEffect(() => {
+        const savedInputValue = localStorage.getItem('paste-bin-input');
+        if (savedInputValue) {
+            setInputValue(savedInputValue);
+        }
+
+        // Load saved media/link data
+        const savedMediaItem = localStorage.getItem('paste-bin-media');
+        const savedLinkMeta = localStorage.getItem('paste-bin-link-meta');
+        const savedCustomName = localStorage.getItem('paste-bin-custom-name');
+
+        if (savedMediaItem) {
+            try {
+                const parsedMedia = JSON.parse(savedMediaItem);
+                // Don't restore File objects as they can't be serialized
+                if (parsedMedia.type !== 'file' || parsedMedia.uploadedUrl) {
+                    setMediaItem(parsedMedia);
+                    if (parsedMedia.type === 'image') {
+                        setImageLoaded(true); // Assume previously loaded images are ready
+                    }
+                }
+            } catch (error) {
+                console.error('Error parsing saved media:', error);
+                localStorage.removeItem('paste-bin-media');
+            }
+        }
+
+        if (savedLinkMeta) {
+            try {
+                const parsedLinkMeta = JSON.parse(savedLinkMeta);
+                setLinkMeta(parsedLinkMeta);
+            } catch (error) {
+                console.error('Error parsing saved link meta:', error);
+                localStorage.removeItem('paste-bin-link-meta');
+            }
+        }
+
+        if (savedCustomName) {
+            setCustomName(savedCustomName);
+        }
+    }, []);
+
+    // Save input value to localStorage when it changes
+    useEffect(() => {
+        if (inputValue) {
+            localStorage.setItem('paste-bin-input', inputValue);
+        } else {
+            localStorage.removeItem('paste-bin-input');
+        }
+    }, [inputValue]);
+
+    // Save media item to localStorage when it changes
+    useEffect(() => {
+        if (mediaItem) {
+            // Create a serializable version without File object
+            const serializableMediaItem = {
+                ...mediaItem,
+                file: undefined, // Remove File object as it can't be serialized
+            };
+            localStorage.setItem('paste-bin-media', JSON.stringify(serializableMediaItem));
+        } else {
+            localStorage.removeItem('paste-bin-media');
+        }
+    }, [mediaItem]);
+
+    // Save link meta to localStorage when it changes
+    useEffect(() => {
+        if (linkMeta) {
+            localStorage.setItem('paste-bin-link-meta', JSON.stringify(linkMeta));
+        } else {
+            localStorage.removeItem('paste-bin-link-meta');
+        }
+    }, [linkMeta]);
+
+    // Save custom name to localStorage when it changes
+    useEffect(() => {
+        if (customName) {
+            localStorage.setItem('paste-bin-custom-name', customName);
+        } else {
+            localStorage.removeItem('paste-bin-custom-name');
+        }
+    }, [customName]);
 
     const { startUpload, isUploading } = useUploadThing("mediaUploader", {
         onClientUploadComplete: (res) => {
@@ -126,6 +213,27 @@ export default function PasteBin() {
             handleFileSelect(files[0]);
         } else if (text && (text.startsWith("http://") || text.startsWith("https://"))) {
             handleLinkPaste(text);
+            setInputValue("");  // Clear input after pasting link
+        }
+    };
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setInputValue(value);
+        
+        // Auto-detect and handle URLs when user types/pastes
+        if (value && (value.startsWith("http://") || value.startsWith("https://"))) {
+            handleLinkPaste(value);
+            setInputValue("");  // Clear input after processing link
+        }
+    };
+
+    const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && inputValue) {
+            if (inputValue.startsWith("http://") || inputValue.startsWith("https://")) {
+                handleLinkPaste(inputValue);
+                setInputValue("");
+            }
         }
     };
 
@@ -146,14 +254,22 @@ export default function PasteBin() {
         setMediaItem(newMediaItem);
         setLinkMeta(null);
         setCustomName("");
+        setImageLoaded(false);
     };
 
     const handleLinkPaste = async (url: string) => {
         setMediaItem(null);
-        setLinkMeta({ url, title: "Loading...", type: "" });
+        setLinkMeta(null);
+        setIsLoadingLinkMeta(true);
 
-        const meta = await fetchLinkMetadata(url);
-        setLinkMeta(meta);
+        try {
+            const meta = await fetchLinkMetadata(url);
+            setLinkMeta(meta);
+        } catch (error) {
+            console.error('Failed to fetch link metadata:', error);
+        } finally {
+            setIsLoadingLinkMeta(false);
+        }
     };
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -179,7 +295,17 @@ export default function PasteBin() {
     const clearMedia = () => {
         setMediaItem(null);
         setLinkMeta(null);
+        setIsLoadingLinkMeta(false);
         setCustomName("");
+        setImageLoaded(false);
+        setInputValue("");
+        
+        // Clear all localStorage data
+        localStorage.removeItem('paste-bin-media');
+        localStorage.removeItem('paste-bin-link-meta');
+        localStorage.removeItem('paste-bin-custom-name');
+        localStorage.removeItem('paste-bin-input');
+        
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
@@ -204,6 +330,7 @@ export default function PasteBin() {
             console.log("Creating link:", linkMeta);
         }
 
+        // Clear all data and localStorage after successful creation
         clearMedia();
     };
 
@@ -212,7 +339,7 @@ export default function PasteBin() {
             const finalName = customName.trim() || mediaItem.fileName;
             return !!finalName && !mediaItem.isUploading;
         }
-        return !!linkMeta;
+        return !!linkMeta && !isLoadingLinkMeta;
     };
 
     const getDisplayName = () => {
@@ -221,6 +348,9 @@ export default function PasteBin() {
         }
         if (linkMeta) {
             return linkMeta.title || "Unnamed link";
+        }
+        if (isLoadingLinkMeta) {
+            return "Loading metadata...";
         }
         return "";
     };
@@ -241,8 +371,8 @@ export default function PasteBin() {
                 <motion.div
                     className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 will-change-transform"
                     animate={{
-                        width: linkMeta || mediaItem ? "100%" : isDragOver ? "100%" : "10rem",
-                        opacity: linkMeta || mediaItem ? 1 : isDragOver ? 1 : 0.8,
+                        width: linkMeta || mediaItem || isLoadingLinkMeta ? "100%" : isDragOver ? "100%" : "10rem",
+                        opacity: linkMeta || mediaItem || isLoadingLinkMeta ? 1 : isDragOver ? 1 : 0.8,
                     }}
                     transition={{
                         type: "spring",
@@ -254,8 +384,8 @@ export default function PasteBin() {
                     <motion.div
                         className="w-full overflow-hidden rounded-2xl shadow-md border border-accent bg-background backdrop-blur-sm"
                         animate={{
-                            height: linkMeta || mediaItem ? "auto" : isDragOver ? "8rem" : "2rem",
-                            padding: linkMeta || mediaItem || isDragOver ? "0px" : "4px",
+                            height: linkMeta || mediaItem || isLoadingLinkMeta ? "auto" : isDragOver ? "8rem" : "2rem",
+                            padding: linkMeta || mediaItem || isLoadingLinkMeta || isDragOver ? "0px" : "4px",
                             backgroundColor: isDragOver ? "hsl(var(--primary) / 0.05)" : "hsl(var(--background))",
                         }}
                         transition={{
@@ -264,24 +394,14 @@ export default function PasteBin() {
                             damping: 30,
                             mass: 1.0,
                         }}
-                        style={{ minHeight: linkMeta || mediaItem ? "auto" : isDragOver ? "8rem" : "2rem" }}
+                        style={{ minHeight: linkMeta || mediaItem || isLoadingLinkMeta ? "auto" : isDragOver ? "8rem" : "2rem" }}
                     >
-                        <motion.div
-                            animate={{
-                                height: linkMeta || mediaItem ? "350px" : isDragOver ? "8rem" : "",
-                            }}
-                            transition={{
-                                type: "spring",
-                                stiffness: 280,
-                                damping: 30,
-                                mass: 1.0,
-                            }}
-                            className="flex flex-col items-center justify-center h-full">
+                        <div className="relative flex flex-col items-center justify-center min-h-full">
                             <AnimatePresence mode="wait">
-                                {isDragOver ? (
+                                {isDragOver && (
                                     <motion.div
                                         key="dragover"
-                                        className="flex items-center justify-center h-full p-4"
+                                        className="absolute inset-0 flex items-center justify-center p-4"
                                         initial={{ opacity: 0, scale: 0.9 }}
                                         animate={{ opacity: 1, scale: 1 }}
                                         exit={{ opacity: 0, scale: 0.9 }}
@@ -291,11 +411,15 @@ export default function PasteBin() {
                                             Drop here to upload
                                         </span>
                                     </motion.div>
-                                ) : !linkMeta && !mediaItem ? (
+                                )}
+
+                                {!linkMeta && !mediaItem && !isLoadingLinkMeta && !isDragOver && (
                                     <motion.div
                                         key="helper"
-                                        initial={{ opacity: 0, y: -10 }}
+                                        className="absolute inset-0 flex items-center justify-center"
+                                        initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
                                         transition={{ type: "spring", stiffness: 400, damping: 25 }}
                                     >
                                         <span className="text-[10px] text-muted-foreground font-medium flex items-center justify-center">
@@ -305,85 +429,160 @@ export default function PasteBin() {
                                             paste
                                         </span>
                                     </motion.div>
-                                ) : mediaItem ? (
+                                )}
+
+                                {mediaItem && (
                                     <motion.div
                                         key="media"
-                                        className="w-full"
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -20 }}
-                                        transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.1 }}
+                                        className="w-full overflow-hidden"
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ 
+                                            height: (mediaItem.type === "image" && !imageLoaded) ? 0 : "auto", 
+                                            opacity: (mediaItem.type === "image" && !imageLoaded) ? 0 : 1 
+                                        }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{
+                                            type: "spring",
+                                            stiffness: 280,
+                                            damping: 30,
+                                            mass: 1.0,
+                                        }}
                                     >
-                                        <div className="p-6 space-y-4">
-                                            {mediaItem.isUploading && (
-                                                <div className="text-center">
-                                                    <div className="text-xs text-muted-foreground">
-                                                        Uploading...
-                                                    </div>
+                                        <motion.div
+                                            className="p-4 space-y-4"
+                                            initial={{ y: 20, scale: 0.95 }}
+                                            animate={{ y: 0, scale: 1 }}
+                                            exit={{ y: -20, scale: 0.95 }}
+                                            transition={{
+                                                type: "spring",
+                                                stiffness: 300,
+                                                damping: 25,
+                                                delay: 0.1
+                                            }}
+                                        >
+                                        {mediaItem.isUploading && (
+                                            <div className="text-center">
+                                                <div className="text-xs text-muted-foreground">
+                                                    Uploading...
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="flex justify-center items-center">
+                                            {mediaItem.type === "image" && (
+                                                <div className="w-full max-w-sm mx-auto">
+                                                    <Image
+                                                        src={mediaItem.uploadedUrl || mediaItem.url!}
+                                                        alt={mediaItem.fileName || "Pasted image"}
+                                                        width={0}
+                                                        height={0}
+                                                        className="w-full h-full object-cover rounded-lg"
+                                                        onLoad={() => setImageLoaded(true)}
+                                                        onError={() => setImageLoaded(true)}
+                                                    />
                                                 </div>
                                             )}
 
-                                            <div className="flex justify-center items-center">
-                                                {mediaItem.type === "image" && (
-                                                    <div className="w-full max-w-sm mx-auto">
-                                                        <Image
-                                                            src={mediaItem.uploadedUrl || mediaItem.url!}
-                                                            alt={mediaItem.fileName || "Pasted image"}
-                                                            width={400}
-                                                            height={200}
-                                                            className="w-full h-48 object-cover rounded-lg"
-                                                        />
-                                                    </div>
-                                                )}
-
-                                                {mediaItem.type === "audio" && (
-                                                    <div className="w-full max-w-sm mx-auto">
-                                                        <AudioPlayer
-                                                            src={mediaItem.uploadedUrl || mediaItem.url!}
-                                                            title={mediaItem.customName || mediaItem.fileName}
-                                                        />
-                                                    </div>
-                                                )}
-
-                                                {mediaItem.type === "video" && (
-                                                    <div className="w-full max-w-sm mx-auto">
-                                                        <VideoPlayer
-                                                            src={mediaItem.uploadedUrl || mediaItem.url!}
-                                                            title={mediaItem.customName || mediaItem.fileName}
-                                                        />
-                                                    </div>
-                                                )}
-
-                                                {mediaItem.type === "file" && (
-                                                    <div className="w-full max-w-sm mx-auto">
-                                                        <FilePreview
-                                                            fileName={mediaItem.customName || mediaItem.fileName!}
-                                                            fileSize={mediaItem.fileSize}
-                                                            fileType={mediaItem.fileType}
-                                                            downloadUrl={mediaItem.uploadedUrl}
-                                                        />
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {shouldShowNameInput() && (
+                                            {mediaItem.type === "audio" && (
                                                 <div className="w-full max-w-sm mx-auto">
-                                                    <Input
-                                                        placeholder="Enter a name for this media..."
-                                                        value={customName}
-                                                        onChange={(e) => setCustomName(e.target.value)}
-                                                        className="text-sm"
+                                                    <AudioPlayer
+                                                        src={mediaItem.uploadedUrl || mediaItem.url!}
+                                                        title={mediaItem.customName || mediaItem.fileName}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {mediaItem.type === "video" && (
+                                                <div className="w-full max-w-sm mx-auto">
+                                                    <VideoPlayer
+                                                        src={mediaItem.uploadedUrl || mediaItem.url!}
+                                                        title={mediaItem.customName || mediaItem.fileName}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {mediaItem.type === "file" && (
+                                                <div className="w-full max-w-sm mx-auto">
+                                                    <FilePreview
+                                                        fileName={mediaItem.customName || mediaItem.fileName!}
+                                                        fileSize={mediaItem.fileSize}
+                                                        fileType={mediaItem.fileType}
+                                                        downloadUrl={mediaItem.uploadedUrl}
                                                     />
                                                 </div>
                                             )}
                                         </div>
+
+                                        {shouldShowNameInput() && (
+                                            <div className="w-full max-w-sm mx-auto">
+                                                <Input
+                                                    placeholder="Enter a name for this media..."
+                                                    value={customName}
+                                                    onChange={(e) => setCustomName(e.target.value)}
+                                                    className="text-sm"
+                                                />
+                                            </div>
+                                        )}
+                                        </motion.div>
                                     </motion.div>
-                                ) : linkMeta ? (
+                                )}
+
+                                {isLoadingLinkMeta && (
+                                    <motion.div
+                                        key="loading"
+                                        className="w-full overflow-hidden"
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        transition={{
+                                            type: "spring",
+                                            stiffness: 280,
+                                            damping: 30,
+                                            mass: 1.0,
+                                        }}
+                                    >
+                                        <motion.div
+                                            className="p-4 flex justify-center"
+                                            initial={{ y: 20, scale: 0.95 }}
+                                            animate={{ y: 0, scale: 1 }}
+                                            transition={{
+                                                type: "spring",
+                                                stiffness: 300,
+                                                damping: 25,
+                                                delay: 0.1
+                                            }}
+                                        >
+                                            <div className="w-full max-w-sm">
+                                                <SkeletonCard />
+                                            </div>
+                                        </motion.div>
+                                    </motion.div>
+                                )}
+
+                                {linkMeta && (
                                     <motion.div
                                         key="link"
-                                        className="w-full"
+                                        className="w-full overflow-hidden"
+                                        initial={{ height: "auto", opacity: 1 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{
+                                            type: "spring",
+                                            stiffness: 280,
+                                            damping: 30,
+                                            mass: 1.0,
+                                        }}
                                     >
-                                        <div className="px-5 flex justify-center">
+                                        <motion.div
+                                            className="p-4 flex justify-center"
+                                            initial={{ y: 20, scale: 0.95 }}
+                                            animate={{ y: 0, scale: 1 }}
+                                            exit={{ y: -20, scale: 0.95 }}
+                                            transition={{
+                                                type: "spring",
+                                                stiffness: 300,
+                                                damping: 25,
+                                            }}
+                                        >
                                             <div className="w-full">
                                                 {linkMeta.type === 'GitHub' && <GitHubCard metadata={linkMeta} />}
                                                 {linkMeta.type === 'Figma' && <FigmaCard metadata={linkMeta} />}
@@ -394,18 +593,18 @@ export default function PasteBin() {
                                                     <WebsiteCard metadata={linkMeta} />
                                                 }
                                             </div>
-                                        </div>
+                                        </motion.div>
                                     </motion.div>
-                                ) : null}
+                                )}
                             </AnimatePresence>
-                        </motion.div>
+                        </div>
                     </motion.div>
                 </motion.div>
 
                 {/* Input/Controls at bottom */}
                 <div className="relative h-11">
                     <AnimatePresence mode="wait">
-                        {mediaItem || linkMeta ? (
+                        {mediaItem || linkMeta || isLoadingLinkMeta ? (
                             <motion.div
                                 key="controls"
                                 className="h-11 flex items-center justify-between bg-background border shadow-sm hover:shadow-lg transition-all ease-in-out rounded-full px-3 py-2"
@@ -457,6 +656,9 @@ export default function PasteBin() {
                                     <Input
                                         className="h-11 pr-16 rounded-full shadow-sm hover:shadow-lg transition-all duration-200"
                                         placeholder="Paste Media / Ctrl + V"
+                                        value={inputValue}
+                                        onChange={handleInputChange}
+                                        onKeyDown={handleInputKeyDown}
                                         onPaste={handlePaste}
                                     />
                                     <Button

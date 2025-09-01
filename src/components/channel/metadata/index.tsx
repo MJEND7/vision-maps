@@ -5,6 +5,7 @@ export { YouTubeCard } from './youtube-card';
 export { TwitterCard } from './twitter-card';
 export { NotionCard } from './notion-card';
 export { WebsiteCard } from './website-card';
+export { SkeletonCard } from './skeleton-card';
 
 // Define the unified metadata type
 export interface LinkMetadata {
