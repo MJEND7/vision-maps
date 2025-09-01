@@ -15,6 +15,7 @@ import { api } from '../../../../../convex/_generated/api';
 import { Id } from '../../../../../convex/_generated/dataModel';
 import { Vision } from '../../../../../convex/tables/visions';
 import SettingsComponent from '@/components/vision/settings';
+import { NodeUserCacheProvider } from '@/hooks/useUserCache';
 
 enum ViewMode {
     CHANNEL = "channel",
@@ -700,13 +701,14 @@ export default function VisionDetailPage() {
     };
 
     return (
-        <main className="h-screen flex">
-            {/* Left bar */}
-            <div className="h-full flex flex-col gap-2 justify-between">
-                <div
-                    className="h-full w-[280px] bg-card border border-border space-y-2"
-                >
-                    <TitleCard
+        <NodeUserCacheProvider visionId={visionId}>
+            <main className="h-screen flex">
+                {/* Left bar */}
+                <div className="h-full flex flex-col gap-2 justify-between">
+                    <div
+                        className="h-full w-[280px] bg-card border border-border space-y-2"
+                    >
+                        <TitleCard
                         OpenSettings={(id) => {
                             openTab(ViewMode.SETTINGS, id, ViewMode.SETTINGS)
                         }}
@@ -803,5 +805,6 @@ export default function VisionDetailPage() {
                 </div>
             </div>
         </main>
+        </NodeUserCacheProvider>
     );
 }

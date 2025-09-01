@@ -1,11 +1,12 @@
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Search, Filter } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MultiUserSelector } from "@/components/ui/multi-user-selector"
+import { useNodeUserCache } from "@/hooks/useUserCache"
 
 const NODE_VARIANTS = [
     { value: "Image", label: "Image" },
@@ -21,13 +22,6 @@ const NODE_VARIANTS = [
     { value: "AI", label: "AI" },
 ] as const;
 
-type UserData = {
-  _id: Id<"users">
-  name: string
-  email?: string
-  profileImage?: string
-}
-
 export default function Channel({ channelId }: { channelId: string }) {
     const [searchQuery, setSearchQuery] = useState("")
     const [debouncedSearch, setDebouncedSearch] = useState("")
@@ -39,10 +33,6 @@ export default function Channel({ channelId }: { channelId: string }) {
     const [isEditingDescription, setIsEditingDescription] = useState(false)
     const [titleValue, setTitleValue] = useState("")
     const [descriptionValue, setDescriptionValue] = useState("")
-
-    // User cache map
-    const [userCache, setUserCache] = useState<Map<Id<"users">, UserData>>(new Map())
-    const [fetchingUsers, setFetchingUsers] = useState<Set<Id<"users">>>(new Set())
 
     const titleRef = useRef<HTMLInputElement>(null)
     const descriptionRef = useRef<HTMLTextAreaElement>(null)
@@ -67,28 +57,8 @@ export default function Channel({ channelId }: { channelId: string }) {
     const updateChannel = useMutation(api.channels.update)
     const isLoading = data == undefined
 
-    // Get unique user IDs from current nodes
-    const uniqueUserIds = data?.nodes ? [...new Set(data.nodes.map(node => node.userId))] : []
-
-    // Fetch user data for each unique user ID using individual queries
-    const userQueries = uniqueUserIds.map(userId => ({
-        userId,
-        userData: useQuery(api.channels.getUser, userCache.has(userId) ? "skip" : { userId })
-    }))
-
-    // Update user cache when queries complete
-    useEffect(() => {
-        userQueries.forEach(({ userId, userData }) => {
-            if (userData && !userCache.has(userId)) {
-                setUserCache(prev => new Map([...prev, [userId, userData]]))
-            }
-        })
-    }, [userQueries.map(q => q.userData).join(','), userCache])
-
-    // Get user data for a node
-    const getUserForNode = (userId: Id<"users">) => {
-        return userCache.get(userId) || null
-    }
+    // Get the getUserForNode function from the node user cache hook
+    const { getUserForNode } = useNodeUserCache()
 
     useEffect(() => {
         if (data?.channel) {
