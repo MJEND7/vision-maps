@@ -9,6 +9,7 @@ import { useUploadThing } from "@/utils/uploadthing";
 import { X, FileText, Send } from "lucide-react";
 import Image from "next/image";
 import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, SkeletonCard, LinkMetadata } from "./metadata";
+import { TweetSkeleton } from 'react-tweet';
 
 type MediaType = "image" | "audio" | "video" | "file" | "link";
 
@@ -30,6 +31,7 @@ export default function PasteBin() {
     const [mediaItem, setMediaItem] = useState<MediaItem | null>(null);
     const [linkMeta, setLinkMeta] = useState<LinkMeta | null>(null);
     const [isLoadingLinkMeta, setIsLoadingLinkMeta] = useState(false);
+    const [isLoadingTwitter, setIsLoadingTwitter] = useState(false);
     const [isDragOver, setIsDragOver] = useState(false);
     const [customName, setCustomName] = useState("");
     const [imageLoaded, setImageLoaded] = useState(false);
@@ -257,9 +259,35 @@ export default function PasteBin() {
         setImageLoaded(false);
     };
 
+    const isTwitterUrl = (url: string): boolean => {
+        try {
+            const urlObj = new URL(url);
+            const hostname = urlObj.hostname.toLowerCase();
+            return hostname.includes('twitter.com') || hostname.includes('x.com');
+        } catch {
+            return false;
+        }
+    };
+
     const handleLinkPaste = async (url: string) => {
         setMediaItem(null);
         setLinkMeta(null);
+        
+        // Skip API call for Twitter URLs - let react-tweet handle it directly
+        if (isTwitterUrl(url)) {
+            setIsLoadingTwitter(true);
+            // Small delay to show the TweetSkeleton briefly
+            setTimeout(() => {
+                setLinkMeta({
+                    type: 'Twitter',
+                    title: 'Twitter Post',
+                    url: url
+                });
+                setIsLoadingTwitter(false);
+            }, 500);
+            return;
+        }
+
         setIsLoadingLinkMeta(true);
 
         try {
@@ -296,6 +324,7 @@ export default function PasteBin() {
         setMediaItem(null);
         setLinkMeta(null);
         setIsLoadingLinkMeta(false);
+        setIsLoadingTwitter(false);
         setCustomName("");
         setImageLoaded(false);
         setInputValue("");
@@ -371,8 +400,8 @@ export default function PasteBin() {
                 <motion.div
                     className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 will-change-transform"
                     animate={{
-                        width: linkMeta || mediaItem || isLoadingLinkMeta ? "100%" : isDragOver ? "100%" : "10rem",
-                        opacity: linkMeta || mediaItem || isLoadingLinkMeta ? 1 : isDragOver ? 1 : 0.8,
+                        width: linkMeta || mediaItem || isLoadingLinkMeta || isLoadingTwitter ? "100%" : isDragOver ? "100%" : "10rem",
+                        opacity: linkMeta || mediaItem || isLoadingLinkMeta || isLoadingTwitter ? 1 : isDragOver ? 1 : 0.8,
                     }}
                     transition={{
                         type: "spring",
@@ -384,8 +413,8 @@ export default function PasteBin() {
                     <motion.div
                         className="w-full overflow-hidden rounded-2xl shadow-md border border-accent bg-background backdrop-blur-sm"
                         animate={{
-                            height: linkMeta || mediaItem || isLoadingLinkMeta ? "auto" : isDragOver ? "8rem" : "2rem",
-                            padding: linkMeta || mediaItem || isLoadingLinkMeta || isDragOver ? "0px" : "4px",
+                            height: linkMeta || mediaItem || isLoadingLinkMeta || isLoadingTwitter ? "auto" : isDragOver ? "8rem" : "2rem",
+                            padding: linkMeta || mediaItem || isLoadingLinkMeta || isLoadingTwitter || isDragOver ? "0px" : "4px",
                             backgroundColor: isDragOver ? "hsl(var(--primary) / 0.05)" : "hsl(var(--background))",
                         }}
                         transition={{
@@ -394,7 +423,7 @@ export default function PasteBin() {
                             damping: 30,
                             mass: 1.0,
                         }}
-                        style={{ minHeight: linkMeta || mediaItem || isLoadingLinkMeta ? "auto" : isDragOver ? "8rem" : "2rem" }}
+                        style={{ minHeight: linkMeta || mediaItem || isLoadingLinkMeta || isLoadingTwitter ? "auto" : isDragOver ? "8rem" : "2rem" }}
                     >
                         <div className="relative flex flex-col items-center justify-center min-h-full">
                             <AnimatePresence mode="wait">
@@ -413,7 +442,7 @@ export default function PasteBin() {
                                     </motion.div>
                                 )}
 
-                                {!linkMeta && !mediaItem && !isLoadingLinkMeta && !isDragOver && (
+                                {!linkMeta && !mediaItem && !isLoadingLinkMeta && !isLoadingTwitter && !isDragOver && (
                                     <motion.div
                                         key="helper"
                                         className="absolute inset-0 flex items-center justify-center"
@@ -553,6 +582,37 @@ export default function PasteBin() {
                                         >
                                             <div className="w-full max-w-sm">
                                                 <SkeletonCard />
+                                            </div>
+                                        </motion.div>
+                                    </motion.div>
+                                )}
+
+                                {isLoadingTwitter && (
+                                    <motion.div
+                                        key="twitter-loading"
+                                        className="w-full overflow-hidden"
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        transition={{
+                                            type: "spring",
+                                            stiffness: 280,
+                                            damping: 30,
+                                            mass: 1.0,
+                                        }}
+                                    >
+                                        <motion.div
+                                            className="p-4 flex justify-center"
+                                            initial={{ y: 20, scale: 0.95 }}
+                                            animate={{ y: 0, scale: 1 }}
+                                            transition={{
+                                                type: "spring",
+                                                stiffness: 300,
+                                                damping: 25,
+                                                delay: 0.1
+                                            }}
+                                        >
+                                            <div className="w-full">
+                                                <TweetSkeleton />
                                             </div>
                                         </motion.div>
                                     </motion.div>

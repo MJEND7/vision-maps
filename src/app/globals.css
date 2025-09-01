@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import '@clerk/themes/shadcn.css';
+@import 'react-tweet/theme.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -294,6 +295,16 @@
 
     .scrollbar-hide::-webkit-scrollbar {
         display: none;
+    }
+
+    /* React Tweet customizations */
+    .react-tweet-theme {
+        @apply rounded-lg overflow-hidden;
+    }
+    
+    /* Override tweet container styles to match our design */
+    [data-theme] .react-tweet {
+        @apply max-w-none;
     }
 }
 
