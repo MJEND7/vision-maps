@@ -1,20 +1,94 @@
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
+import { Search, Filter } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { MultiUserSelector } from "@/components/ui/multi-user-selector"
+
+const NODE_VARIANTS = [
+    { value: "Image", label: "Image" },
+    { value: "Video", label: "Video" },
+    { value: "Link", label: "Link" },
+    { value: "Audio", label: "Audio" },
+    { value: "Text", label: "Text" },
+    { value: "YouTube", label: "YouTube" },
+    { value: "Spotify", label: "Spotify" },
+    { value: "Notion", label: "Notion" },
+    { value: "Figma", label: "Figma" },
+    { value: "GitHub", label: "GitHub" },
+    { value: "AI", label: "AI" },
+] as const;
+
+type UserData = {
+  _id: Id<"users">
+  name: string
+  email?: string
+  profileImage?: string
+}
 
 export default function Channel({ channelId }: { channelId: string }) {
-    const data = useQuery(api.channels.getWithNodes, { id: channelId as Id<"channels"> })
-    const updateChannel = useMutation(api.channels.update)
-    const isLoading = data == undefined
-
+    const [searchQuery, setSearchQuery] = useState("")
+    const [debouncedSearch, setDebouncedSearch] = useState("")
+    const [selectedVariant, setSelectedVariant] = useState("all")
+    const [selectedUsers, setSelectedUsers] = useState<string[]>(["all"])
+    const [sortBy, setSortBy] = useState("latest")
+    
     const [isEditingTitle, setIsEditingTitle] = useState(false)
     const [isEditingDescription, setIsEditingDescription] = useState(false)
     const [titleValue, setTitleValue] = useState("")
     const [descriptionValue, setDescriptionValue] = useState("")
 
+    // User cache map
+    const [userCache, setUserCache] = useState<Map<Id<"users">, UserData>>(new Map())
+    const [fetchingUsers, setFetchingUsers] = useState<Set<Id<"users">>>(new Set())
+
     const titleRef = useRef<HTMLInputElement>(null)
     const descriptionRef = useRef<HTMLTextAreaElement>(null)
+
+    // Debounce search query
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    const data = useQuery(api.channels.getWithNodes, { 
+        id: channelId as Id<"channels">,
+        filters: {
+            search: debouncedSearch || undefined,
+            variant: selectedVariant === "all" ? undefined : selectedVariant,
+            userIds: selectedUsers.includes("all") ? undefined : selectedUsers as Id<"users">[],
+            sortBy: sortBy
+        }
+    })
+    const updateChannel = useMutation(api.channels.update)
+    const isLoading = data == undefined
+
+    // Get unique user IDs from current nodes
+    const uniqueUserIds = data?.nodes ? [...new Set(data.nodes.map(node => node.userId))] : []
+
+    // Fetch user data for each unique user ID using individual queries
+    const userQueries = uniqueUserIds.map(userId => ({
+        userId,
+        userData: useQuery(api.channels.getUser, userCache.has(userId) ? "skip" : { userId })
+    }))
+
+    // Update user cache when queries complete
+    useEffect(() => {
+        userQueries.forEach(({ userId, userData }) => {
+            if (userData && !userCache.has(userId)) {
+                setUserCache(prev => new Map([...prev, [userId, userData]]))
+            }
+        })
+    }, [userQueries.map(q => q.userData).join(','), userCache])
+
+    // Get user data for a node
+    const getUserForNode = (userId: Id<"users">) => {
+        return userCache.get(userId) || null
+    }
 
     useEffect(() => {
         if (data?.channel) {
@@ -142,9 +216,114 @@ export default function Channel({ channelId }: { channelId: string }) {
                 )}
             </div>
             <hr />
-            <div>
-                
-            </div >
+            
+            {/* Search and Filter Controls */}
+            <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
+                <div className="flex w-full gap-2 items-center">
+                    <Select value={selectedVariant} onValueChange={setSelectedVariant}>
+                        <SelectTrigger size='sm' className='sm:w-auto w-full'>
+                            <SelectValue placeholder="All types" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All types</SelectItem>
+                            {NODE_VARIANTS.map((variant) => (
+                                <SelectItem key={variant.value} value={variant.value}>
+                                    {variant.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Select value={sortBy} onValueChange={setSortBy}>
+                        <SelectTrigger size="sm">
+                            <SelectValue placeholder="Sort by" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="latest">Latest first</SelectItem>
+                            <SelectItem value="oldest">Oldest first</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    {data?.channel?.vision && (
+                        <MultiUserSelector
+                            visionId={data.channel.vision}
+                            value={selectedUsers}
+                            onValueChange={setSelectedUsers}
+                            placeholder="All users"
+                            className="sm:w-auto w-full text-xs"
+                        />
+                    )}
+                </div>
+
+                <div className="sm:w-auto w-full flex gap-2">
+                    <div className="relative w-full sm:w-[300px]">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+                        <Input
+                            type="text"
+                            placeholder="Search nodes..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-8 h-[40px] sm:h-[32px] placeholder:text-xs text-sm rounded-md"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Nodes List */}
+            <div className="space-y-4">
+                {isLoading ? (
+                    <div className="text-center text-gray-500 py-10">
+                        Loading nodes...
+                    </div>
+                ) : data.nodes.length === 0 ? (
+                    <div className="text-sm text-center text-muted-foreground/70 py-10">
+                        No nodes found.
+                    </div>
+                ) : (
+                    data.nodes.map((node) => {
+                        const nodeUser = getUserForNode(node.userId)
+                        return (
+                            <div key={node._id} className="p-4 border rounded-lg bg-card">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                        <h3 className="font-medium">{node.title}</h3>
+                                        <p className="text-sm text-muted-foreground mt-1">
+                                            {node.thought || "No description"}
+                                        </p>
+                                        {node.frameTitle && (
+                                            <p className="text-xs text-blue-600 mt-1">
+                                                Frame: {node.frameTitle}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="text-right text-xs text-muted-foreground">
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-1 bg-secondary rounded text-xs">
+                                                {node.variant}
+                                            </span>
+                                        </div>
+                                        {nodeUser && (
+                                            <div className="mt-2 flex items-center gap-2 justify-end">
+                                                {nodeUser.profileImage && (
+                                                    <img 
+                                                        src={nodeUser.profileImage} 
+                                                        alt={nodeUser.name}
+                                                        className="w-4 h-4 rounded-full"
+                                                    />
+                                                )}
+                                                <span>{nodeUser.name}</span>
+                                            </div>
+                                        )}
+                                        <div className="mt-1">
+                                            {new Date(node.createdAt).toLocaleDateString()}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    })
+                )}
+            </div>
         </div >
     )
 }

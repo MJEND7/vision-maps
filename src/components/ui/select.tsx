@@ -40,8 +40,9 @@ function SelectTrigger({
         `border-input text-xs data-[placeholder]:text-muted-foreground
         [&_svg:not([class*='text-'])]:text-muted-foreground focus-visible:border-ring 
         focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40
-        aria-invalid:border-destructive dark:bg-input/30 dark:hover:bg-input/50 flex w-fit items-center justify-between
-        gap-2 rounded-md border bg-transparent p-3 whitespace-nowrap shadow-xs transition-[color,box-shadow]
+        aria-invalid:border-destructive flex w-fit items-center justify-between
+        over:text-accent-foreground ease-in-out transition-all duration-300 hover:[background-image:radial-gradient(ellipse_at_bottom,_rgba(192,192,192,0.4)_0%,_rgba(192,192,192,0.2)_30%,_transparent_60%)] dark:bg-input/30 dark:border-input dark:hover:bg-input/50 dark:hover:[background-image:radial-gradient(ellipse_at_bottom,_rgba(255,255,255,0.3)_0%,_rgba(255,255,255,0.15)_30%,_transparent_60%)]
+        gap-2 rounded-md border bg-transparent p-3 whitespace-nowrap shadow-xs 
         outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4`,
         className
       )}

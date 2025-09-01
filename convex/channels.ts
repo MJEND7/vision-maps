@@ -134,6 +134,12 @@ export const getWithNodes = query({
     paginationOpts: v.optional(v.object({
       numItems: v.number(),
       cursor: v.optional(v.string())
+    })),
+    filters: v.optional(v.object({
+      search: v.optional(v.string()),
+      variant: v.optional(v.string()),
+      userIds: v.optional(v.array(v.id("users"))),
+      sortBy: v.optional(v.string()) // "latest" or "oldest"
     }))
   },
   handler: async (ctx, args) => {
@@ -146,21 +152,52 @@ export const getWithNodes = query({
       await requireVisionAccess(ctx, channel.vision);
     }
 
-    // Query nodes in this channel, ordered by creation date (most recent first)
-    const nodesQuery = ctx.db
+    // Start with base query
+    let nodesQuery = ctx.db
       .query("nodes")
-      .withIndex("by_channel", (q) => q.eq("channel", args.id))
-      .order("desc");
+      .withIndex("by_channel", (q) => q.eq("channel", args.id));
+
+    // Apply sorting (default to latest)
+    const sortBy = args.filters?.sortBy || "latest";
+    const orderedQuery = nodesQuery.order(sortBy === "latest" ? "desc" : "asc");
 
     // Apply pagination
-    const paginationResult = await nodesQuery.paginate({
+    const paginationResult = await orderedQuery.paginate({
       numItems: args.paginationOpts?.numItems ?? 10,
       cursor: args.paginationOpts?.cursor ?? null
     });
 
-    // Fetch frame information for nodes that belong to frames
+    // Filter nodes based on search criteria
+    let filteredNodes = paginationResult.page;
+
+    // Apply search filter on title and thought
+    if (args.filters?.search) {
+      const searchTerm = args.filters.search.toLowerCase();
+      filteredNodes = filteredNodes.filter(node => 
+        node.title.toLowerCase().includes(searchTerm) ||
+        (node.thought && node.thought.toLowerCase().includes(searchTerm))
+      );
+    }
+
+    // Apply variant filter
+    if (args.filters?.variant) {
+      const variant = args.filters.variant;
+      filteredNodes = filteredNodes.filter(node => 
+        node.variant === variant
+      );
+    }
+
+    // Apply user filter
+    if (args.filters?.userIds && args.filters.userIds.length > 0) {
+      const userIds = args.filters.userIds;
+      filteredNodes = filteredNodes.filter(node => 
+        userIds.includes(node.userId)
+      );
+    }
+
+    // Fetch frame information for each node
     const nodesWithFrames = await Promise.all(
-      paginationResult.page.map(async (node) => {
+      filteredNodes.map(async (node) => {
         let frameTitle = null;
         if (node.frame) {
           const frame = await ctx.db.get(node.frame as Id<"frames">);
@@ -232,5 +269,92 @@ export const listByVision = query({
     });
 
     return channels;
+  },
+});
+
+export const getVisionUsers = query({
+  args: {
+    visionId: v.id("visions"),
+    search: v.optional(v.string())
+  },
+  handler: async (ctx, args) => {
+    await requireVisionAccess(ctx, args.visionId);
+
+    // Get all vision users
+    const visionUsers = await ctx.db
+      .query("vision_users")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
+      .collect();
+
+    // Fetch user details for each vision user
+    const usersWithDetails = await Promise.all(
+      visionUsers.map(async (visionUser) => {
+        try {
+          // Handle both string and Id formats
+          let userId: Id<"users">;
+          if (typeof visionUser.userId === 'string') {
+            // If it's a string, find the user by external ID or tokenIdentifier
+            const userByIdentifier = await ctx.db
+              .query("users")
+              .filter((q) => q.eq(q.field("externalId"), visionUser.userId))
+              .first();
+            
+            if (!userByIdentifier) {
+              console.warn(`User not found for identifier: ${visionUser.userId}`);
+              return null;
+            }
+            userId = userByIdentifier._id;
+          } else {
+            userId = visionUser.userId;
+          }
+
+          const user = await ctx.db.get(userId);
+          if (!user || !('name' in user)) return null;
+          
+          return {
+            _id: user._id,
+            name: user.name,
+            email: user.email || undefined,
+            profileImage: user.picture || undefined,
+            role: visionUser.role
+          };
+        } catch (error) {
+          console.warn(`Error fetching user for ID ${visionUser.userId}:`, error);
+          return null;
+        }
+      })
+    );
+
+    // Filter out null users and apply search filter
+    let filteredUsers = usersWithDetails.filter((user): user is NonNullable<typeof user> => user !== null);
+
+    if (args.search) {
+      const searchTerm = args.search.toLowerCase();
+      filteredUsers = filteredUsers.filter(user =>
+        user.name.toLowerCase().includes(searchTerm) ||
+        (user.email && user.email.toLowerCase().includes(searchTerm))
+      );
+    }
+
+    return filteredUsers;
+  },
+});
+
+export const getUser = query({
+  args: {
+    userId: v.id("users")
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user || !('name' in user)) {
+      return null;
+    }
+    
+    return {
+      _id: user._id,
+      name: user.name,
+      email: user.email || undefined,
+      profileImage: user.picture || undefined
+    };
   },
 });

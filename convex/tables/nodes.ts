@@ -24,7 +24,9 @@ export class Nodes {
         title: v.string(),
         variant: v.string(),
         value: v.string(),
+        userId: v.id("users"),
         threads: v.array(v.id(Nodes.TABLE_NAME)), // Connected nodes
+        thought: v.optional(v.string()),
         y: v.number(),
         x: v.number(),
         height: v.number(), // PX's
@@ -35,7 +37,7 @@ export class Nodes {
         frame: v.optional(v.id(Frame.TABLE_NAME)),
         channel: v.id(Channel.TABLE_NAME),
         vision: v.id(Visions.TABLE_NAME)
-    }).index("by_frame", ["frame"])
+    }).index("by_userId", ["userId"]).index("by_frame", ["frame"])
         .index("by_channel", ["channel"])
         .index("by_vision", ["vision"]);
 }

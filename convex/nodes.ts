@@ -1,12 +1,14 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireVisionAccess } from "./utils/auth";
+import { requireAuth, requireVisionAccess } from "./utils/auth";
+import { Id } from "./_generated/dataModel";
 
 export const create = mutation({
     args: {
         frameId: v.id("frames"),
         title: v.string(),
         height: v.number(),
+        thought: v.optional(v.string()),
         width: v.number(),
         weight: v.number(),
         variant: v.string(),
@@ -26,11 +28,13 @@ export const create = mutation({
         }
 
         const now = new Date().toISOString();
+        const identity = await requireAuth(ctx);
 
         const nodeId = await ctx.db.insert("nodes", {
             title: args.title,
             variant: args.variant,
             value: args.value,
+            thought: args.thought,
             threads: args.threads || [],
             height: args.height,
             width: args.width,
@@ -40,6 +44,7 @@ export const create = mutation({
             frame: args.frameId,
             channel: frame.channel,
             vision: frame.vision,
+            userId: identity.userId as Id<"users">,
             createdAt: now,
             updatedAt: now,
         });
@@ -54,6 +59,7 @@ export const update = mutation({
         title: v.optional(v.string()),
         variant: v.optional(v.string()),
         height: v.number(),
+        thought: v.optional(v.string()),
         width: v.number(),
         weight: v.number(),
         value: v.optional(v.string()),
@@ -76,6 +82,7 @@ export const update = mutation({
         };
 
         if (args.title !== undefined) updates.title = args.title;
+        if (args.thought !== undefined) updates.thought = args.thought;
         if (args.variant !== undefined) updates.variant = args.variant;
         if (args.value !== undefined) updates.value = args.value;
         if (args.height !== undefined) updates.height = args.height;
