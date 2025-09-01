@@ -2,11 +2,12 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 import { useState, useRef, useEffect } from "react"
-import { Search, Filter } from "lucide-react"
+import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MultiUserSelector } from "@/components/ui/multi-user-selector"
 import { useNodeUserCache } from "@/hooks/useUserCache"
+import PasteBin from "../channel/paste-bin"
 
 const NODE_VARIANTS = [
     { value: "Image", label: "Image" },
@@ -28,7 +29,7 @@ export default function Channel({ channelId }: { channelId: string }) {
     const [selectedVariant, setSelectedVariant] = useState("all")
     const [selectedUsers, setSelectedUsers] = useState<string[]>(["all"])
     const [sortBy, setSortBy] = useState("latest")
-    
+
     const [isEditingTitle, setIsEditingTitle] = useState(false)
     const [isEditingDescription, setIsEditingDescription] = useState(false)
     const [titleValue, setTitleValue] = useState("")
@@ -45,7 +46,7 @@ export default function Channel({ channelId }: { channelId: string }) {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    const data = useQuery(api.channels.getWithNodes, { 
+    const data = useQuery(api.channels.getWithNodes, {
         id: channelId as Id<"channels">,
         filters: {
             search: debouncedSearch || undefined,
@@ -124,7 +125,7 @@ export default function Channel({ channelId }: { channelId: string }) {
     }
 
     return (
-        <div className="px-20 py-6 space-y-4">
+        <div className="h-full px-20 py-6 space-y-4">
             <div>
                 {isEditingTitle ? (
                     <input
@@ -186,9 +187,9 @@ export default function Channel({ channelId }: { channelId: string }) {
                 )}
             </div>
             <hr />
-            
+
             {/* Search and Filter Controls */}
-            <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
+            <div className="relative flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
                 <div className="flex w-full gap-2 items-center">
                     <Select value={selectedVariant} onValueChange={setSelectedVariant}>
                         <SelectTrigger size='sm' className='sm:w-auto w-full'>
@@ -240,7 +241,7 @@ export default function Channel({ channelId }: { channelId: string }) {
             </div>
 
             {/* Nodes List */}
-            <div className="space-y-4">
+            <div className="h-[75%] relative flex flex-col items-center justify-center  space-y-4">
                 {isLoading ? (
                     <div className="text-center text-gray-500 py-10">
                         Loading nodes...
@@ -275,8 +276,8 @@ export default function Channel({ channelId }: { channelId: string }) {
                                         {nodeUser && (
                                             <div className="mt-2 flex items-center gap-2 justify-end">
                                                 {nodeUser.profileImage && (
-                                                    <img 
-                                                        src={nodeUser.profileImage} 
+                                                    <img
+                                                        src={nodeUser.profileImage}
                                                         alt={nodeUser.name}
                                                         className="w-4 h-4 rounded-full"
                                                     />
@@ -293,6 +294,7 @@ export default function Channel({ channelId }: { channelId: string }) {
                         )
                     })
                 )}
+                <PasteBin />
             </div>
         </div >
     )

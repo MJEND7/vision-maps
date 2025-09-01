@@ -16,6 +16,7 @@ import { Textarea } from "../ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import ThemeSwitcher from "../ThemeSwitcher";
 
 interface SettingsComponentProps {
     id?: string;
@@ -370,6 +371,7 @@ export default function SettingsComponent({
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-md font-medium">Information</h3>
                     <div className="flex items-center gap-2">
+                        <ThemeSwitcher/>
                         <Button
                             onClick={handleEditToggle}
                             size="sm"
