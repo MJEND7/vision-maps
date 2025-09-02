@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Sun, Moon } from "lucide-react";
 import { Button } from "./ui/button";
 
-export default function ThemeSwitcher() {
+export default function ThemeSwitcher({ size = "lg"}: { size: "sm" | "lg" | "xl" }) {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export default function ThemeSwitcher() {
   return (
     <Button
       variant="outline"
-      size="lg"
+      size={size}
       onClick={toggleTheme}
       className="p-2"
     >

@@ -19,7 +19,7 @@ export enum NodeVariants {
 }
 
 export class Nodes {
-    static TABLE_NAME = "nodes"
+    static TABLE_NAME = "nodes" as "nodes"
     static Table = defineTable({
         title: v.string(),
         variant: v.string(),

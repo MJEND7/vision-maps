@@ -9,15 +9,18 @@
  */
 
 import type * as channels from "../channels.js";
-import type * as comments from "../comments.js";
+import type * as chats from "../chats.js";
 import type * as frames from "../frames.js";
 import type * as http from "../http.js";
+import type * as messages from "../messages.js";
 import type * as nodes from "../nodes.js";
 import type * as notifications from "../notifications.js";
 import type * as presence from "../presence.js";
 import type * as tables_channel from "../tables/channel.js";
+import type * as tables_chats from "../tables/chats.js";
 import type * as tables_comments from "../tables/comments.js";
 import type * as tables_frame from "../tables/frame.js";
+import type * as tables_messages from "../tables/messages.js";
 import type * as tables_nodes from "../tables/nodes.js";
 import type * as tables_notifications from "../tables/notifications.js";
 import type * as tables_user from "../tables/user.js";
@@ -44,15 +47,18 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   channels: typeof channels;
-  comments: typeof comments;
+  chats: typeof chats;
   frames: typeof frames;
   http: typeof http;
+  messages: typeof messages;
   nodes: typeof nodes;
   notifications: typeof notifications;
   presence: typeof presence;
   "tables/channel": typeof tables_channel;
+  "tables/chats": typeof tables_chats;
   "tables/comments": typeof tables_comments;
   "tables/frame": typeof tables_frame;
+  "tables/messages": typeof tables_messages;
   "tables/nodes": typeof tables_nodes;
   "tables/notifications": typeof tables_notifications;
   "tables/user": typeof tables_user;
@@ -123,6 +129,41 @@ export declare const components: {
         "internal",
         { roomId: string; userId: string },
         null
+      >;
+    };
+  };
+  persistentTextStreaming: {
+    lib: {
+      addChunk: FunctionReference<
+        "mutation",
+        "internal",
+        { final: boolean; streamId: string; text: string },
+        any
+      >;
+      createStream: FunctionReference<"mutation", "internal", {}, any>;
+      getStreamStatus: FunctionReference<
+        "query",
+        "internal",
+        { streamId: string },
+        "pending" | "streaming" | "done" | "error" | "timeout"
+      >;
+      getStreamText: FunctionReference<
+        "query",
+        "internal",
+        { streamId: string },
+        {
+          status: "pending" | "streaming" | "done" | "error" | "timeout";
+          text: string;
+        }
+      >;
+      setStreamStatus: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          status: "pending" | "streaming" | "done" | "error" | "timeout";
+          streamId: string;
+        },
+        any
       >;
     };
   };

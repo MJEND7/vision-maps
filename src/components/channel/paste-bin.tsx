@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Input } from "../ui/input";
@@ -6,19 +8,23 @@ import { AudioPlayer } from "./audio-player";
 import { VideoPlayer } from "./video-player";
 import { FilePreview } from "./file-preview";
 import { useUploadThing } from "@/utils/uploadthing";
-import { X, FileText, Send } from "lucide-react";
+import { X, FileText, Send, Brain } from "lucide-react";
 import Image from "next/image";
-import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard, SkeletonCard, LinkMetadata } from "./metadata";
+import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard, SkeletonCard, ChatCard, LinkMetadata } from "./metadata";
 import { TweetSkeleton } from 'react-tweet';
 import { Textarea } from "../ui/textarea";
 import { usePasteBinState, pasteBinStorage, type StoredLinkMeta, type StoredMediaItem } from "@/lib/paste-bin-state";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
 
-type MediaType = "image" | "audio" | "video" | "file" | "link";
+type MediaType = "image" | "audio" | "video" | "file" | "link" | "text" | "ai";
 
 interface MediaItem {
     type: MediaType;
     file?: File;
     url?: string;
+    chatId?: string,
     isUploading?: boolean;
     uploadedUrl?: string;
     fileName?: string;
@@ -39,8 +45,26 @@ export default function PasteBin() {
     const [linkMeta, setLinkMeta] = useState<LinkMeta | null>(null);
     const [inputValue, setInputValue] = useState("");
     const [thought, setThought] = useState("");
+    const [isTextMode, setIsTextMode] = useState(false);
+    const [drivenMessageIds, setDrivenMessageIds] = useState<Set<string>>(new Set())
+    const [chatId, setChatId] = useState<string | null>(null)
+    const [isAiMode, setIsAiMode] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const initialLoadRef = useRef(false);
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    const createChat = useMutation(api.chats.createChat);
+    const sendMessage = useMutation(api.messages.sendMessage);
+
+    const newChat = async (title: string) => {
+        const chatId = await createChat({
+            title
+        });
+
+        setChatId(chatId)
+
+        return chatId
+    };
 
     // Load saved data from localStorage on mount
     useEffect(() => {
@@ -90,6 +114,15 @@ export default function PasteBin() {
             };
             setLinkMeta(restoredLinkMeta);
         }
+    }, []);
+
+    // Cleanup debounce timer on unmount
+    useEffect(() => {
+        return () => {
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
+            }
+        };
     }, []);
 
     // Central update functions that handle both state and localStorage
@@ -315,8 +348,30 @@ export default function PasteBin() {
         if (value && (value.startsWith("http://") || value.startsWith("https://"))) {
             handleLinkPaste(value);
             updateInputValue("");  // Clear input after processing link
+            return;
         }
-    }, [handleLinkPaste, updateInputValue]);
+
+        // Handle text mode with debounce
+        if (value && !value.startsWith("http://") && !value.startsWith("https://")) {
+            // Clear existing timer
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
+            }
+
+            // Set debounce timer to create text media item
+            debounceTimerRef.current = setTimeout(() => {
+                if (!isTextMode && !isAiMode) {
+                    setIsTextMode(true);
+                    updateMediaItem({
+                        type: "text",
+                        customName: value
+                    });
+                    setThought(value)
+                    updateInputValue(""); // Clear input as it moves to textarea
+                }
+            }, 1000); // 1 second debounce
+        }
+    }, [handleLinkPaste, updateInputValue, isTextMode, isAiMode, updateMediaItem]);
 
     const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && inputValue) {
@@ -347,11 +402,33 @@ export default function PasteBin() {
         }
     }, [actions, handleFileSelect]);
 
+    const handleToggleAiMode = useCallback(async () => {
+        if (mediaItem?.type === "text") {
+            if (thought) {
+                const chatId = await newChat(thought);
+                updateMediaItem({
+                    ...mediaItem,
+                    chatId,
+                    type: "ai"
+                });
+            }
+            setIsAiMode(true);
+        }
+    }, [mediaItem, updateMediaItem]);
+
     const clearMedia = useCallback(() => {
         updateMediaItem(null);
         updateLinkMeta(null);
         updateInputValue("");
         updateThought("");
+        setIsTextMode(false);
+        setIsAiMode(false);
+
+        // Clear debounce timer
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+            debounceTimerRef.current = null;
+        }
 
         // Reset state machine
         actions.resetState();
@@ -390,14 +467,24 @@ export default function PasteBin() {
     }, [mediaItem, linkMeta, startUpload, clearMedia, updateMediaItem]);
 
     const isValidForCreation = useCallback(() => {
-        if (mediaItem && mediaItem.type !== "link") {
-            return !!mediaItem.fileName && !mediaItem.isUploading;
+        if (mediaItem) {
+            if (mediaItem.type === "text" || mediaItem.type === "ai") {
+                return !!mediaItem.customName || !!thought;
+            } else if (mediaItem.type !== "link") {
+                return !!mediaItem.fileName && !mediaItem.isUploading;
+            }
         }
         return !!linkMeta && !isLoadingLinkMeta;
-    }, [mediaItem, linkMeta, isLoadingLinkMeta]);
+    }, [mediaItem, linkMeta, isLoadingLinkMeta, thought]);
 
     const getDisplayName = useCallback(() => {
         if (mediaItem) {
+            if (mediaItem.type === "text") {
+                return mediaItem.customName || "Text note";
+            }
+            if (mediaItem.type === "ai") {
+                return "AI Assistant";
+            }
             return mediaItem.fileName || "Unnamed file";
         }
         if (linkMeta) {
@@ -432,7 +519,7 @@ export default function PasteBin() {
                     }}
                 >
                     <motion.div
-                        className="w-full overflow-hidden rounded-2xl shadow-md border border-accent bg-background backdrop-blur-sm"
+                        className="w-full overflow-hidden rounded-2xl shadow-md border border-accent backdrop-blur-sm"
                         animate={{
                             height: linkMeta || mediaItem || isLoadingLinkMeta || isLoadingTwitter ? "auto" : isDragOver ? "8rem" : "2rem",
                             padding: linkMeta || mediaItem || isLoadingLinkMeta || isLoadingTwitter || isDragOver ? "0px" : "4px",
@@ -499,7 +586,7 @@ export default function PasteBin() {
                                         }}
                                     >
                                         <motion.div
-                                            className="p-4 space-y-4"
+                                            className="dark:bg-input/30 p-4 space-y-4"
                                             initial={{ y: 20, scale: 0.95 }}
                                             animate={{ y: 0, scale: 1 }}
                                             exit={{ y: -20, scale: 0.95 }}
@@ -559,6 +646,18 @@ export default function PasteBin() {
                                                             fileType={mediaItem.fileType}
                                                             downloadUrl={mediaItem.uploadedUrl}
                                                         />
+                                                    </div>
+                                                )}
+
+                                                {mediaItem.type === "text" && (
+                                                    <div className="" />
+                                                )}
+
+                                                {mediaItem.type === "ai" && mediaItem.chatId && (
+                                                    <div className="w-full max-w-sm mx-auto">
+                                                        <ChatCard drivenIds={drivenMessageIds} onFocusInput={() => {
+                                                            //TODO focus textarea
+                                                        }} chatId={mediaItem.chatId} />
                                                     </div>
                                                 )}
                                             </div>
@@ -718,10 +817,17 @@ export default function PasteBin() {
                                         placeholder={`Enter a thought about: "${getDisplayName()}" ?`}
                                         value={thought}
                                         onChange={(e) => updateThought(e.target.value)}
-                                        onKeyDown={(e) => {
+                                        onKeyDown={async (e) => {
                                             if (e.key === "Enter" && !e.shiftKey) {
                                                 e.preventDefault();
-                                                handleCreate();
+                                                if (isAiMode && chatId) {
+                                                    const data = await sendMessage({ content: thought, chatId: chatId as Id<"chats"> })
+                                                    setDrivenMessageIds((s) => s.add(data.messageId))
+                                                    setThought("")
+                                                } else {
+                                                    // In other modes, Enter creates the item
+                                                    handleCreate();
+                                                }
                                             }
                                         }}
                                     />
@@ -739,6 +845,28 @@ export default function PasteBin() {
                                         mass: 0.5
                                     }}
                                 >
+                                    {mediaItem?.type === "text" && !isAiMode && (
+                                        <motion.div
+                                            initial={{ x: 40, opacity: 0 }}
+                                            animate={{ x: 0, opacity: 1 }}
+                                            transition={{
+                                                delay: 0.1,
+                                                type: "spring",
+                                                stiffness: 400,
+                                                damping: 25
+                                            }}
+                                        >
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={handleToggleAiMode}
+                                                className="h-8 w-8 p-0 rounded-lg hover:bg-purple-50 hover:text-purple-600 transition-colors"
+                                            >
+                                                <Brain size={14} />
+                                            </Button>
+                                        </motion.div>
+                                    )}
+
                                     <motion.div
                                         initial={{ x: 20, opacity: 0 }}
                                         animate={{ x: 0, opacity: 1 }}

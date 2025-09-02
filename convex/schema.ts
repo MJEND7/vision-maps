@@ -6,6 +6,8 @@ import { Nodes } from "./tables/nodes";
 import { User } from "./tables/user";
 import { Comments } from "./tables/comments";
 import { Notifications } from "./tables/notifications";
+import { Chats } from "./tables/chats";
+import { Messages } from "./tables/messages";
 
 // The schema is entirely optional.
 // You can delete this file (schema.ts) and the
@@ -20,4 +22,6 @@ export default defineSchema({
     users: User.Table,
     comments: Comments.Table,
     notifications: Notifications.Table,
+    chats: Chats.Table,
+    messages: Messages.Table,
 });

@@ -16,6 +16,7 @@ import { Id } from '../../../../../convex/_generated/dataModel';
 import { Vision } from '../../../../../convex/tables/visions';
 import SettingsComponent from '@/components/vision/settings';
 import { NodeUserCacheProvider } from '@/hooks/useUserCache';
+import ThemeSwitcher from '@/components/ThemeSwitcher';
 
 enum ViewMode {
     CHANNEL = "channel",
@@ -795,9 +796,7 @@ export default function VisionDetailPage() {
                     </div>
 
                     <div className="flex items-center gap-1">
-                        <Button className="text-xs" size={"sm"} variant={"outline"}>
-                            <Play />
-                        </Button>
+                        <ThemeSwitcher size="sm" />
                         <Button className="text-xs" size={"sm"} variant={"outline"}>
                             Share
                         </Button>

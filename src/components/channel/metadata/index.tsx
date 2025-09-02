@@ -9,6 +9,7 @@ export { LoomCard } from './loom-card';
 export { SpotifyCard } from './spotify-card';
 export { AppleMusicCard } from './applemusic-card';
 export { SkeletonCard } from './skeleton-card';
+export { ChatCard } from './ai/card';
 
 // Define the unified metadata type
 export interface LinkMetadata {
@@ -17,6 +18,7 @@ export interface LinkMetadata {
     description?: string;
     image?: string;
     url: string;
+    chat?: { id: string, streamId: string }
     // Platform-specific fields
     stars?: number; // GitHub
     forks?: number; // GitHub
