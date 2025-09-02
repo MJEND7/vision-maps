@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
@@ -8,8 +8,10 @@ import { FilePreview } from "./file-preview";
 import { useUploadThing } from "@/utils/uploadthing";
 import { X, FileText, Send } from "lucide-react";
 import Image from "next/image";
-import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, SkeletonCard, LinkMetadata } from "./metadata";
+import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard, SkeletonCard, LinkMetadata } from "./metadata";
 import { TweetSkeleton } from 'react-tweet';
+import { Textarea } from "../ui/textarea";
+import { usePasteBinState, pasteBinStorage, type StoredLinkMeta, type StoredMediaItem } from "@/lib/paste-bin-state";
 
 type MediaType = "image" | "audio" | "video" | "file" | "link";
 
@@ -28,109 +30,102 @@ interface MediaItem {
 interface LinkMeta extends LinkMetadata { }
 
 export default function PasteBin() {
+    // State management with reducer
+    const { state, actions } = usePasteBinState();
+    const { isDragOver, isLoadingLinkMeta, isLoadingTwitter, imageLoaded } = state;
+
+    // Component state
     const [mediaItem, setMediaItem] = useState<MediaItem | null>(null);
     const [linkMeta, setLinkMeta] = useState<LinkMeta | null>(null);
-    const [isLoadingLinkMeta, setIsLoadingLinkMeta] = useState(false);
-    const [isLoadingTwitter, setIsLoadingTwitter] = useState(false);
-    const [isDragOver, setIsDragOver] = useState(false);
-    const [customName, setCustomName] = useState("");
-    const [imageLoaded, setImageLoaded] = useState(false);
     const [inputValue, setInputValue] = useState("");
+    const [thought, setThought] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const initialLoadRef = useRef(false);
 
     // Load saved data from localStorage on mount
     useEffect(() => {
-        const savedInputValue = localStorage.getItem('paste-bin-input');
-        if (savedInputValue) {
-            setInputValue(savedInputValue);
-        }
+        if (initialLoadRef.current) return;
+        initialLoadRef.current = true;
 
-        // Load saved media/link data
-        const savedMediaItem = localStorage.getItem('paste-bin-media');
-        const savedLinkMeta = localStorage.getItem('paste-bin-link-meta');
-        const savedCustomName = localStorage.getItem('paste-bin-custom-name');
+        const savedData = pasteBinStorage.load();
 
-        if (savedMediaItem) {
-            try {
-                const parsedMedia = JSON.parse(savedMediaItem);
-                // Don't restore File objects as they can't be serialized
-                if (parsedMedia.type !== 'file' || parsedMedia.uploadedUrl) {
-                    setMediaItem(parsedMedia);
-                    if (parsedMedia.type === 'image') {
-                        setImageLoaded(true); // Assume previously loaded images are ready
-                    }
+        setInputValue(savedData.inputValue);
+        setThought(savedData.thought);
+
+        // Restore media item if valid
+        if (savedData.mediaItem) {
+            const parsedMedia = savedData.mediaItem as StoredMediaItem;
+            // Don't restore File objects as they can't be serialized
+            if (parsedMedia.type !== 'file' || parsedMedia.uploadedUrl) {
+                // Convert stored media item to MediaItem format
+                const restoredMediaItem: MediaItem = {
+                    type: parsedMedia.type as MediaType,
+                    url: parsedMedia.url,
+                    isUploading: parsedMedia.isUploading || false,
+                    uploadedUrl: parsedMedia.uploadedUrl,
+                    fileName: parsedMedia.fileName,
+                    fileSize: parsedMedia.fileSize,
+                    fileType: parsedMedia.fileType,
+                    customName: parsedMedia.customName,
+                };
+                setMediaItem(restoredMediaItem);
+                // Set image as loaded during initial load without causing re-renders
+                if (parsedMedia.type === 'image') {
+                    setTimeout(() => actions.setImageLoaded(true), 0);
                 }
-            } catch (error) {
-                console.error('Error parsing saved media:', error);
-                localStorage.removeItem('paste-bin-media');
             }
         }
 
-        if (savedLinkMeta) {
-            try {
-                const parsedLinkMeta = JSON.parse(savedLinkMeta);
-                setLinkMeta(parsedLinkMeta);
-            } catch (error) {
-                console.error('Error parsing saved link meta:', error);
-                localStorage.removeItem('paste-bin-link-meta');
-            }
-        }
-
-        if (savedCustomName) {
-            setCustomName(savedCustomName);
+        // Restore link meta if valid
+        if (savedData.linkMeta) {
+            const storedMeta = savedData.linkMeta as StoredLinkMeta;
+            // Convert StoredLinkMeta to LinkMeta format with required fields
+            const restoredLinkMeta: LinkMeta = {
+                type: storedMeta.type,
+                title: storedMeta.title || 'Untitled Link',
+                description: storedMeta.description,
+                url: storedMeta.url,
+                image: storedMeta.image,
+                siteName: storedMeta.siteName,
+            };
+            setLinkMeta(restoredLinkMeta);
         }
     }, []);
 
-    // Save input value to localStorage when it changes
-    useEffect(() => {
-        if (inputValue) {
-            localStorage.setItem('paste-bin-input', inputValue);
-        } else {
-            localStorage.removeItem('paste-bin-input');
-        }
-    }, [inputValue]);
+    // Central update functions that handle both state and localStorage
+    const updateInputValue = useCallback((value: string) => {
+        setInputValue(value);
+        pasteBinStorage.save.inputValue(value);
+    }, []);
 
-    // Save media item to localStorage when it changes
-    useEffect(() => {
-        if (mediaItem) {
-            // Create a serializable version without File object
-            const serializableMediaItem = {
-                ...mediaItem,
-                file: undefined, // Remove File object as it can't be serialized
-            };
-            localStorage.setItem('paste-bin-media', JSON.stringify(serializableMediaItem));
-        } else {
-            localStorage.removeItem('paste-bin-media');
-        }
-    }, [mediaItem]);
+    const updateMediaItem = useCallback((item: MediaItem | null) => {
+        setMediaItem(item);
+        pasteBinStorage.save.mediaItem(item);
+    }, []);
 
-    // Save link meta to localStorage when it changes
-    useEffect(() => {
-        if (linkMeta) {
-            localStorage.setItem('paste-bin-link-meta', JSON.stringify(linkMeta));
-        } else {
-            localStorage.removeItem('paste-bin-link-meta');
-        }
-    }, [linkMeta]);
+    const updateLinkMeta = useCallback((meta: LinkMeta | null) => {
+        setLinkMeta(meta);
+        pasteBinStorage.save.linkMeta(meta);
+    }, []);
 
-    // Save custom name to localStorage when it changes
-    useEffect(() => {
-        if (customName) {
-            localStorage.setItem('paste-bin-custom-name', customName);
-        } else {
-            localStorage.removeItem('paste-bin-custom-name');
-        }
-    }, [customName]);
+    const updateThought = useCallback((thoughtValue: string) => {
+        setThought(thoughtValue);
+        pasteBinStorage.save.thought(thoughtValue);
+    }, []);
 
     const { startUpload, isUploading } = useUploadThing("mediaUploader", {
         onClientUploadComplete: (res) => {
             if (res && res[0]) {
-                setMediaItem(prev => prev ? { ...prev, uploadedUrl: res[0].ufsUrl, isUploading: false } : null);
+                if (mediaItem) {
+                    updateMediaItem({ ...mediaItem, uploadedUrl: res[0].ufsUrl, isUploading: false });
+                }
             }
         },
         onUploadError: (error: Error) => {
             console.error("Upload failed:", error);
-            setMediaItem(prev => prev ? { ...prev, isUploading: false } : null);
+            if (mediaItem) {
+                updateMediaItem({ ...mediaItem, isUploading: false });
+            }
         },
     });
 
@@ -151,9 +146,11 @@ export default function PasteBin() {
             if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) return 'YouTube';
             if (hostname.includes('notion.so') || hostname.includes('notion.com')) return 'Notion';
             if (hostname.includes('twitter.com') || hostname.includes('x.com')) return 'Twitter';
+            if (hostname.includes('loom.com')) return 'Loom';
+            if (hostname.includes('spotify.com')) return 'Spotify';
+            if (hostname.includes('music.apple.com')) return 'AppleMusic';
             if (hostname.includes('instagram.com')) return 'Instagram';
             if (hostname.includes('tiktok.com')) return 'TikTok';
-            if (hostname.includes('spotify.com')) return 'Spotify';
 
             return 'Link'; // Default to generic website
         } catch (error) {
@@ -185,6 +182,9 @@ export default function PasteBin() {
                 twitter: 'Twitter',
                 figma: 'Figma',
                 notion: 'Notion',
+                loom: 'Loom',
+                spotify: 'Spotify',
+                applemusic: 'AppleMusic',
                 website: 'Link'
             };
 
@@ -206,40 +206,29 @@ export default function PasteBin() {
 
 
 
-    const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-        const clipboardData = e.clipboardData;
-        const files = Array.from(clipboardData.files);
-        const text = clipboardData.getData("text");
-
-        if (files.length > 0) {
-            handleFileSelect(files[0]);
-        } else if (text && (text.startsWith("http://") || text.startsWith("https://"))) {
-            handleLinkPaste(text);
-            setInputValue("");  // Clear input after pasting link
+    // Utility functions first
+    const isTwitterUrl = (url: string): boolean => {
+        try {
+            const urlObj = new URL(url);
+            const hostname = urlObj.hostname.toLowerCase();
+            return hostname.includes('twitter.com') || hostname.includes('x.com');
+        } catch {
+            return false;
         }
     };
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        setInputValue(value);
-        
-        // Auto-detect and handle URLs when user types/pastes
-        if (value && (value.startsWith("http://") || value.startsWith("https://"))) {
-            handleLinkPaste(value);
-            setInputValue("");  // Clear input after processing link
+    const isLoomUrl = (url: string): boolean => {
+        try {
+            const urlObj = new URL(url);
+            const hostname = urlObj.hostname.toLowerCase();
+            return hostname.includes('loom.com');
+        } catch {
+            return false;
         }
     };
 
-    const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' && inputValue) {
-            if (inputValue.startsWith("http://") || inputValue.startsWith("https://")) {
-                handleLinkPaste(inputValue);
-                setInputValue("");
-            }
-        }
-    };
-
-    const handleFileSelect = (file: File) => {
+    // Core handlers in dependency order
+    const handleFileSelect = useCallback((file: File) => {
         const mediaType = determineMediaType(file);
         const previewUrl = URL.createObjectURL(file);
 
@@ -253,96 +242,131 @@ export default function PasteBin() {
             isUploading: false,
         };
 
-        setMediaItem(newMediaItem);
-        setLinkMeta(null);
-        setCustomName("");
-        setImageLoaded(false);
-    };
+        updateMediaItem(newMediaItem);
+        updateLinkMeta(null);
+        actions.setImageLoaded(false);
+    }, [actions, updateMediaItem, updateLinkMeta]);
 
-    const isTwitterUrl = (url: string): boolean => {
-        try {
-            const urlObj = new URL(url);
-            const hostname = urlObj.hostname.toLowerCase();
-            return hostname.includes('twitter.com') || hostname.includes('x.com');
-        } catch {
-            return false;
-        }
-    };
+    const handleLinkPaste = useCallback(async (url: string) => {
+        updateMediaItem(null);
+        updateLinkMeta(null);
 
-    const handleLinkPaste = async (url: string) => {
-        setMediaItem(null);
-        setLinkMeta(null);
-        
         // Skip API call for Twitter URLs - let react-tweet handle it directly
         if (isTwitterUrl(url)) {
-            setIsLoadingTwitter(true);
+            actions.setLoadingTwitter(true);
             // Small delay to show the TweetSkeleton briefly
             setTimeout(() => {
-                setLinkMeta({
+                updateLinkMeta({
                     type: 'Twitter',
                     title: 'Twitter Post',
                     url: url
                 });
-                setIsLoadingTwitter(false);
+                actions.setLoadingTwitter(false);
             }, 500);
             return;
         }
 
-        setIsLoadingLinkMeta(true);
+        // Skip API call for Loom URLs - load directly into iframe
+        if (isLoomUrl(url)) {
+            actions.setLoadingLinkMeta(true);
+            // Small delay to show loading state
+            setTimeout(() => {
+                updateLinkMeta({
+                    type: 'Loom',
+                    title: 'Loom Video',
+                    url: url
+                });
+                actions.setLoadingLinkMeta(false);
+            }, 300);
+            return;
+        }
+
+        actions.setLoadingLinkMeta(true);
 
         try {
             const meta = await fetchLinkMetadata(url);
-            setLinkMeta(meta);
+            updateLinkMeta(meta);
         } catch (error) {
             console.error('Failed to fetch link metadata:', error);
         } finally {
-            setIsLoadingLinkMeta(false);
+            actions.setLoadingLinkMeta(false);
         }
-    };
+    }, [actions, updateMediaItem, updateLinkMeta]);
 
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragOver(true);
-    };
+    // Input handlers that depend on handleLinkPaste and handleFileSelect
+    const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
+        const clipboardData = e.clipboardData;
+        const files = Array.from(clipboardData.files);
+        const text = clipboardData.getData("text");
 
-    const handleDragLeave = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragOver(false);
-    };
+        if (files.length > 0) {
+            handleFileSelect(files[0]);
+        } else if (text && (text.startsWith("http://") || text.startsWith("https://"))) {
+            handleLinkPaste(text);
+            updateInputValue("");  // Clear input after pasting link
+        }
+    }, [handleFileSelect, handleLinkPaste, updateInputValue]);
 
-    const handleDrop = (e: React.DragEvent) => {
+    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        updateInputValue(value);
+
+        // Auto-detect and handle URLs when user types/pastes
+        if (value && (value.startsWith("http://") || value.startsWith("https://"))) {
+            handleLinkPaste(value);
+            updateInputValue("");  // Clear input after processing link
+        }
+    }, [handleLinkPaste, updateInputValue]);
+
+    const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && inputValue) {
+            if (inputValue.startsWith("http://") || inputValue.startsWith("https://")) {
+                handleLinkPaste(inputValue);
+                updateInputValue("");
+            }
+        }
+    }, [inputValue, handleLinkPaste, updateInputValue]);
+
+    const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();
-        setIsDragOver(false);
+        actions.setDragOver(true);
+    }, [actions]);
+
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        actions.setDragOver(false);
+    }, [actions]);
+
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        actions.setDragOver(false);
 
         const files = Array.from(e.dataTransfer.files);
         if (files.length > 0) {
             handleFileSelect(files[0]);
         }
-    };
+    }, [actions, handleFileSelect]);
 
-    const clearMedia = () => {
-        setMediaItem(null);
-        setLinkMeta(null);
-        setIsLoadingLinkMeta(false);
-        setIsLoadingTwitter(false);
-        setCustomName("");
-        setImageLoaded(false);
-        setInputValue("");
-        
+    const clearMedia = useCallback(() => {
+        updateMediaItem(null);
+        updateLinkMeta(null);
+        updateInputValue("");
+        updateThought("");
+
+        // Reset state machine
+        actions.resetState();
+
         // Clear all localStorage data
-        localStorage.removeItem('paste-bin-media');
-        localStorage.removeItem('paste-bin-link-meta');
-        localStorage.removeItem('paste-bin-custom-name');
-        localStorage.removeItem('paste-bin-input');
-        
+        pasteBinStorage.clear();
+
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
-    };
+    }, [actions, updateMediaItem, updateLinkMeta, updateInputValue, updateThought]);
 
-    const handleCreate = async () => {
+    const handleCreate = useCallback(async () => {
         if (mediaItem) {
-            const finalName = customName.trim() || mediaItem.fileName;
+            const finalName = mediaItem.fileName;
 
             if (!finalName && mediaItem.type !== "link") {
                 alert("Please provide a name for this media");
@@ -350,7 +374,9 @@ export default function PasteBin() {
             }
 
             if (mediaItem.file) {
-                setMediaItem(prev => prev ? { ...prev, isUploading: true, customName: finalName } : null);
+                if (mediaItem) {
+                    updateMediaItem({ ...mediaItem, isUploading: true, customName: finalName });
+                }
                 await startUpload([mediaItem.file]);
             }
         }
@@ -361,19 +387,18 @@ export default function PasteBin() {
 
         // Clear all data and localStorage after successful creation
         clearMedia();
-    };
+    }, [mediaItem, linkMeta, startUpload, clearMedia, updateMediaItem]);
 
-    const isValidForCreation = () => {
+    const isValidForCreation = useCallback(() => {
         if (mediaItem && mediaItem.type !== "link") {
-            const finalName = customName.trim() || mediaItem.fileName;
-            return !!finalName && !mediaItem.isUploading;
+            return !!mediaItem.fileName && !mediaItem.isUploading;
         }
         return !!linkMeta && !isLoadingLinkMeta;
-    };
+    }, [mediaItem, linkMeta, isLoadingLinkMeta]);
 
-    const getDisplayName = () => {
+    const getDisplayName = useCallback(() => {
         if (mediaItem) {
-            return customName.trim() || mediaItem.fileName || "Unnamed file";
+            return mediaItem.fileName || "Unnamed file";
         }
         if (linkMeta) {
             return linkMeta.title || "Unnamed link";
@@ -382,15 +407,11 @@ export default function PasteBin() {
             return "Loading metadata...";
         }
         return "";
-    };
-
-    const shouldShowNameInput = () => {
-        return mediaItem && (!mediaItem.fileName || customName !== "");
-    };
+    }, [mediaItem, linkMeta, isLoadingLinkMeta]);
 
     return (
         <div
-            className="absolute bottom-0 w-full max-w-lg mx-auto"
+            className={`absolute bottom-0 w-full max-w-lg mx-auto`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -465,9 +486,9 @@ export default function PasteBin() {
                                         key="media"
                                         className="w-full overflow-hidden"
                                         initial={{ height: 0, opacity: 0 }}
-                                        animate={{ 
-                                            height: (mediaItem.type === "image" && !imageLoaded) ? 0 : "auto", 
-                                            opacity: (mediaItem.type === "image" && !imageLoaded) ? 0 : 1 
+                                        animate={{
+                                            height: (mediaItem.type === "image" && !imageLoaded) ? 0 : "auto",
+                                            opacity: (mediaItem.type === "image" && !imageLoaded) ? 0 : 1
                                         }}
                                         exit={{ height: 0, opacity: 0 }}
                                         transition={{
@@ -489,69 +510,58 @@ export default function PasteBin() {
                                                 delay: 0.1
                                             }}
                                         >
-                                        {mediaItem.isUploading && (
-                                            <div className="text-center">
-                                                <div className="text-xs text-muted-foreground">
-                                                    Uploading...
+                                            {mediaItem.isUploading && (
+                                                <div className="text-center">
+                                                    <div className="text-xs text-muted-foreground">
+                                                        Uploading...
+                                                    </div>
                                                 </div>
+                                            )}
+
+                                            <div className="flex justify-center items-center">
+                                                {mediaItem.type === "image" && (
+                                                    <div className="w-full max-w-sm mx-auto">
+                                                        <Image
+                                                            src={mediaItem.uploadedUrl || mediaItem.url!}
+                                                            alt={mediaItem.fileName || "Pasted image"}
+                                                            width={0}
+                                                            height={0}
+                                                            className="w-full h-full object-cover rounded-lg"
+                                                            onLoad={() => actions.setImageLoaded(true)}
+                                                            onError={() => actions.setImageLoaded(true)}
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                {mediaItem.type === "audio" && (
+                                                    <div className="w-full max-w-sm mx-auto">
+                                                        <AudioPlayer
+                                                            src={mediaItem.uploadedUrl || mediaItem.url!}
+                                                            title={mediaItem.customName || mediaItem.fileName}
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                {mediaItem.type === "video" && (
+                                                    <div className="w-full max-w-sm mx-auto">
+                                                        <VideoPlayer
+                                                            src={mediaItem.uploadedUrl || mediaItem.url!}
+                                                            title={mediaItem.customName || mediaItem.fileName}
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                {mediaItem.type === "file" && (
+                                                    <div className="w-full max-w-sm mx-auto">
+                                                        <FilePreview
+                                                            fileName={mediaItem.customName || mediaItem.fileName!}
+                                                            fileSize={mediaItem.fileSize}
+                                                            fileType={mediaItem.fileType}
+                                                            downloadUrl={mediaItem.uploadedUrl}
+                                                        />
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
-
-                                        <div className="flex justify-center items-center">
-                                            {mediaItem.type === "image" && (
-                                                <div className="w-full max-w-sm mx-auto">
-                                                    <Image
-                                                        src={mediaItem.uploadedUrl || mediaItem.url!}
-                                                        alt={mediaItem.fileName || "Pasted image"}
-                                                        width={0}
-                                                        height={0}
-                                                        className="w-full h-full object-cover rounded-lg"
-                                                        onLoad={() => setImageLoaded(true)}
-                                                        onError={() => setImageLoaded(true)}
-                                                    />
-                                                </div>
-                                            )}
-
-                                            {mediaItem.type === "audio" && (
-                                                <div className="w-full max-w-sm mx-auto">
-                                                    <AudioPlayer
-                                                        src={mediaItem.uploadedUrl || mediaItem.url!}
-                                                        title={mediaItem.customName || mediaItem.fileName}
-                                                    />
-                                                </div>
-                                            )}
-
-                                            {mediaItem.type === "video" && (
-                                                <div className="w-full max-w-sm mx-auto">
-                                                    <VideoPlayer
-                                                        src={mediaItem.uploadedUrl || mediaItem.url!}
-                                                        title={mediaItem.customName || mediaItem.fileName}
-                                                    />
-                                                </div>
-                                            )}
-
-                                            {mediaItem.type === "file" && (
-                                                <div className="w-full max-w-sm mx-auto">
-                                                    <FilePreview
-                                                        fileName={mediaItem.customName || mediaItem.fileName!}
-                                                        fileSize={mediaItem.fileSize}
-                                                        fileType={mediaItem.fileType}
-                                                        downloadUrl={mediaItem.uploadedUrl}
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {shouldShowNameInput() && (
-                                            <div className="w-full max-w-sm mx-auto">
-                                                <Input
-                                                    placeholder="Enter a name for this media..."
-                                                    value={customName}
-                                                    onChange={(e) => setCustomName(e.target.value)}
-                                                    className="text-sm"
-                                                />
-                                            </div>
-                                        )}
                                         </motion.div>
                                     </motion.div>
                                 )}
@@ -649,7 +659,10 @@ export default function PasteBin() {
                                                 {linkMeta.type === 'YouTube' && <YouTubeCard metadata={linkMeta} />}
                                                 {linkMeta.type === 'Twitter' && <TwitterCard metadata={linkMeta} />}
                                                 {linkMeta.type === 'Notion' && <NotionCard metadata={linkMeta} />}
-                                                {(linkMeta.type === 'Link' || !['GitHub', 'Figma', 'YouTube', 'Twitter', 'Notion'].includes(linkMeta.type)) &&
+                                                {linkMeta.type === 'Loom' && <LoomCard metadata={linkMeta} />}
+                                                {linkMeta.type === 'Spotify' && <SpotifyCard metadata={linkMeta} />}
+                                                {linkMeta.type === 'AppleMusic' && <AppleMusicCard metadata={linkMeta} />}
+                                                {(linkMeta.type === 'Link' || !['GitHub', 'Figma', 'YouTube', 'Twitter', 'Notion', 'Loom', 'Spotify', 'AppleMusic'].includes(linkMeta.type)) &&
                                                     <WebsiteCard metadata={linkMeta} />
                                                 }
                                             </div>
@@ -662,48 +675,124 @@ export default function PasteBin() {
                 </motion.div>
 
                 {/* Input/Controls at bottom */}
-                <div className="relative h-11">
+                <motion.div
+                    className="relative"
+                    animate={{
+                        height: mediaItem || linkMeta || isLoadingLinkMeta ? "80px" : "44px"
+                    }}
+                    transition={{
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 30,
+                        mass: 0.8
+                    }}
+                >
                     <AnimatePresence mode="wait">
                         {mediaItem || linkMeta || isLoadingLinkMeta ? (
                             <motion.div
-                                key="controls"
-                                className="h-11 flex items-center justify-between bg-background border shadow-sm hover:shadow-lg transition-all ease-in-out rounded-full px-3 py-2"
+                                key="expanded-input"
+                                className="relative w-full h-full"
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                transition={{
+                                    type: "spring",
+                                    stiffness: 400,
+                                    damping: 25,
+                                    mass: 0.6
+                                }}
                             >
-                                <motion.span
-                                    className="text-sm text-muted-foreground truncate flex-1 mr-3"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ delay: 0.1 }}
-                                >
-                                    {getDisplayName()}
-                                </motion.span>
                                 <motion.div
-                                    className="flex items-center gap-2"
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: 0.15, type: "spring", stiffness: 400, damping: 25 }}
+                                    className="relative w-full"
+                                    initial={{ height: "44px" }}
+                                    animate={{ height: "80px" }}
+                                    transition={{
+                                        type: "spring",
+                                        stiffness: 350,
+                                        damping: 30,
+                                        mass: 0.7
+                                    }}
                                 >
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={clearMedia}
-                                        className="h-7 w-7 p-0"
+                                    <Textarea
+                                        className="w-full h-full resize-none pr-24 rounded-xl shadow-sm hover:shadow-lg focus:shadow-lg transition-shadow duration-200"
+                                        placeholder={`Enter a thought about: "${getDisplayName()}" ?`}
+                                        value={thought}
+                                        onChange={(e) => updateThought(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" && !e.shiftKey) {
+                                                e.preventDefault();
+                                                handleCreate();
+                                            }
+                                        }}
+                                    />
+                                </motion.div>
+
+                                <motion.div
+                                    className="absolute right-2 bottom-2 flex gap-2"
+                                    initial={{ opacity: 0, y: 10, scale: 0.8 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    transition={{
+                                        delay: 0.1,
+                                        type: "spring",
+                                        stiffness: 500,
+                                        damping: 25,
+                                        mass: 0.5
+                                    }}
+                                >
+                                    <motion.div
+                                        initial={{ x: 20, opacity: 0 }}
+                                        animate={{ x: 0, opacity: 1 }}
+                                        transition={{
+                                            delay: 0.15,
+                                            type: "spring",
+                                            stiffness: 400,
+                                            damping: 25
+                                        }}
                                     >
-                                        <X size={14} />
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        onClick={handleCreate}
-                                        disabled={!isValidForCreation()}
-                                        className="h-7 px-3 rounded-xl"
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={clearMedia}
+                                            className="h-8 w-8 p-0 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors"
+                                        >
+                                            <X size={14} />
+                                        </Button>
+                                    </motion.div>
+
+                                    <motion.div
+                                        initial={{ x: 30, opacity: 0 }}
+                                        animate={{ x: 0, opacity: 1 }}
+                                        transition={{
+                                            delay: 0.2,
+                                            type: "spring",
+                                            stiffness: 400,
+                                            damping: 25
+                                        }}
                                     >
-                                        <Send size={12} />
-                                    </Button>
+                                        <Button
+                                            size="sm"
+                                            onClick={handleCreate}
+                                            disabled={!isValidForCreation()}
+                                            className="h-8 px-3 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50 transition-all duration-200"
+                                        >
+                                            <Send size={12} />
+                                        </Button>
+                                    </motion.div>
                                 </motion.div>
                             </motion.div>
                         ) : (
                             <motion.div
-                                key="input"
+                                key="compact-input"
+                                className="relative w-full h-full"
+                                initial={{ opacity: 0, scale: 1.05 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 1.05 }}
+                                transition={{
+                                    type: "spring",
+                                    stiffness: 400,
+                                    damping: 25,
+                                    mass: 0.6
+                                }}
                             >
                                 <Input
                                     ref={fileInputRef}
@@ -712,28 +801,52 @@ export default function PasteBin() {
                                     onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
                                     multiple={false}
                                 />
-                                <div className="relative">
+
+                                <motion.div
+                                    className="relative w-full"
+                                    initial={{ height: "80px" }}
+                                    animate={{ height: "44px" }}
+                                    transition={{
+                                        type: "spring",
+                                        stiffness: 350,
+                                        damping: 30,
+                                        mass: 0.7
+                                    }}
+                                >
                                     <Input
-                                        className="h-11 pr-16 rounded-full shadow-sm hover:shadow-lg transition-all duration-200"
-                                        placeholder="Paste Media / Ctrl + V"
+                                        className="w-full h-full pr-16 rounded-2xl shadow-sm hover:shadow-lg focus:shadow-lg transition-shadow duration-200"
+                                        placeholder="Enter Media and Create a Node"
                                         value={inputValue}
                                         onChange={handleInputChange}
                                         onKeyDown={handleInputKeyDown}
                                         onPaste={handlePaste}
                                     />
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 h-7 rounded-xl px-2 text-xs"
+
+                                    <motion.div
+                                        className="absolute right-3 top-1/2 -translate-y-1/2"
+                                        initial={{ opacity: 0, scale: 0.8 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{
+                                            delay: 0.1,
+                                            type: "spring",
+                                            stiffness: 400,
+                                            damping: 25
+                                        }}
                                     >
-                                        <FileText size={12} />
-                                    </Button>
-                                </div>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="h-8 rounded-xl px-2 text-xs border-border/50 hover:border-border transition-colors"
+                                        >
+                                            <FileText size={12} />
+                                        </Button>
+                                    </motion.div>
+                                </motion.div>
                             </motion.div>
                         )}
                     </AnimatePresence>
-                </div>
+                </motion.div>
             </div>
         </div>
     );

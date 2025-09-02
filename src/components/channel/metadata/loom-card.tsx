@@ -3,44 +3,45 @@ import { motion } from "motion/react";
 import { ExternalLink, Loader2 } from "lucide-react";
 import { LinkMetadata } from "./index";
 
-interface FigmaCardProps {
+interface LoomCardProps {
     metadata: LinkMetadata;
 }
 
-// Utility function to convert Figma URLs to embed URLs
-const getFigmaEmbedUrl = (url: string): string | null => {
+// Utility function to convert Loom URLs to embed URLs
+const getLoomEmbedUrl = (url: string): string | null => {
     try {
         const urlObj = new URL(url);
         
-        // Handle different Figma URL formats:
-        // https://www.figma.com/file/[FILE_ID]/[FILE_NAME]
-        // https://www.figma.com/design/[FILE_ID]/[FILE_NAME]
-        // https://www.figma.com/proto/[FILE_ID]/[FILE_NAME]
+        // Handle different Loom URL formats:
+        // https://www.loom.com/share/[VIDEO_ID]
+        // https://loom.com/share/[VIDEO_ID]
         
-        const pathMatch = urlObj.pathname.match(/\/(file|design|proto)\/([a-zA-Z0-9]+)/);
+        const pathMatch = urlObj.pathname.match(/\/share\/([a-zA-Z0-9]+)/);
         if (pathMatch) {
-            const fileId = pathMatch[2];
-            return `https://www.figma.com/embed?embed_host=share&url=${encodeURIComponent(url)}`;
+            const videoId = pathMatch[1];
+            return `https://www.loom.com/embed/${videoId}`;
         }
         
         return null;
     } catch (error) {
-        console.error('Error parsing Figma URL:', error);
+        console.error('Error parsing Loom URL:', error);
         return null;
     }
 };
 
-export function FigmaCard({ metadata }: FigmaCardProps) {
+export function LoomCard({ metadata }: LoomCardProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
     
-    const embedUrl = getFigmaEmbedUrl(metadata.url);
+    const embedUrl = getLoomEmbedUrl(metadata.url);
+
+    console.log(metadata)
     
     // If we can't create an embed URL, show a fallback card
     if (!embedUrl || hasError) {
         return (
             <motion.div
-                className="bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200 rounded-lg overflow-hidden border"
+                className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200 rounded-lg overflow-hidden border"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
@@ -48,16 +49,12 @@ export function FigmaCard({ metadata }: FigmaCardProps) {
                 <div className="p-4">
                     <div className="flex items-center gap-2 mb-2">
                         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                            <path d="M7.5 0.5h4.5v4.5h-4.5z" fill="#F24E1E"/>
-                            <path d="M12 0.5h4.5v4.5h-4.5z" fill="#FF7262"/>
-                            <path d="M12 5h4.5v4.5h-4.5z" fill="#1ABCFE"/>
-                            <path d="M7.5 5h4.5v4.5h-4.5z" fill="#0ACF83"/>
-                            <path d="M7.5 9.5h4.5v4.5h-4.5z" fill="#A259FF"/>
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" fill="#625DF5"/>
                         </svg>
-                        <span className="text-sm font-medium text-gray-900">Figma</span>
+                        <span className="text-sm font-medium text-gray-900">Loom</span>
                     </div>
                     <h3 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">
-                        {metadata.title || 'Figma Design'}
+                        {metadata.title || 'Loom Video'}
                     </h3>
                     {metadata.description && (
                         <p className="text-xs text-gray-600 mb-3 line-clamp-2">
@@ -70,7 +67,7 @@ export function FigmaCard({ metadata }: FigmaCardProps) {
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 text-xs font-medium"
                     >
-                        Open in Figma
+                        Watch on Loom
                         <ExternalLink size={12} />
                     </a>
                 </div>
@@ -89,14 +86,10 @@ export function FigmaCard({ metadata }: FigmaCardProps) {
             <div className="flex items-center justify-between p-3 border-b border-gray-100 bg-gray-50">
                 <div className="flex items-center gap-2">
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                        <path d="M7.5 0.5h4.5v4.5h-4.5z" fill="#F24E1E"/>
-                        <path d="M12 0.5h4.5v4.5h-4.5z" fill="#FF7262"/>
-                        <path d="M12 5h4.5v4.5h-4.5z" fill="#1ABCFE"/>
-                        <path d="M7.5 5h4.5v4.5h-4.5z" fill="#0ACF83"/>
-                        <path d="M7.5 9.5h4.5v4.5h-4.5z" fill="#A259FF"/>
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" fill="#625DF5"/>
                     </svg>
                     <span className="text-sm font-medium text-gray-700 truncate max-w-48">
-                        {metadata.title || 'Figma Design'}
+                        {metadata.title || 'Loom Video'}
                     </span>
                 </div>
                 <a
@@ -104,7 +97,7 @@ export function FigmaCard({ metadata }: FigmaCardProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-gray-500 hover:text-gray-700 transition-colors"
-                    title="Open in Figma"
+                    title="Watch on Loom"
                 >
                     <ExternalLink size={16} />
                 </a>
@@ -116,7 +109,7 @@ export function FigmaCard({ metadata }: FigmaCardProps) {
                     <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
                         <div className="flex flex-col items-center gap-2">
                             <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-                            <span className="text-xs text-gray-500">Loading Figma design...</span>
+                            <span className="text-xs text-gray-500">Loading Loom video...</span>
                         </div>
                     </div>
                 )}
@@ -130,7 +123,7 @@ export function FigmaCard({ metadata }: FigmaCardProps) {
                         setIsLoading(false);
                         setHasError(true);
                     }}
-                    title={metadata.title || 'Figma Design'}
+                    title={metadata.title || 'Loom Video'}
                 />
             </div>
         </motion.div>

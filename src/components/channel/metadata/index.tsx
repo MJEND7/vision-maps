@@ -5,6 +5,9 @@ export { YouTubeCard } from './youtube-card';
 export { TwitterCard } from './twitter-card';
 export { NotionCard } from './notion-card';
 export { WebsiteCard } from './website-card';
+export { LoomCard } from './loom-card';
+export { SpotifyCard } from './spotify-card';
+export { AppleMusicCard } from './applemusic-card';
 export { SkeletonCard } from './skeleton-card';
 
 // Define the unified metadata type

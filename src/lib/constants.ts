@@ -35,3 +35,12 @@ export const ROUTES = {
     SUPPORT_EMAIL: 'mailto:support@visionmaps.com',
   }
 } as const;
+
+// LocalStorage keys for paste-bin component
+export const PASTE_BIN_STORAGE_KEYS = {
+  INPUT_VALUE: 'paste-bin-input',
+  MEDIA_ITEM: 'paste-bin-media',
+  LINK_META: 'paste-bin-link-meta', 
+  CUSTOM_NAME: 'paste-bin-custom-name',
+  THOUGHT: 'paste-bin-thought'
+} as const;
