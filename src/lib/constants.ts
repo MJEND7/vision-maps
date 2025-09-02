@@ -42,5 +42,9 @@ export const PASTE_BIN_STORAGE_KEYS = {
   MEDIA_ITEM: 'paste-bin-media',
   LINK_META: 'paste-bin-link-meta', 
   CUSTOM_NAME: 'paste-bin-custom-name',
-  THOUGHT: 'paste-bin-thought'
+  THOUGHT: 'paste-bin-thought',
+  TEXT_CONTENT: 'paste-bin-text-content',
+  CHAT_ID: 'paste-bin-chat-id',
+  IS_AI_MODE: 'paste-bin-is-ai-mode',
+  MODE: 'paste-bin-mode'
 } as const;

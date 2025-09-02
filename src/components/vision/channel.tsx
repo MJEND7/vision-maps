@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MultiUserSelector } from "@/components/ui/multi-user-selector"
 import { useNodeUserCache } from "@/hooks/useUserCache"
 import PasteBin from "../channel/paste-bin"
+import { UserResource } from "@clerk/types"
 
 const NODE_VARIANTS = [
     { value: "Image", label: "Image" },
@@ -25,7 +26,7 @@ const NODE_VARIANTS = [
     { value: "AI", label: "AI" },
 ] as const;
 
-export default function Channel({ channelId }: { channelId: string }) {
+export default function Channel({ channelId, user  }: { channelId: string, user: UserResource }) {
     const [searchQuery, setSearchQuery] = useState("")
     const [debouncedSearch, setDebouncedSearch] = useState("")
     const [selectedVariant, setSelectedVariant] = useState("all")
@@ -296,7 +297,7 @@ export default function Channel({ channelId }: { channelId: string }) {
                         )
                     })
                 )}
-                <PasteBin />
+                <PasteBin user={user} />
             </div>
         </div >
     )

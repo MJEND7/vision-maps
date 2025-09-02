@@ -8,7 +8,7 @@ export function getUserAvatarFallbackInitials(firstName: string, lastName: strin
   return initials.length > 0 ? initials : '?';
 }
 
-export function getUserFullName(firstName: string, lastName: string): string {
+export function getUserFullName(firstName?: string, lastName?: string): string {
   const fullName = [firstName, lastName].filter(Boolean).join(' ');
   return fullName.length > 0 ? fullName : 'User Avatar';
 }

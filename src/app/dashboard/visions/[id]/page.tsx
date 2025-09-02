@@ -51,7 +51,7 @@ function TitleCard({ isLoading, vision, OpenSettings }: { isLoading: boolean, vi
 }
 
 export default function VisionDetailPage() {
-    const { isLoaded, isSignedIn } = useUser();
+    const { isLoaded, isSignedIn, user } = useUser();
     const params = useParams();
     const visionId = params.id as Id<"visions">;
     const [tabs, setTabs] = useState<Map<string, { title: string, id: string, type: ViewMode }>>(new Map());
@@ -437,7 +437,7 @@ export default function VisionDetailPage() {
     const renderContent = () => {
         switch (selectedTab?.type) {
             case ViewMode.CHANNEL:
-                return <Channel channelId={selectedTab.id} />;
+                return <Channel user={user} channelId={selectedTab.id} />;
             case ViewMode.FRAME:
                 return <FrameComponent />;
             case ViewMode.SETTINGS:

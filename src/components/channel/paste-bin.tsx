@@ -17,6 +17,37 @@ import { usePasteBinState, pasteBinStorage, type StoredLinkMeta, type StoredMedi
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
+import { UserResource } from "@clerk/types";
+
+// Paste-bin mode enum
+export enum PasteBinMode {
+  IDLE = 'idle',
+  TEXT = 'text', 
+  AI = 'ai',
+  MEDIA = 'media',
+  EMBED = 'embed'
+}
+
+// Data interfaces
+export interface MediaData {
+  file: File;
+  url: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  uploadedUrl?: string;
+  isUploading?: boolean;
+  customName?: string;
+}
+
+export interface EmbedData {
+  url: string;
+  title?: string;
+  description?: string;
+  image?: string;
+  siteName?: string;
+  type: string;
+}
 
 type MediaType = "image" | "audio" | "video" | "file" | "link" | "text" | "ai";
 
@@ -33,38 +64,39 @@ interface MediaItem {
     customName?: string;
 }
 
-interface LinkMeta extends LinkMetadata { }
+type LinkMeta = LinkMetadata;
 
-export default function PasteBin() {
+export default function PasteBin({ }: { user: UserResource }) {
     // State management with reducer
     const { state, actions } = usePasteBinState();
     const { isDragOver, isLoadingLinkMeta, isLoadingTwitter, imageLoaded } = state;
 
     // Component state
+    const [mode, setMode] = useState<PasteBinMode>(PasteBinMode.IDLE);
+    // Future implementation:
+    // const [mediaData, setMediaData] = useState<MediaData | null>(null);
+    // const [embedData, setEmbedData] = useState<EmbedData | null>(null);
+    const [inputValue, setInputValue] = useState("");
+    const [textContent, setTextContent] = useState("");
+    const [drivenMessageIds, setDrivenMessageIds] = useState<Set<string>>(new Set())
+    const [chatId, setChatId] = useState<string | null>(null);
+    
+    // Keep legacy states for now during transition
     const [mediaItem, setMediaItem] = useState<MediaItem | null>(null);
     const [linkMeta, setLinkMeta] = useState<LinkMeta | null>(null);
-    const [inputValue, setInputValue] = useState("");
     const [thought, setThought] = useState("");
     const [isTextMode, setIsTextMode] = useState(false);
-    const [drivenMessageIds, setDrivenMessageIds] = useState<Set<string>>(new Set())
-    const [chatId, setChatId] = useState<string | null>(null)
     const [isAiMode, setIsAiMode] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const initialLoadRef = useRef(false);
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const emptyResetTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const textContentDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
     const createChat = useMutation(api.chats.createChat);
     const sendMessage = useMutation(api.messages.sendMessage);
-
-    const newChat = async (title: string) => {
-        const chatId = await createChat({
-            title
-        });
-
-        setChatId(chatId)
-
-        return chatId
-    };
+    const deleteChat = useMutation(api.chats.deleteChat);
 
     // Load saved data from localStorage on mount
     useEffect(() => {
@@ -75,6 +107,20 @@ export default function PasteBin() {
 
         setInputValue(savedData.inputValue);
         setThought(savedData.thought);
+        setTextContent(savedData.textContent);
+        
+        // Restore mode
+        if (savedData.mode && savedData.mode !== 'idle') {
+            setMode(savedData.mode as PasteBinMode);
+        }
+
+        // Restore chat state
+        if (savedData.chatId) {
+            setChatId(savedData.chatId);
+        }
+        if (savedData.isAiMode) {
+            setIsAiMode(savedData.isAiMode);
+        }
 
         // Restore media item if valid
         if (savedData.mediaItem) {
@@ -85,6 +131,7 @@ export default function PasteBin() {
                 const restoredMediaItem: MediaItem = {
                     type: parsedMedia.type as MediaType,
                     url: parsedMedia.url,
+                    chatId: parsedMedia.chatId,
                     isUploading: parsedMedia.isUploading || false,
                     uploadedUrl: parsedMedia.uploadedUrl,
                     fileName: parsedMedia.fileName,
@@ -96,6 +143,16 @@ export default function PasteBin() {
                 // Set image as loaded during initial load without causing re-renders
                 if (parsedMedia.type === 'image') {
                     setTimeout(() => actions.setImageLoaded(true), 0);
+                }
+                // Set mode for text/AI items
+                if (parsedMedia.type === 'text') {
+                    setMode(PasteBinMode.TEXT);
+                    setIsTextMode(true);
+                } else if (parsedMedia.type === 'ai') {
+                    setMode(PasteBinMode.AI);
+                    setIsAiMode(true);
+                } else if (parsedMedia.type === 'image' || parsedMedia.type === 'audio' || parsedMedia.type === 'video' || parsedMedia.type === 'file') {
+                    setMode(PasteBinMode.MEDIA);
                 }
             }
         }
@@ -113,17 +170,66 @@ export default function PasteBin() {
                 siteName: storedMeta.siteName,
             };
             setLinkMeta(restoredLinkMeta);
+            setMode(PasteBinMode.EMBED);
         }
     }, []);
 
-    // Cleanup debounce timer on unmount
+    // Cleanup timers on unmount
     useEffect(() => {
         return () => {
             if (debounceTimerRef.current) {
                 clearTimeout(debounceTimerRef.current);
             }
+            if (emptyResetTimerRef.current) {
+                clearTimeout(emptyResetTimerRef.current);
+            }
+            if (textContentDebounceRef.current) {
+                clearTimeout(textContentDebounceRef.current);
+            }
         };
     }, []);
+
+    // Focus textarea when text mode is activated
+    useEffect(() => {
+        if ((mode === PasteBinMode.TEXT || mode === PasteBinMode.AI) && textareaRef.current) {
+            // Small delay to ensure the component has rendered
+            setTimeout(() => {
+                textareaRef.current?.focus();
+            }, 100);
+        }
+    }, [mode]);
+
+    // Reset to original state if input is empty for 3 seconds
+    useEffect(() => {
+        if (mode === PasteBinMode.TEXT && !mediaItem) {
+            // Clear existing timer
+            if (emptyResetTimerRef.current) {
+                clearTimeout(emptyResetTimerRef.current);
+            }
+
+            // If textContent is empty, start the 3-second timer
+            if (!textContent.trim()) {
+                emptyResetTimerRef.current = setTimeout(() => {
+                    setMode(PasteBinMode.IDLE);
+                    setIsTextMode(false);
+                    setTextContent("");
+                    setThought("");
+                    setInputValue("");
+                    pasteBinStorage.save.textContent("");
+                    pasteBinStorage.save.thought("");
+                    pasteBinStorage.save.inputValue("");
+                }, 3000);
+            }
+        }
+
+        // Cleanup timer if conditions change
+        return () => {
+            if (emptyResetTimerRef.current) {
+                clearTimeout(emptyResetTimerRef.current);
+                emptyResetTimerRef.current = null;
+            }
+        };
+    }, [mode, mediaItem, textContent, thought, actions]);
 
     // Central update functions that handle both state and localStorage
     const updateInputValue = useCallback((value: string) => {
@@ -144,6 +250,42 @@ export default function PasteBin() {
     const updateThought = useCallback((thoughtValue: string) => {
         setThought(thoughtValue);
         pasteBinStorage.save.thought(thoughtValue);
+    }, []);
+
+    // Debounced text content update
+    const updateTextContent = useCallback((content: string) => {
+        setTextContent(content);
+        
+        // Clear existing debounce timer
+        if (textContentDebounceRef.current) {
+            clearTimeout(textContentDebounceRef.current);
+        }
+        
+        // Set debounced localStorage save
+        textContentDebounceRef.current = setTimeout(() => {
+            pasteBinStorage.save.textContent(content);
+            pasteBinStorage.save.thought(content); // Keep legacy sync
+        }, 300);
+    }, []);
+
+    const updateChatId = useCallback((chatIdValue: string | null) => {
+        setChatId(chatIdValue);
+        pasteBinStorage.save.chatId(chatIdValue);
+    }, []);
+
+    const newChat = useCallback(async (title: string) => {
+        const chatId = await createChat({
+            title
+        });
+
+        updateChatId(chatId);
+
+        return chatId
+    }, [createChat, updateChatId]);
+
+    const updateIsAiMode = useCallback((aiModeValue: boolean) => {
+        setIsAiMode(aiModeValue);
+        pasteBinStorage.save.isAiMode(aiModeValue);
     }, []);
 
     const { startUpload, isUploading } = useUploadThing("mediaUploader", {
@@ -170,7 +312,7 @@ export default function PasteBin() {
         return "file";
     };
 
-    const detectLinkType = (url: string): string => {
+    const detectLinkType = useCallback((url: string): string => {
         try {
             const hostname = new URL(url).hostname.toLowerCase();
 
@@ -190,9 +332,9 @@ export default function PasteBin() {
             console.error('Error parsing URL:', url, error);
             return 'Link';
         }
-    };
+    }, []);
 
-    const fetchLinkMetadata = async (url: string): Promise<LinkMeta> => {
+    const fetchLinkMetadata = useCallback(async (url: string): Promise<LinkMeta> => {
         try {
             const response = await fetch('/api/og', {
                 method: 'POST',
@@ -235,7 +377,7 @@ export default function PasteBin() {
                 url
             };
         }
-    };
+    }, [detectLinkType]);
 
 
 
@@ -275,13 +417,17 @@ export default function PasteBin() {
             isUploading: false,
         };
 
+        setMode(PasteBinMode.MEDIA);
         updateMediaItem(newMediaItem);
+        pasteBinStorage.save.mode(PasteBinMode.MEDIA);
         updateLinkMeta(null);
         actions.setImageLoaded(false);
     }, [actions, updateMediaItem, updateLinkMeta]);
 
     const handleLinkPaste = useCallback(async (url: string) => {
+        setMode(PasteBinMode.EMBED);
         updateMediaItem(null);
+        pasteBinStorage.save.mode(PasteBinMode.EMBED);
         updateLinkMeta(null);
 
         // Skip API call for Twitter URLs - let react-tweet handle it directly
@@ -324,10 +470,10 @@ export default function PasteBin() {
         } finally {
             actions.setLoadingLinkMeta(false);
         }
-    }, [actions, updateMediaItem, updateLinkMeta]);
+    }, [actions, updateMediaItem, updateLinkMeta, fetchLinkMetadata]);
 
     // Input handlers that depend on handleLinkPaste and handleFileSelect
-    const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
+    const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const clipboardData = e.clipboardData;
         const files = Array.from(clipboardData.files);
         const text = clipboardData.getData("text");
@@ -338,9 +484,9 @@ export default function PasteBin() {
             handleLinkPaste(text);
             updateInputValue("");  // Clear input after pasting link
         }
-    }, [handleFileSelect, handleLinkPaste, updateInputValue]);
+    }, [handleFileSelect, handleLinkPaste, updateInputValue, mode]);
 
-    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const value = e.target.value;
         updateInputValue(value);
 
@@ -360,20 +506,19 @@ export default function PasteBin() {
 
             // Set debounce timer to create text media item
             debounceTimerRef.current = setTimeout(() => {
-                if (!isTextMode && !isAiMode) {
+                if (mode === PasteBinMode.IDLE) {
+                    setMode(PasteBinMode.TEXT);
                     setIsTextMode(true);
-                    updateMediaItem({
-                        type: "text",
-                        customName: value
-                    });
-                    setThought(value)
+                    setTextContent(value);
+                    setThought(value);
                     updateInputValue(""); // Clear input as it moves to textarea
+                    pasteBinStorage.save.mode(PasteBinMode.TEXT);
                 }
-            }, 1000); // 1 second debounce
+            }, 500);
         }
     }, [handleLinkPaste, updateInputValue, isTextMode, isAiMode, updateMediaItem]);
 
-    const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && inputValue) {
             if (inputValue.startsWith("http://") || inputValue.startsWith("https://")) {
                 handleLinkPaste(inputValue);
@@ -402,32 +547,61 @@ export default function PasteBin() {
         }
     }, [actions, handleFileSelect]);
 
-    const handleToggleAiMode = useCallback(async () => {
-        if (mediaItem?.type === "text") {
-            if (thought) {
-                const chatId = await newChat(thought);
-                updateMediaItem({
-                    ...mediaItem,
-                    chatId,
-                    type: "ai"
-                });
-            }
-            setIsAiMode(true);
-        }
-    }, [mediaItem, updateMediaItem]);
+    const handleSendMessage = useCallback(async (chatId: string) => {
+        const data = await sendMessage({ content: thought, chatId: chatId as Id<"chats"> })
+        setDrivenMessageIds((s) => s.add(data.messageId))
+        setThought("")
+    }, [thought, sendMessage, setThought]);
 
-    const clearMedia = useCallback(() => {
+    const handleToggleAiMode = useCallback(async () => {
+        if (mode === PasteBinMode.TEXT) {
+            if (textContent || thought) {
+                const content = textContent || thought;
+                const chatId = await newChat(content);
+                handleSendMessage(chatId);
+            }
+            setMode(PasteBinMode.AI);
+            setIsAiMode(true);
+            updateIsAiMode(true);
+            pasteBinStorage.save.mode(PasteBinMode.AI);
+        }
+    }, [mode, textContent, thought, newChat, handleSendMessage, updateIsAiMode]);
+
+    const clearMedia = useCallback(async (deleteUnusedChat = true) => {
+        // Delete any chat that was created but not used (no messages sent)
+        // Only delete if this is a cancellation, not after successful creation
+        if (chatId && isAiMode && deleteUnusedChat) {
+            try {
+                await deleteChat({ chatId: chatId as Id<"chats"> });
+            } catch (error) {
+                console.error("Failed to delete unused chat:", error);
+            }
+        }
+
         updateMediaItem(null);
         updateLinkMeta(null);
         updateInputValue("");
         updateThought("");
+        setTextContent("");
+        setMode(PasteBinMode.IDLE);
+        pasteBinStorage.save.textContent("");
+        pasteBinStorage.save.mode(PasteBinMode.IDLE);
         setIsTextMode(false);
-        setIsAiMode(false);
+        updateIsAiMode(false);
+        updateChatId(null);
 
-        // Clear debounce timer
+        // Clear timers
         if (debounceTimerRef.current) {
             clearTimeout(debounceTimerRef.current);
             debounceTimerRef.current = null;
+        }
+        if (emptyResetTimerRef.current) {
+            clearTimeout(emptyResetTimerRef.current);
+            emptyResetTimerRef.current = null;
+        }
+        if (textContentDebounceRef.current) {
+            clearTimeout(textContentDebounceRef.current);
+            textContentDebounceRef.current = null;
         }
 
         // Reset state machine
@@ -439,7 +613,7 @@ export default function PasteBin() {
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
-    }, [actions, updateMediaItem, updateLinkMeta, updateInputValue, updateThought]);
+    }, [actions, updateMediaItem, updateLinkMeta, updateInputValue, updateThought, updateChatId, updateIsAiMode, chatId, isAiMode, deleteChat]);
 
     const handleCreate = useCallback(async () => {
         if (mediaItem) {
@@ -462,8 +636,8 @@ export default function PasteBin() {
             console.log("Creating link:", linkMeta);
         }
 
-        // Clear all data and localStorage after successful creation
-        clearMedia();
+        // Clear all data and localStorage after successful creation (don't delete chat)
+        await clearMedia(false);
     }, [mediaItem, linkMeta, startUpload, clearMedia, updateMediaItem]);
 
     const isValidForCreation = useCallback(() => {
@@ -508,8 +682,8 @@ export default function PasteBin() {
                 <motion.div
                     className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 will-change-transform"
                     animate={{
-                        width: linkMeta || mediaItem || isLoadingLinkMeta || isLoadingTwitter ? "100%" : isDragOver ? "100%" : "10rem",
-                        opacity: linkMeta || mediaItem || isLoadingLinkMeta || isLoadingTwitter ? 1 : isDragOver ? 1 : 0.8,
+                        width: mode !== PasteBinMode.IDLE || isDragOver ? "100%" : "10rem",
+                        opacity: mode !== PasteBinMode.IDLE || isDragOver ? 1 : 0.8,
                     }}
                     transition={{
                         type: "spring",
@@ -521,8 +695,10 @@ export default function PasteBin() {
                     <motion.div
                         className="w-full overflow-hidden rounded-2xl shadow-md border border-accent backdrop-blur-sm"
                         animate={{
-                            height: linkMeta || mediaItem || isLoadingLinkMeta || isLoadingTwitter ? "auto" : isDragOver ? "8rem" : "2rem",
-                            padding: linkMeta || mediaItem || isLoadingLinkMeta || isLoadingTwitter || isDragOver ? "0px" : "4px",
+                            height: mode === PasteBinMode.AI ? "300px" :
+                                mode !== PasteBinMode.IDLE ? "auto" :
+                                    isDragOver ? "8rem" : "2rem",
+                            padding: mode !== PasteBinMode.IDLE || isDragOver ? "0px" : "4px",
                             backgroundColor: isDragOver ? "hsl(var(--primary) / 0.05)" : "hsl(var(--background))",
                         }}
                         transition={{
@@ -531,7 +707,11 @@ export default function PasteBin() {
                             damping: 30,
                             mass: 1.0,
                         }}
-                        style={{ minHeight: linkMeta || mediaItem || isLoadingLinkMeta || isLoadingTwitter ? "auto" : isDragOver ? "8rem" : "2rem" }}
+                        style={{
+                            minHeight: mode === PasteBinMode.AI ? "300px" :
+                                mode !== PasteBinMode.IDLE ? "auto" :
+                                    isDragOver ? "8rem" : "2rem"
+                        }}
                     >
                         <div className="relative flex flex-col items-center justify-center min-h-full">
                             <AnimatePresence mode="wait">
@@ -550,7 +730,43 @@ export default function PasteBin() {
                                     </motion.div>
                                 )}
 
-                                {!linkMeta && !mediaItem && !isLoadingLinkMeta && !isLoadingTwitter && !isDragOver && (
+                                {mode === PasteBinMode.TEXT && (
+                                    <motion.div
+                                        key="text-mode"
+                                        className="w-full overflow-hidden"
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{
+                                            type: "spring",
+                                            stiffness: 280,
+                                            damping: 30,
+                                            mass: 1.0,
+                                        }}
+                                    >
+                                        <motion.div
+                                            className="p-4 flex justify-center"
+                                            initial={{ y: 20, scale: 0.95 }}
+                                            animate={{ y: 0, scale: 1 }}
+                                            transition={{
+                                                type: "spring",
+                                                stiffness: 300,
+                                                damping: 25,
+                                                delay: 0.1
+                                            }}
+                                        >
+                                            <div className="w-full text-center">
+                                                <div className="flex flex-col items-center gap-2 text-gray-500">
+                                                    <FileText className="w-8 h-8 text-blue-500" />
+                                                    <p className="text-sm font-medium">Text Note</p>
+                                                    <p className="text-xs text-gray-400">Continue typing or ask AI for help</p>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    </motion.div>
+                                )}
+
+                                {mode === PasteBinMode.IDLE && !isDragOver && (
                                     <motion.div
                                         key="helper"
                                         className="absolute inset-0 flex items-center justify-center"
@@ -571,7 +787,7 @@ export default function PasteBin() {
                                 {mediaItem && (
                                     <motion.div
                                         key="media"
-                                        className="w-full overflow-hidden"
+                                        className="h-full w-full overflow-hidden"
                                         initial={{ height: 0, opacity: 0 }}
                                         animate={{
                                             height: (mediaItem.type === "image" && !imageLoaded) ? 0 : "auto",
@@ -649,20 +865,17 @@ export default function PasteBin() {
                                                     </div>
                                                 )}
 
-                                                {mediaItem.type === "text" && (
-                                                    <div className="" />
-                                                )}
-
-                                                {mediaItem.type === "ai" && mediaItem.chatId && (
-                                                    <div className="w-full max-w-sm mx-auto">
-                                                        <ChatCard drivenIds={drivenMessageIds} onFocusInput={() => {
-                                                            //TODO focus textarea
-                                                        }} chatId={mediaItem.chatId} />
-                                                    </div>
-                                                )}
                                             </div>
                                         </motion.div>
                                     </motion.div>
+                                )}
+
+                                {mode === PasteBinMode.AI && chatId && (
+                                    <div className="h-[450px] w-full p-4">
+                                        <ChatCard drivenIds={drivenMessageIds} onFocusInput={() => {
+                                            textareaRef.current?.focus();
+                                        }} chatId={chatId} />
+                                    </div>
                                 )}
 
                                 {isLoadingLinkMeta && (
@@ -773,11 +986,11 @@ export default function PasteBin() {
                     </motion.div>
                 </motion.div>
 
-                {/* Input/Controls at bottom */}
+                {/* Unified Input/Textarea at bottom */}
                 <motion.div
                     className="relative"
                     animate={{
-                        height: mediaItem || linkMeta || isLoadingLinkMeta ? "80px" : "44px"
+                        height: mode !== PasteBinMode.IDLE ? "120px" : "44px"
                     }}
                     transition={{
                         type: "spring",
@@ -786,75 +999,96 @@ export default function PasteBin() {
                         mass: 0.8
                     }}
                 >
-                    <AnimatePresence mode="wait">
-                        {mediaItem || linkMeta || isLoadingLinkMeta ? (
-                            <motion.div
-                                key="expanded-input"
-                                className="relative w-full h-full"
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                transition={{
-                                    type: "spring",
-                                    stiffness: 400,
-                                    damping: 25,
-                                    mass: 0.6
-                                }}
-                            >
-                                <motion.div
-                                    className="relative w-full"
-                                    initial={{ height: "44px" }}
-                                    animate={{ height: "80px" }}
-                                    transition={{
-                                        type: "spring",
-                                        stiffness: 350,
-                                        damping: 30,
-                                        mass: 0.7
-                                    }}
-                                >
-                                    <Textarea
-                                        className="w-full h-full resize-none pr-24 rounded-xl shadow-sm hover:shadow-lg focus:shadow-lg transition-shadow duration-200"
-                                        placeholder={`Enter a thought about: "${getDisplayName()}" ?`}
-                                        value={thought}
-                                        onChange={(e) => updateThought(e.target.value)}
-                                        onKeyDown={async (e) => {
-                                            if (e.key === "Enter" && !e.shiftKey) {
-                                                e.preventDefault();
-                                                if (isAiMode && chatId) {
-                                                    const data = await sendMessage({ content: thought, chatId: chatId as Id<"chats"> })
-                                                    setDrivenMessageIds((s) => s.add(data.messageId))
-                                                    setThought("")
-                                                } else {
-                                                    // In other modes, Enter creates the item
-                                                    handleCreate();
-                                                }
-                                            }
-                                        }}
-                                    />
-                                </motion.div>
+                    <Input
+                        ref={fileInputRef}
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+                        multiple={false}
+                    />
 
+                    <motion.div className="relative w-full h-full">
+                        <Textarea
+                            ref={textareaRef}
+                            className={`w-full h-full resize-none transition-all duration-200 ${mode !== PasteBinMode.IDLE
+                                ? "pr-24 rounded-xl shadow-sm hover:shadow-lg focus:shadow-lg py-3 px-4"
+                                : "pr-16 rounded-2xl shadow-sm hover:shadow-lg focus:shadow-lg py-0 px-4 overflow-hidden"
+                                }`}
+                            style={{
+                                lineHeight: mode !== PasteBinMode.IDLE ? "1.5" : "44px",
+                                minHeight: "44px"
+                            }}
+                            placeholder={
+                                mode !== PasteBinMode.IDLE
+                                    ? `Enter a thought about: "${getDisplayName()}" ?`
+                                    : "Enter Media and Create a Node"
+                            }
+                            value={mode === PasteBinMode.TEXT || mode === PasteBinMode.AI ? textContent : inputValue}
+                            onChange={(e) => {
+                                if (mode === PasteBinMode.TEXT || mode === PasteBinMode.AI) {
+                                    updateTextContent(e.target.value);
+                                    // Keep legacy thought in sync for now
+                                    setThought(e.target.value);
+                                } else {
+                                    handleInputChange(e);
+                                }
+                            }}
+                            onKeyDown={async (e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    if (mode === PasteBinMode.AI && chatId) {
+                                        handleSendMessage(chatId);
+                                    } else if (mode === PasteBinMode.TEXT) {
+                                        handleCreate();
+                                    } else {
+                                        handleInputKeyDown(e);
+                                    }
+                                }
+                            }}
+                            onPaste={mode === PasteBinMode.IDLE ? handlePaste : undefined}
+                        />
+
+                        <AnimatePresence>
+                            {/* Compact mode buttons */}
+                            {mode === PasteBinMode.IDLE && (
+                                <motion.div
+                                    className="absolute right-3 top-1/2 -translate-y-1/2"
+                                    initial={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.8 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 rounded-xl px-2 text-xs border-border/50 hover:border-border transition-colors"
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        <FileText size={12} />
+                                    </Button>
+                                </motion.div>
+                            )}
+
+                            {/* Expanded mode buttons */}
+                            {mode !== PasteBinMode.IDLE && (
                                 <motion.div
                                     className="absolute right-2 bottom-2 flex gap-2"
                                     initial={{ opacity: 0, y: 10, scale: 0.8 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.8 }}
                                     transition={{
-                                        delay: 0.1,
                                         type: "spring",
-                                        stiffness: 500,
-                                        damping: 25,
-                                        mass: 0.5
+                                        stiffness: 400,
+                                        damping: 25
                                     }}
                                 >
-                                    {mediaItem?.type === "text" && !isAiMode && (
+
+                                    {/* AI button for text mode */}
+                                    {mode === PasteBinMode.TEXT && (
                                         <motion.div
                                             initial={{ x: 40, opacity: 0 }}
                                             animate={{ x: 0, opacity: 1 }}
-                                            transition={{
-                                                delay: 0.1,
-                                                type: "spring",
-                                                stiffness: 400,
-                                                damping: 25
-                                            }}
+                                            exit={{ x: 40, opacity: 0 }}
+                                            transition={{ delay: 0.08 }}
                                         >
                                             <Button
                                                 variant="ghost"
@@ -867,113 +1101,53 @@ export default function PasteBin() {
                                         </motion.div>
                                     )}
 
-                                    <motion.div
-                                        initial={{ x: 20, opacity: 0 }}
-                                        animate={{ x: 0, opacity: 1 }}
-                                        transition={{
-                                            delay: 0.15,
-                                            type: "spring",
-                                            stiffness: 400,
-                                            damping: 25
-                                        }}
-                                    >
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={clearMedia}
-                                            className="h-8 w-8 p-0 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors"
+                                    {/* Close button */}
+                                        <motion.div
+                                            initial={{ x: 40, opacity: 0 }}
+                                            animate={{ x: 0, opacity: 1 }}
+                                            exit={{ x: 40, opacity: 0 }}
+                                            transition={{ delay: 0.1 }}
                                         >
-                                            <X size={14} />
-                                        </Button>
-                                    </motion.div>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => { clearMedia() }}
+                                                className="h-8 w-8 p-0 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors"
+                                            >
+                                                <X size={14} />
+                                            </Button>
+                                        </motion.div>
 
+                                    {/* Main action button */}
                                     <motion.div
                                         initial={{ x: 30, opacity: 0 }}
                                         animate={{ x: 0, opacity: 1 }}
-                                        transition={{
-                                            delay: 0.2,
-                                            type: "spring",
-                                            stiffness: 400,
-                                            damping: 25
-                                        }}
+                                        exit={{ x: 30, opacity: 0 }}
+                                        transition={{ delay: 0.15 }}
                                     >
                                         <Button
                                             size="sm"
-                                            onClick={handleCreate}
-                                            disabled={!isValidForCreation()}
+                                            onClick={async () => {
+                                                if (mode === PasteBinMode.AI && chatId) {
+                                                    handleSendMessage(chatId);
+                                                } else {
+                                                    handleCreate();
+                                                }
+                                            }}
+                                            disabled={
+                                                (!isTextMode || isUploading) &&
+                                                !isValidForCreation()
+                                            }
                                             className="h-8 px-3 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50 transition-all duration-200"
                                         >
                                             <Send size={12} />
+                                            {mode === PasteBinMode.AI ? "Send" : "Create"}
                                         </Button>
                                     </motion.div>
                                 </motion.div>
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                key="compact-input"
-                                className="relative w-full h-full"
-                                initial={{ opacity: 0, scale: 1.05 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 1.05 }}
-                                transition={{
-                                    type: "spring",
-                                    stiffness: 400,
-                                    damping: 25,
-                                    mass: 0.6
-                                }}
-                            >
-                                <Input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    className="hidden"
-                                    onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
-                                    multiple={false}
-                                />
-
-                                <motion.div
-                                    className="relative w-full"
-                                    initial={{ height: "80px" }}
-                                    animate={{ height: "44px" }}
-                                    transition={{
-                                        type: "spring",
-                                        stiffness: 350,
-                                        damping: 30,
-                                        mass: 0.7
-                                    }}
-                                >
-                                    <Input
-                                        className="w-full h-full pr-16 rounded-2xl shadow-sm hover:shadow-lg focus:shadow-lg transition-shadow duration-200"
-                                        placeholder="Enter Media and Create a Node"
-                                        value={inputValue}
-                                        onChange={handleInputChange}
-                                        onKeyDown={handleInputKeyDown}
-                                        onPaste={handlePaste}
-                                    />
-
-                                    <motion.div
-                                        className="absolute right-3 top-1/2 -translate-y-1/2"
-                                        initial={{ opacity: 0, scale: 0.8 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        transition={{
-                                            delay: 0.1,
-                                            type: "spring",
-                                            stiffness: 400,
-                                            damping: 25
-                                        }}
-                                    >
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => fileInputRef.current?.click()}
-                                            className="h-8 rounded-xl px-2 text-xs border-border/50 hover:border-border transition-colors"
-                                        >
-                                            <FileText size={12} />
-                                        </Button>
-                                    </motion.div>
-                                </motion.div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                            )}
+                        </AnimatePresence>
+                    </motion.div>
                 </motion.div>
             </div>
         </div>

@@ -1,16 +1,31 @@
 "use client"
 
-import React, { useRef, useCallback, useEffect } from "react";
+import React, { useRef, useCallback, useEffect, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import MessageItem from "./message-item";
 import dynamic from "next/dynamic";
-import { useWindowSize } from "@/lib/utils";
 import { Id } from "../../../../../convex/_generated/dataModel";
+import { MessageCircle, Sparkles } from "lucide-react";
 
 const ServerMessage = dynamic(() => import("./server-message").then(mod => ({ default: mod.ServerMessage })), {
     ssr: false,
-    loading: () => <div>Loading...</div>
+    loading: () => (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center gap-2 text-primary py-2"
+        >
+            <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            >
+                <Sparkles className="w-4 h-4" />
+            </motion.div>
+            Thinking...
+        </motion.div>
+    )
 });
 
 interface AiCardProps {
@@ -19,64 +34,88 @@ interface AiCardProps {
     onFocusInput: () => void;
 }
 
-// Component that uses the streaming hooks
 export function ChatCard({ chatId, drivenIds, onFocusInput }: AiCardProps) {
-    //const [isStreaming, setIsStreaming] = useState(false);
     const messages = useQuery(api.messages.listMessagesByChat, { chatId: chatId as Id<"chats"> });
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messageContainerRef = useRef<HTMLDivElement>(null);
-    //const clearAllMessages = useMutation(api.messages.clearMessages);
-
-    const scrollToBottom = useCallback(
-        (behavior: ScrollBehavior = "smooth") => {
-            if (messagesEndRef.current) {
-                messagesEndRef.current.scrollIntoView({ behavior });
-            }
-        },
-        [messagesEndRef]
-    );
-
-    const windowSize = useWindowSize();
-
-    useEffect(() => {
-        scrollToBottom();
-    }, [windowSize, scrollToBottom]);
 
     if (!messages) return null;
 
+    // Reverse messages so newest appear at bottom
+    const reversedMessages = [...messages.page].reverse();
+
     return (
-        <div className="flex-1 flex flex-col-reverse h-full max-h-[300px] bg-white">
+        <motion.div
+            className="w-full h-full overflow-hidden flex flex-col"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        >
             <div
                 ref={messageContainerRef}
-                className="flex-1 overflow-y-auto py-6 px-4 md:px-8 lg:px-12"
+                className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-track-transparent 
+                scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 "
             >
-                <div className="w-full max-w-5xl mx-auto space-y-6">
-                    {messages.page.length === 0 && (
-                        <div className="text-center text-gray-500">
-                            No messages yet. Start the conversation!
-                        </div>
-                    )}
-                    {messages.page.map((message) => (
-                        <React.Fragment key={message._id}>
-                            <MessageItem message={message} isUser={true}>
-                                {message.content}
-                            </MessageItem>
-                            <MessageItem message={message} isUser={false}>
-                                <ServerMessage
-                                    message={message}
-                                    isDriven={drivenIds.has(message._id)}
-                                    stopStreaming={() => {
-                                        //setIsStreaming(false);
-                                        onFocusInput();
-                                    }}
-                                    scrollToBottom={scrollToBottom}
-                                />
-                            </MessageItem>
-                        </React.Fragment>
-                    ))}
+                <div className="w-full max-w-full space-y-4 p-2 overflow-hidden">
+                    <AnimatePresence mode="wait">
+                        {messages.page.length === 0 ? (
+                            <motion.div
+                                className="text-center py-12"
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                transition={{ delay: 0.1 }}
+                            >
+                                <div className="flex flex-col items-center gap-3 text-gray-500">
+                                    <div className="p-3 rounded-full bg-blue-50 border border-blue-100">
+                                        <MessageCircle className="w-6 h-6 text-blue-600" />
+                                    </div>
+                                    <p className="text-sm font-medium">Ready for conversation</p>
+                                    <p className="text-xs text-gray-400">Ask me anything to get started</p>
+                                </div>
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="flex flex-col gap-10"
+                            >
+                                {reversedMessages.map((message, index) => (
+                                    <React.Fragment key={message._id}>
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: index * 0.05 }}
+                                        >
+                                            <MessageItem message={message} isUser={true}>
+                                                {message.content}
+                                            </MessageItem>
+                                        </motion.div>
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: index * 0.05 + 0.1 }}
+                                        >
+                                            <MessageItem message={message} isUser={false}>
+                                                <ServerMessage
+                                                    message={message}
+                                                    isDriven={drivenIds.has(message._id)}
+                                                    stopStreaming={() => {
+                                                        onFocusInput();
+                                                    }}
+                                                    scrollToBottom={() => {
+                                                    }}
+                                                />
+                                            </MessageItem>
+                                        </motion.div>
+                                    </React.Fragment>
+                                ))}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                     <div ref={messagesEndRef} />
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 }

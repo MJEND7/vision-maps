@@ -48,3 +48,39 @@ export const getChat = query({
     },
 });
 
+export const deleteChat = mutation({
+    args: {
+        chatId: v.id("chats")
+    },
+    handler: async (ctx, args) => {
+        const identity = await requireAuth(ctx);
+
+        if (!identity?.userId) {
+            throw new Error("Failed to get the user Id")
+        }
+
+        // Get the chat to verify ownership
+        const chat = await ctx.db.get(args.chatId);
+        if (!chat) {
+            throw new Error("Chat not found");
+        }
+
+        if (chat.userId !== identity.userId.toString()) {
+            throw new Error("Unauthorized: You can only delete your own chats");
+        }
+
+        // Delete all messages first
+        const messages = await ctx.db
+            .query("messages")
+            .withIndex("by_chatId", (q) => q.eq("chatId", args.chatId))
+            .collect();
+            
+        await Promise.all(messages.map((message) => ctx.db.delete(message._id)));
+
+        // Then delete the chat
+        await ctx.db.delete(args.chatId);
+        
+        return { success: true };
+    },
+});
+

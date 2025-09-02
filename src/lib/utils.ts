@@ -20,3 +20,29 @@ export function useWindowSize() {
   }, []);
   return size;
 }
+
+export function useElementSize<T extends HTMLElement>() {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const [node, setNode] = useState<T | null>(null);
+
+  useLayoutEffect(() => {
+    if (!node) return;
+
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry.contentRect) {
+        setSize({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height,
+        });
+      }
+    });
+
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [node]);
+
+  return [setNode, size] as const;
+}
