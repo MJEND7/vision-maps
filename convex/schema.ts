@@ -8,6 +8,7 @@ import { Comments } from "./tables/comments";
 import { Notifications } from "./tables/notifications";
 import { Chats } from "./tables/chats";
 import { Messages } from "./tables/messages";
+import { OGMetadata } from "./tables/ogMetadata";
 
 // The schema is entirely optional.
 // You can delete this file (schema.ts) and the
@@ -24,4 +25,5 @@ export default defineSchema({
     notifications: Notifications.Table,
     chats: Chats.Table,
     messages: Messages.Table,
+    og_metadata: OGMetadata.Table,
 });

@@ -19,6 +19,7 @@ import { Id } from "../../../convex/_generated/dataModel";
 import { UserResource } from "@clerk/types";
 import { CreateNodeArgs } from "../../../convex/nodes";
 import { NodeVariants } from "../../../convex/tables/nodes";
+import { useOGMetadataWithCache } from "@/utils/ogMetadata";
 
 // Paste-bin mode enum
 export enum PasteBinMode {
@@ -137,6 +138,9 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
     const createChat = useMutation(api.chats.createChat);
     const sendMessage = useMutation(api.messages.sendMessage);
     const deleteChat = useMutation(api.chats.deleteChat);
+    
+    // Use the reusable OG metadata hook
+    const { fetchWithCache } = useOGMetadataWithCache();
 
     // Helper function to convert Media to LinkMetadata for card components
     const mediaToLinkMetadata = useCallback((media: Media): LinkMetadata => {
@@ -414,36 +418,10 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
 
     const fetchLinkMetadata = useCallback(async (url: string): Promise<any> => {
         try {
-            const response = await fetch('/api/og', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ url }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok || !data.success) {
-                throw new Error(data.error || 'Failed to fetch metadata');
-            }
-
-            // Map backend platform types to NodeVariants
-            const typeMapping: Record<string, NodeVariants> = {
-                github: NodeVariants.GitHub,
-                youtube: NodeVariants.YouTube,
-                twitter: NodeVariants.Twitter,
-                figma: NodeVariants.Figma,
-                notion: NodeVariants.Notion,
-                loom: NodeVariants.Loom,
-                spotify: NodeVariants.Spotify,
-                applemusic: NodeVariants.AppleMusic,
-                website: NodeVariants.Link
-            };
-
+            const result = await fetchWithCache(url);
             return {
-                ...data.metadata,
-                type: typeMapping[data.platformType] || NodeVariants.Link
+                ...result.metadata,
+                type: result.type
             };
         } catch (error) {
             console.error('Error fetching metadata:', error);
@@ -455,7 +433,7 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
                 url
             };
         }
-    }, [detectLinkType]);
+    }, [detectLinkType, fetchWithCache]);
 
     // Core handlers in dependency order
     const handleFileSelect = useCallback((file: File) => {
@@ -782,10 +760,9 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
             <div className="relative">
                 {/* Floating helper / metadata container */}
                 <motion.div
-                    className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 will-change-transform"
+                    className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 will-change-transform  "
                     animate={{
                         width: mode !== PasteBinMode.IDLE || isDragOver ? "100%" : "10rem",
-                        opacity: mode !== PasteBinMode.IDLE || isDragOver ? 1 : 0.8,
                     }}
                     transition={{
                         type: "spring",
@@ -795,13 +772,12 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
                     }}
                 >
                     <motion.div
-                        className="w-full overflow-hidden rounded-2xl shadow-md border border-accent backdrop-blur-sm"
+                        className="w-full overflow-hidden rounded-2xl shadow-md border border-accent bg-background/30 backdrop-blur-lg"
                         animate={{
                             height: mode === PasteBinMode.AI ? "400px" :
                                 mode !== PasteBinMode.IDLE ? "auto" :
                                     isDragOver ? "8rem" : "2rem",
                             padding: mode !== PasteBinMode.IDLE || isDragOver ? "0px" : "4px",
-                            backgroundColor: isDragOver ? "hsl(var(--primary) / 0.05)" : "hsl(var(--background))",
                         }}
                         transition={{
                             type: "spring",
@@ -854,9 +830,20 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
                                         >
                                             <div className="w-full text-center">
                                                 <div className="flex flex-col items-center gap-1 text-gray-500">
-                                                    <FileText className="w-8 h-8 text-blue-500" />
-                                                    <p className="text-sm font-medium">Note</p>
-                                                    <p className="text-xs text-muted-foreground">Enter a note into the channel</p>
+                                                    <motion.div
+                                                        initial={{ x: 40, opacity: 0 }}
+                                                        animate={{ x: 0, opacity: 1 }}
+                                                        exit={{ x: 40, opacity: 0 }}
+                                                        transition={{ delay: 0.08 }}
+                                                    >
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={handleToggleAiMode}
+                                                            className="px-3 py-2 text-xs rounded-lg bg-primary group hover:bg-primary/90 text-primary-foreground disabled:opacity-50 transition-all duration-200"
+                                                        >
+                                                            <Brain className="dark:group-hover:text-blue-500 group-hover:text-purple-400" size={14} /> Start a Prompt
+                                                        </Button>
+                                                    </motion.div>
                                                 </div>
                                             </div>
                                         </motion.div>
@@ -1074,9 +1061,9 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
                     <motion.div className="relative w-full h-full">
                         <Textarea
                             ref={textareaRef}
-                            className={`w-full h-full resize-none transition-all duration-200 ${mode !== PasteBinMode.IDLE
+                            className={`w-full dark:bg-background bg-background h-full resize-none transition-all duration-200 ${mode !== PasteBinMode.IDLE
                                 ? "pr-24 rounded-xl shadow-sm hover:shadow-lg focus:shadow-lg py-3 px-4"
-                                : "pr-16 rounded-2xl shadow-sm hover:shadow-lg focus:shadow-lg py-0 px-4 overflow-hidden"
+                                : "pr-16 rounded-3xl shadow-sm hover:shadow-lg focus:shadow-lg py-0 px-4 overflow-hidden"
                                 }`}
                             style={{
                                 lineHeight: mode !== PasteBinMode.IDLE ? "1.5" : "44px",
@@ -1133,7 +1120,7 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
                             {/* Expanded mode buttons */}
                             {mode !== PasteBinMode.IDLE && (
                                 <motion.div
-                                    className="absolute right-2 bottom-2 flex gap-2 bg-background p-1"
+                                    className="absolute right-2 bottom-2 flex gap-2"
                                     initial={{ opacity: 0, y: 10, scale: 0.8 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, scale: 0.8 }}
@@ -1144,24 +1131,6 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
                                     }}
                                 >
 
-                                    {/* AI button for text mode */}
-                                    {mode === PasteBinMode.TEXT && (
-                                        <motion.div
-                                            initial={{ x: 40, opacity: 0 }}
-                                            animate={{ x: 0, opacity: 1 }}
-                                            exit={{ x: 40, opacity: 0 }}
-                                            transition={{ delay: 0.08 }}
-                                        >
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={handleToggleAiMode}
-                                                className="h-8 w-8 p-0 rounded-lg hover:bg-purple-50 hover:text-purple-600 transition-colors"
-                                            >
-                                                <Brain size={14} />
-                                            </Button>
-                                        </motion.div>
-                                    )}
 
                                     {/* Close button */}
                                     <motion.div
@@ -1179,6 +1148,7 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
                                             <X size={14} />
                                         </Button>
                                     </motion.div>
+
 
                                     {/* Main action button */}
                                     <motion.div

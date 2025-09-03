@@ -1,7 +1,141 @@
+import React from "react";
 import { NodeUser } from "@/hooks/useUserCache";
 import { NodeWithFrame } from "../../../convex/channels";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { timeSinceFromDateString } from "@/utils/date";
+import { NodeVariants } from "../../../convex/tables/nodes";
+import Image from "next/image";
+import { AudioPlayer } from "./audio-player";
+import { VideoPlayer } from "./video-player";
+import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard, ChatCard } from "./metadata";
+import { useOGMetadataWithCache } from "@/utils/ogMetadata";
+
+// Component for nodes that need metadata fetching
+function NodeWithMetadata({ node, variant }: { node: NodeWithFrame, variant: NodeVariants }) {
+    const { fetchWithCache } = useOGMetadataWithCache();
+    const [metadata, setMetadata] = React.useState<any>(null);
+    const [isLoading, setIsLoading] = React.useState(true);
+    
+    // Fetch metadata when component mounts
+    React.useEffect(() => {
+        const fetchMetadata = async () => {
+            try {
+                // If no rich metadata, fetch from cache/API
+                const result = await fetchWithCache(node.value);
+                setMetadata({
+                    ...result.metadata,
+                    type: variant
+                });
+            } catch (error) {
+                console.error('Error fetching metadata:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchMetadata();
+    }, [node.value, variant, fetchWithCache, node]);
+
+    // Show loading state while fetching
+    if (isLoading) {
+        return (
+            <div className="animate-pulse">
+                <div className="bg-gray-200 h-32 w-full rounded-lg"></div>
+            </div>
+        );
+    }
+
+    // Render appropriate card based on variant
+    switch (variant) {
+        case NodeVariants.GitHub:
+            return <GitHubCard metadata={metadata} />;
+        case NodeVariants.Figma:
+            return <FigmaCard metadata={metadata} />;
+        case NodeVariants.YouTube:
+            return <YouTubeCard metadata={metadata} />;
+        case NodeVariants.Twitter:
+            return <TwitterCard metadata={metadata} />;
+        case NodeVariants.Notion:
+            return <NotionCard metadata={metadata} />;
+        case NodeVariants.Loom:
+            return <LoomCard metadata={metadata} />;
+        case NodeVariants.Spotify:
+            return <SpotifyCard metadata={metadata} />;
+        case NodeVariants.AppleMusic:
+            return <AppleMusicCard metadata={metadata} />;
+        case NodeVariants.Link:
+        default:
+            return <WebsiteCard metadata={metadata} />;
+    }
+}
+
+// Render node content based on variant
+function renderNodeContent(node: NodeWithFrame) {
+    const variant = node.variant as NodeVariants;
+
+    switch (variant) {
+        case NodeVariants.Image:
+            return (
+                <div className="rounded-lg overflow-hidden border">
+                    <Image
+                        src={node.value}
+                        alt={node.title}
+                        width={300}
+                        height={200}
+                        className="w-full h-auto object-cover"
+                    />
+                </div>
+            );
+
+        case NodeVariants.Audio:
+            return (
+                <AudioPlayer
+                    src={node.value}
+                    title={node.title}
+                />
+            );
+
+        case NodeVariants.Video:
+            return (
+                <VideoPlayer
+                    src={node.value}
+                    title={node.title}
+                />
+            );
+
+        case NodeVariants.GitHub:
+        case NodeVariants.Figma:
+        case NodeVariants.YouTube:
+        case NodeVariants.Twitter:
+        case NodeVariants.Notion:
+        case NodeVariants.Loom:
+        case NodeVariants.Spotify:
+        case NodeVariants.AppleMusic:
+        case NodeVariants.Link:
+            return <NodeWithMetadata node={node} variant={variant} />;
+
+        case NodeVariants.AI:
+            return <ChatCard drivenIds={new Set()} onFocusInput={() => { }} chatId={node.value} />;
+
+        case NodeVariants.Text:
+            return (
+                <p className="text-sm whitespace-pre-wrap">{node.value}</p>
+            );
+
+        default:
+            // For unknown types, try to detect if it's a file
+            if (node.value.startsWith('http') && !node.value.includes('youtube.com') && !node.value.includes('github.com')) {
+                return <NodeWithMetadata node={node} variant={NodeVariants.Link} />;
+            }
+            return (
+                <div className="p-3 bg-gray-50 rounded-lg border">
+                    <p className="text-sm text-muted-foreground">
+                        {node.variant} content: {node.value.substring(0, 100)}...
+                    </p>
+                </div>
+            );
+    }
+}
 
 export default function ChannelNode({ node, nodeUser }: { node: NodeWithFrame, nodeUser: NodeUser | null }) {
     // Show loading state if user data isn't available yet
@@ -42,24 +176,30 @@ export default function ChannelNode({ node, nodeUser }: { node: NodeWithFrame, n
                     {nodeUser.name.split(" ").map(n => n[0]).join("").toUpperCase()}
                 </AvatarFallback>
             </Avatar>
-            <div className="space-y-2">
+            <div className="">
                 <span className="flex items-center gap-3">
-                    <span>{nodeUser.name}</span>
+                    <span className="font-semibold">{nodeUser.name}</span>
                     <div className="text-right text-xs text-muted-foreground/70">
                         {timeSinceFromDateString(new Date(node._creationTime))}
                     </div>
                 </span>
-                <div className="flex items-start justify-between">
+                <div className="flex flex-col">
                     <div className="flex-1">
-                        <h3 className="font-medium">{node.title}</h3>
-                        <p className="text-sm text-muted-foreground mt-1">
-                            {node.thought || "No description"}
-                        </p>
+                        {(node.thought && node.variant !== NodeVariants.Text) && (
+                            <p className="text-sm text-muted-foreground">
+                                {node.thought}
+                            </p>
+                        )}
                         {node.frameTitle && (
-                            <p className="text-xs text-blue-600 mt-1">
+                            <p className="text-xs text-blue-600">
                                 Frame: {node.frameTitle}
                             </p>
                         )}
+                    </div>
+
+                    {/* Render content based on node variant */}
+                    <div className="mt-1 w-full max-w-md">
+                        {renderNodeContent(node)}
                     </div>
                 </div>
             </div>
