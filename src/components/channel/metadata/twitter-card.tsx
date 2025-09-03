@@ -1,9 +1,9 @@
-import { Tweet } from 'react-tweet';
 import { motion } from "motion/react";
-import { LinkMetadata } from "./index";
+import { TwitterMetadata } from "./index";
+import { Tweet } from "@/components/socials/tweet";
 
 interface TwitterCardProps {
-    metadata: LinkMetadata;
+    metadata: TwitterMetadata;
 }
 
 export function TwitterCard({ metadata }: TwitterCardProps) {
@@ -12,7 +12,7 @@ export function TwitterCard({ metadata }: TwitterCardProps) {
         try {
             const urlObj = new URL(url);
             const pathname = urlObj.pathname;
-            
+
             // Handle different Twitter URL formats:
             // https://twitter.com/user/status/1234567890
             // https://x.com/user/status/1234567890
@@ -21,13 +21,14 @@ export function TwitterCard({ metadata }: TwitterCardProps) {
             if (tweetMatch) {
                 return tweetMatch[1];
             }
-            
+
             return null;
         } catch (error) {
             console.error('Error extracting tweet ID:', error);
             return null;
         }
     };
+
 
     const tweetId = extractTweetId(metadata.url);
 
@@ -43,7 +44,7 @@ export function TwitterCard({ metadata }: TwitterCardProps) {
                 <div className="p-4">
                     <div className="flex items-center gap-2 mb-2">
                         <svg className="w-5 h-5 text-gray-900" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/>
+                            <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z" />
                         </svg>
                         <span className="text-sm font-medium text-gray-900">Twitter/X</span>
                     </div>

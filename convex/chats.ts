@@ -1,11 +1,24 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, Infer } from "convex/values";
 import { requireAuth } from "./utils/auth";
 
+// Args schemas
+const createChatArgs = v.object({
+    title: v.string(),
+});
+
+const listUserChatsArgs = v.object({});
+
+const getChatArgs = v.object({
+    chatId: v.id("chats"),
+});
+
+const deleteChatArgs = v.object({
+    chatId: v.id("chats"),
+});
+
 export const createChat = mutation({
-    args: {
-        title: v.string(),
-    },
+    args: createChatArgs,
     handler: async (ctx, args) => {
         const identity = await requireAuth(ctx);
 
@@ -23,7 +36,7 @@ export const createChat = mutation({
 });
 
 export const listUserChats = query({
-    args: {},
+    args: listUserChatsArgs,
     handler: async (ctx) => {
         const identity = await requireAuth(ctx);
         const userId = identity?.userId
@@ -40,18 +53,14 @@ export const listUserChats = query({
 });
 
 export const getChat = query({
-    args: {
-        chatId: v.id("chats")
-    },
+    args: getChatArgs,
     handler: async (ctx, args) => {
         return await ctx.db.get(args.chatId);
     },
 });
 
 export const deleteChat = mutation({
-    args: {
-        chatId: v.id("chats")
-    },
+    args: deleteChatArgs,
     handler: async (ctx, args) => {
         const identity = await requireAuth(ctx);
 
@@ -83,4 +92,10 @@ export const deleteChat = mutation({
         return { success: true };
     },
 });
+
+// Type exports
+export type CreateChatArgs = Infer<typeof createChatArgs>;
+export type ListUserChatsArgs = Infer<typeof listUserChatsArgs>;
+export type GetChatArgs = Infer<typeof getChatArgs>;
+export type DeleteChatArgs = Infer<typeof deleteChatArgs>;
 

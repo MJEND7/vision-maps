@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { ExternalLink, Loader2 } from "lucide-react";
-import { LinkMetadata } from "./index";
+import { LoomMetadata } from "./index";
 
 interface LoomCardProps {
-    metadata: LinkMetadata;
+    metadata: LoomMetadata;
 }
 
 // Utility function to convert Loom URLs to embed URLs

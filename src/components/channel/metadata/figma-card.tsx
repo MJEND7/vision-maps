@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { ExternalLink, Loader2 } from "lucide-react";
-import { LinkMetadata } from "./index";
+import { FigmaMetadata } from "./index";
 
 interface FigmaCardProps {
-    metadata: LinkMetadata;
+    metadata: FigmaMetadata;
 }
 
 // Utility function to convert Figma URLs to embed URLs
@@ -19,7 +19,6 @@ const getFigmaEmbedUrl = (url: string): string | null => {
         
         const pathMatch = urlObj.pathname.match(/\/(file|design|proto)\/([a-zA-Z0-9]+)/);
         if (pathMatch) {
-            const fileId = pathMatch[2];
             return `https://www.figma.com/embed?embed_host=share&url=${encodeURIComponent(url)}`;
         }
         

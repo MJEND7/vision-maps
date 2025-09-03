@@ -158,7 +158,7 @@ export default function ProfileNav() {
                             <div className="flex flex-col gap-2 px-4">
                                 {/* Theme Switcher in Mobile Menu */}
                                 {isLoaded && (
-                                    <ThemeSwitcher />
+                                    <ThemeSwitcher size="sm" />
                                 )}
                             </div>
                         </motion.div>
@@ -168,7 +168,7 @@ export default function ProfileNav() {
             <div
                 className="hidden sm:flex  items-center justify-between w-auto rounded-r-4xl rounded-l-xl backdrop-blur-[5px] dark:bg-background/50 dark:backdrop-blur-md bg-accent/50 border pl-2 pr-3 py-2"
             >
-                <ThemeSwitcher />
+                <ThemeSwitcher size="sm" />
             </div>
         </div>
     );

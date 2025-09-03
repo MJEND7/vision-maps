@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { ExternalLink, Loader2 } from "lucide-react";
-import { LinkMetadata } from "./index";
+import { SpotifyMetadata } from "./index";
 
 interface SpotifyCardProps {
-    metadata: LinkMetadata;
+    metadata: SpotifyMetadata;
 }
 
 // Utility function to convert Spotify URLs to embed URLs

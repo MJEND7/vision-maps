@@ -1,4 +1,23 @@
+import { NodeVariants } from '../../convex/tables/nodes';
 import banner from '../../public/landing/banner.png';
+
+
+export const NODE_VARIANTS: { value: NodeVariants; label: NodeVariants }[] = [
+  { value: NodeVariants.Image, label: NodeVariants.Image },
+  { value: NodeVariants.Video, label: NodeVariants.Video },
+  { value: NodeVariants.Link, label: NodeVariants.Link },
+  { value: NodeVariants.Audio, label: NodeVariants.Audio },
+  { value: NodeVariants.Text, label: NodeVariants.Text },
+  { value: NodeVariants.YouTube, label: NodeVariants.YouTube },
+  { value: NodeVariants.Spotify, label: NodeVariants.Spotify },
+  { value: NodeVariants.AppleMusic, label: NodeVariants.AppleMusic },
+  { value: NodeVariants.Notion, label: NodeVariants.Notion },
+  { value: NodeVariants.Figma, label: NodeVariants.Figma },
+  { value: NodeVariants.GitHub, label: NodeVariants.GitHub },
+  { value: NodeVariants.AI, label: NodeVariants.AI },
+  { value: NodeVariants.Loom, label: NodeVariants.Loom },
+  { value: NodeVariants.Excalidraw, label: NodeVariants.Excalidraw },
+] as const;
 
 export const ASSETS = {
   banner,

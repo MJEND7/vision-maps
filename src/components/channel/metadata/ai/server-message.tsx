@@ -14,80 +14,83 @@ import { getConvexSiteUrl } from "@/utils/convex";
 import { api } from "../../../../../convex/_generated/api";
 import { AlertCircle, Copy, CopyCheck, Sparkles } from "lucide-react";
 
+// Code component with copy functionality
+const CodeComponent = ({ className, children, ...props }: any) => {
+    const [copied, setCopied] = useState(false);
+    const match = /language-(\w+)/.exec(className || "");
+    const theme =
+        typeof window !== "undefined" &&
+            document.documentElement.classList.contains("dark")
+            ? oneDark
+            : oneLight;
+
+    const codeString = String(children).replace(/\n$/, "");
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(codeString);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error("Failed to copy code:", err);
+        }
+    };
+
+    return match ? (
+        <div className="max-w-[455px] relative group my-3">
+            <button
+                onClick={handleCopy}
+                className="absolute top-2 right-2 p-2 text-xs rounded-md bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            >
+                {copied ? <CopyCheck size={15} /> : <Copy size={15} /> }
+            </button>
+            <SyntaxHighlighter
+                style={theme as SyntaxHighlighterProps["style"]}
+                language={match[1]}
+                PreTag="div"
+                className="rounded-md border"
+                {...props}
+            >
+                {codeString}
+            </SyntaxHighlighter>
+        </div>
+    ) : (
+        <code
+            className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-card-foreground"
+            {...props}
+        >
+            {children}
+        </code>
+    );
+};
+
 // Custom ChatGPT-like Markdown styles with theme tokens
 const markdownComponents: Components = {
-    h1: ({ node, ...props }) => (
+    h1: ({ ...props }) => (
         <h1 className="text-2xl font-bold text-card-foreground mb-3" {...props} />
     ),
-    h2: ({ node, ...props }) => (
+    h2: ({ ...props }) => (
         <h2 className="text-xl font-semibold text-card-foreground mt-4 mb-2" {...props} />
     ),
-    p: ({ node, ...props }) => (
+    p: ({ ...props }) => (
         <p className="text-card-foreground leading-relaxed mb-3" {...props} />
     ),
-    ul: ({ node, ...props }) => (
+    ul: ({ ...props }) => (
         <ul className="list-disc list-inside space-y-1 text-card-foreground mb-3" {...props} />
     ),
-    ol: ({ node, ...props }) => (
+    ol: ({ ...props }) => (
         <ol className="list-decimal list-inside space-y-1 text-card-foreground mb-3" {...props} />
     ),
-    li: ({ node, ...props }) => (
+    li: ({ ...props }) => (
         <li className="ml-4 text-card-foreground" {...props} />
     ),
-    blockquote: ({ node, ...props }) => (
+    blockquote: ({ ...props }) => (
         <blockquote
             className="border-l-4 border-border pl-4 italic text-muted-foreground my-3"
             {...props}
         />
     ),
-    code({ className, children, ...props }) {
-        const [copied, setCopied] = useState(false);
-        const match = /language-(\w+)/.exec(className || "");
-        const theme =
-            typeof window !== "undefined" &&
-                document.documentElement.classList.contains("dark")
-                ? oneDark
-                : oneLight;
-
-        const codeString = String(children).replace(/\n$/, "");
-
-        const handleCopy = async () => {
-            try {
-                await navigator.clipboard.writeText(codeString);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-            } catch (err) {
-                console.error("Failed to copy code:", err);
-            }
-        };
-
-        return match ? (
-            <div className="max-w-[455px] relative group my-3">
-                <button
-                    onClick={handleCopy}
-                    className="absolute top-2 right-2 p-2 text-xs rounded-md bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                >
-                    {copied ? <CopyCheck size={15} /> : <Copy size={15} /> }
-                </button>
-                <SyntaxHighlighter
-                    style={theme as SyntaxHighlighterProps["style"]}
-                    language={match[1]}
-                    PreTag="div"
-                    className="rounded-md border border-border"
-                    {...props}
-                >
-                    {codeString}
-                </SyntaxHighlighter>
-            </div>
-        ) : (
-            <code
-                className="bg-muted text-accent-foreground px-1.5 py-0.5 rounded text-sm"
-                {...props}
-            >
-                {children}
-            </code>
-        );
-    },
+    code: CodeComponent,
 };
 
 export function ServerMessage({

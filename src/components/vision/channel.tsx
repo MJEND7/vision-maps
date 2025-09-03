@@ -11,22 +11,10 @@ import { MultiUserSelector } from "@/components/ui/multi-user-selector"
 import { useNodeUserCache } from "@/hooks/useUserCache"
 import PasteBin from "../channel/paste-bin"
 import { UserResource } from "@clerk/types"
+import { CreateNodeArgs } from "../../../convex/nodes"
+import { NODE_VARIANTS } from "@/lib/constants"
 
-const NODE_VARIANTS = [
-    { value: "Image", label: "Image" },
-    { value: "Video", label: "Video" },
-    { value: "Link", label: "Link" },
-    { value: "Audio", label: "Audio" },
-    { value: "Text", label: "Text" },
-    { value: "YouTube", label: "YouTube" },
-    { value: "Spotify", label: "Spotify" },
-    { value: "Notion", label: "Notion" },
-    { value: "Figma", label: "Figma" },
-    { value: "GitHub", label: "GitHub" },
-    { value: "AI", label: "AI" },
-] as const;
-
-export default function Channel({ channelId, user  }: { channelId: string, user: UserResource }) {
+export default function Channel({ channelId, user }: { channelId: string, user: UserResource }) {
     const [searchQuery, setSearchQuery] = useState("")
     const [debouncedSearch, setDebouncedSearch] = useState("")
     const [selectedVariant, setSelectedVariant] = useState("all")
@@ -60,6 +48,8 @@ export default function Channel({ channelId, user  }: { channelId: string, user:
     })
     const updateChannel = useMutation(api.channels.update)
     const isLoading = data == undefined
+
+    const createNode = useMutation(api.nodes.create);
 
     // Get the getUserForNode function from the node user cache hook
     const { getUserForNode } = useNodeUserCache()
@@ -125,6 +115,12 @@ export default function Channel({ channelId, user  }: { channelId: string, user:
             setDescriptionValue(channel.description || "")
             setIsEditingDescription(false)
         }
+    }
+
+    const handleNodeCreation = async (data: Omit<CreateNodeArgs, "channel">) => {
+        console.log("Node: ", data)
+        await createNode({ ...data, channel: channelId as Id<"channels"> });
+        //TODO some loading state stuff
     }
 
     return (
@@ -289,7 +285,7 @@ export default function Channel({ channelId, user  }: { channelId: string, user:
                                             </div>
                                         )}
                                         <div className="mt-1">
-                                            {new Date(node.createdAt).toLocaleDateString()}
+                                            {new Date(node._creationTime).toLocaleDateString()}
                                         </div>
                                     </div>
                                 </div>
@@ -297,7 +293,7 @@ export default function Channel({ channelId, user  }: { channelId: string, user:
                         )
                     })
                 )}
-                <PasteBin user={user} />
+                <PasteBin onCreateNode={handleNodeCreation} user={user} />
             </div>
         </div >
     )

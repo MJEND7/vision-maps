@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { ExternalLink, Loader2 } from "lucide-react";
-import { LinkMetadata } from "./index";
+import { AppleMusicMetadata } from "./index";
 
 interface AppleMusicCardProps {
-    metadata: LinkMetadata;
+    metadata: AppleMusicMetadata;
 }
 
 // Utility function to convert Apple Music URLs to embed URLs
 const getAppleMusicEmbedUrl = (url: string): string | null => {
     try {
-        const urlObj = new URL(url);
+        // Validate URL format
+        new URL(url);
         
         // Handle different Apple Music URL formats:
         // https://music.apple.com/us/album/album-name/id

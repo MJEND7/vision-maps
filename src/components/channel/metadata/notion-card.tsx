@@ -1,9 +1,9 @@
 import { FileText } from "lucide-react";
 import { BaseCard } from "./base-card";
-import { LinkMetadata } from "./index";
+import { NotionMetadata } from "./index";
 
 interface NotionCardProps {
-    metadata: LinkMetadata;
+    metadata: NotionMetadata;
 }
 
 export function NotionCard({ metadata }: NotionCardProps) {

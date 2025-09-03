@@ -20,5 +20,5 @@ export class User {
         externalId: v.string(),
         picture: v.optional(v.string()),
     }).index("by_token", ["tokenIdentifier"])
-        .index("byExternalId", ["externalId"]);
+        .index("by_external_id", ["externalId"]);
 }

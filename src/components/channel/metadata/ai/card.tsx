@@ -75,7 +75,7 @@ export function ChatCard({ chatId, drivenIds, onFocusInput }: AiCardProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messageContainerRef = useRef<HTMLDivElement>(null);
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-    
+
     const scrollToBottom = useCallback(() => {
         if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -85,10 +85,10 @@ export function ChatCard({ chatId, drivenIds, onFocusInput }: AiCardProps) {
     // Handle initial load - wait for all messages to be ready before first scroll
     useEffect(() => {
         if (messages && messages.page.length > 0 && !initialLoadComplete) {
-            const hasStreamingMessages = messages.page.some(message => 
+            const hasStreamingMessages = messages.page.some(message =>
                 drivenIds.has(message._id)
             );
-            
+
             if (!hasStreamingMessages) {
                 setInitialLoadComplete(true);
                 setTimeout(() => {
@@ -128,15 +128,16 @@ export function ChatCard({ chatId, drivenIds, onFocusInput }: AiCardProps) {
 
     return (
         <motion.div
-            className="w-full h-full overflow-hidden flex flex-col"
+            className="w-full h-full flex flex-col overflow-hidden"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
         >
             <div
                 ref={messageContainerRef}
-                className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-track-transparent 
-                scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 "
+                className="flex-1 overflow-y-auto overflow-x-hidden 
+               scrollbar-thin scrollbar-track-transparent 
+               scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300"
             >
                 <div className="w-full max-w-full space-y-4 p-2 overflow-hidden">
                     <AnimatePresence mode="wait">

@@ -1,9 +1,9 @@
 import { Globe } from "lucide-react";
 import { BaseCard } from "./base-card";
-import { LinkMetadata } from "./index";
+import { WebsiteMetadata } from "./index";
 
 interface WebsiteCardProps {
-    metadata: LinkMetadata;
+    metadata: WebsiteMetadata;
 }
 
 export function WebsiteCard({ metadata }: WebsiteCardProps) {

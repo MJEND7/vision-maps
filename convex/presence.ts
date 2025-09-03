@@ -1,14 +1,34 @@
 import { mutation, query } from "./_generated/server";
 import { components } from "./_generated/api";
-import { v } from "convex/values";
+import { v, Infer } from "convex/values";
 import { Presence } from "@convex-dev/presence";
 import { requireAuth } from "./utils/auth";
 import { ActiveUsers } from "./tables/user";
 
+// Args schemas
+const heartbeatArgs = v.object({
+    roomId: v.string(),
+    userId: v.string(),
+    sessionId: v.string(),
+    interval: v.number(),
+});
+
+const listRoomArgs = v.object({
+    roomToken: v.string(),
+});
+
+const listArgs = v.object({
+    roomToken: v.string(),
+});
+
+const disconnectArgs = v.object({
+    sessionToken: v.string(),
+});
+
 export const presence = new Presence(components.presence);
 
 export const heartbeat = mutation({
-    args: { roomId: v.string(), userId: v.string(), sessionId: v.string(), interval: v.number() },
+    args: heartbeatArgs,
     handler: async (ctx, { roomId, userId, sessionId, interval }) => {
         const identity = await requireAuth(ctx);
         if (identity.userId !== userId) {
@@ -19,7 +39,7 @@ export const heartbeat = mutation({
 });
 
 export const listRoom = query({
-    args: { roomToken: v.string() },
+    args: listRoomArgs,
     handler: async (ctx, { roomToken }) => {
         const identity = await requireAuth(ctx);
         const presenceList = (await presence.listRoom(ctx, roomToken)).filter((u) => u.userId != identity.userId);
@@ -28,7 +48,7 @@ export const listRoom = query({
             presenceList.map(async (user) => {
                 const userRecord = await ctx.db
                     .query("users")
-                    .withIndex("byExternalId", (q) => q.eq("externalId", user.userId))
+                    .withIndex("by_external_id", (q) => q.eq("externalId", user.userId))
                     .unique();
 
                 if (userRecord) {
@@ -54,7 +74,7 @@ export const listRoom = query({
 });
 
 export const list = query({
-    args: { roomToken: v.string() },
+    args: listArgs,
     handler: async (ctx, { roomToken }) => {
         await requireAuth(ctx);
         const presenceList = await presence.list(ctx, roomToken);
@@ -63,7 +83,7 @@ export const list = query({
             presenceList.map(async (user) => {
                 const userRecord = await ctx.db
                     .query("users")
-                    .withIndex("byExternalId", (q) => q.eq("externalId", user.userId))
+                    .withIndex("by_external_id", (q) => q.eq("externalId", user.userId))
                     .unique();
 
                 if (userRecord) {
@@ -89,10 +109,16 @@ export const list = query({
 });
 
 export const disconnect = mutation({
-    args: { sessionToken: v.string() },
+    args: disconnectArgs,
     handler: async (ctx, { sessionToken }) => {
         // Can't check auth here because it's called over http from sendBeacon.
         return await presence.disconnect(ctx, sessionToken);
     },
 });
+
+// Type exports
+export type PresenceHeartbeatArgs = Infer<typeof heartbeatArgs>;
+export type ListPresenceRoomArgs = Infer<typeof listRoomArgs>;
+export type ListPresenceArgs = Infer<typeof listArgs>;
+export type DisconnectPresenceArgs = Infer<typeof disconnectArgs>;
 

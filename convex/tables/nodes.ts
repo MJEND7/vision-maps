@@ -12,10 +12,14 @@ export enum NodeVariants {
     Text = "Text",
     YouTube = "YouTube",
     Spotify = "Spotify",
+    AppleMusic = "AppleMusic",
     Notion = "Notion",
     Figma = "Figma",
     GitHub = "GitHub",
-    AI = "AI", // For the AI class value will be the datapoint storing the model used
+    Twitter = "Twitter",
+    AI = "AI",
+    Loom = "Loom",
+    Excalidraw = "Excalidraw",
 }
 
 export class Nodes {
@@ -27,13 +31,12 @@ export class Nodes {
         userId: v.id("users"),
         threads: v.array(v.id(Nodes.TABLE_NAME)), // Connected nodes
         thought: v.optional(v.string()),
-        y: v.number(),
-        x: v.number(),
-        height: v.number(), // PX's
-        width: v.number(), // PX's
-        weight: v.number(), // Way of allowing the user to ORDER there importance
-        updatedAt: v.string(),
-        createdAt: v.string(),
+        y: v.optional(v.number()),
+        x: v.optional(v.number()),
+        height: v.optional(v.number()), // PX's
+        width: v.optional(v.number()), // PX's
+        weight: v.optional(v.number()), // Way of allowing the user to ORDER there importance
+        updatedAt: v.optional(v.string()),
         frame: v.optional(v.id(Frame.TABLE_NAME)),
         channel: v.id(Channel.TABLE_NAME),
         vision: v.id(Visions.TABLE_NAME)

@@ -9,17 +9,17 @@ type Props = {
     isUser: boolean;
 };
 
-export default function MessageItem({ message, children, isUser }: Props) {
-    const formatTime = (timestamp: number) => {
-        const date = new Date(timestamp);
-        const now = new Date();
-        const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+export default function MessageItem({ children, isUser }: Props) {
+    // const formatTime = (timestamp: number) => {
+    //     const date = new Date(timestamp);
+    //     const now = new Date();
+    //     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
 
-        if (diffInHours < 24) {
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        }
-        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    };
+    //     if (diffInHours < 24) {
+    //         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    //     }
+    //     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    // };
 
     return (
         <>

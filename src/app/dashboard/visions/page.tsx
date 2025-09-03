@@ -273,8 +273,8 @@ export default function SheetsPage() {
                                         className="group relative flex h-[200px] items-center justify-center 
              hover:shadow-inner rounded-t-3xl bg-cover bg-center"
                                     >
-                                        <div className="absolute right-5 top-5 transition-all duration-300 ease-in-out opacity-0 invisible group-hover:opacity-100 group-hover:visible">
-                                            <Scan />
+                                        <div className="bg-background text-primary p-1 rounded-lg absolute right-5 top-5 transition-all duration-300 ease-in-out opacity-0 invisible group-hover:opacity-100 group-hover:visible">
+                                            <Scan size={18} />
                                         </div>
                                         <h1 className={`${vision.banner ? "hidden" : ""} text-lg`}>
                                             {vision.title || "Untitled Vision"}

@@ -1,34 +1,79 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
-import { requireAuth, requireVisionAccess } from "./utils/auth";
-import { Id } from "./_generated/dataModel";
+import { v, Infer } from "convex/values";
+import { getUserByIdenityId, requireAuth, requireVisionAccess } from "./utils/auth";
+
+// Args schemas
+const createArgs = v.object({
+    frameId: v.optional(v.id("frames")),
+    channel: v.id("channels"),
+    title: v.string(),
+    height: v.optional(v.number()),
+    thought: v.optional(v.string()),
+    width: v.optional(v.number()),
+    weight: v.optional(v.number()),
+    variant: v.string(),
+    value: v.string(),
+    x: v.optional(v.number()),
+    y: v.optional(v.number()),
+    threads: v.optional(v.array(v.id("nodes"))),
+});
+
+const updateArgs = v.object({
+    id: v.id("nodes"),
+    title: v.optional(v.string()),
+    variant: v.optional(v.string()),
+    height: v.number(),
+    thought: v.optional(v.string()),
+    width: v.number(),
+    weight: v.number(),
+    value: v.optional(v.string()),
+    x: v.optional(v.number()),
+    y: v.optional(v.number()),
+    threads: v.optional(v.array(v.id("nodes"))),
+});
+
+const removeArgs = v.object({
+    id: v.id("nodes"),
+});
+
+const getArgs = v.object({
+    id: v.id("nodes"),
+});
+
+const listByFrameArgs = v.object({
+    frameId: v.id("frames"),
+});
+
+const connectNodesArgs = v.object({
+    nodeId: v.id("nodes"),
+    targetNodeId: v.id("nodes"),
+});
+
+const disconnectNodesArgs = v.object({
+    nodeId: v.id("nodes"),
+    targetNodeId: v.id("nodes"),
+});
 
 export const create = mutation({
-    args: {
-        frameId: v.id("frames"),
-        title: v.string(),
-        height: v.number(),
-        thought: v.optional(v.string()),
-        width: v.number(),
-        weight: v.number(),
-        variant: v.string(),
-        value: v.string(),
-        x: v.number(),
-        y: v.number(),
-        threads: v.optional(v.array(v.id("nodes"))),
-    },
+    args: createArgs,
     handler: async (ctx, args) => {
-        const frame = await ctx.db.get(args.frameId);
-        if (!frame) {
+        const channel = await ctx.db.get(args.channel);
+        if (!channel) {
             throw new Error("Frame not found");
         }
 
-        if (frame.vision) {
-            await requireVisionAccess(ctx, frame.vision);
+        if (channel.vision) {
+            await requireVisionAccess(ctx, channel.vision);
         }
 
         const now = new Date().toISOString();
         const identity = await requireAuth(ctx);
+
+        const userId = (await getUserByIdenityId(ctx, identity.userId as string))?._id;
+
+        if (!userId) {
+            throw new Error("Failed to get userId from identity")
+        }
 
         const nodeId = await ctx.db.insert("nodes", {
             title: args.title,
@@ -42,10 +87,9 @@ export const create = mutation({
             x: args.x,
             y: args.y,
             frame: args.frameId,
-            channel: frame.channel,
-            vision: frame.vision,
-            userId: identity.userId as Id<"users">,
-            createdAt: now,
+            channel: channel._id,
+            vision: channel.vision,
+            userId,
             updatedAt: now,
         });
 
@@ -54,19 +98,7 @@ export const create = mutation({
 });
 
 export const update = mutation({
-    args: {
-        id: v.id("nodes"),
-        title: v.optional(v.string()),
-        variant: v.optional(v.string()),
-        height: v.number(),
-        thought: v.optional(v.string()),
-        width: v.number(),
-        weight: v.number(),
-        value: v.optional(v.string()),
-        x: v.optional(v.number()),
-        y: v.optional(v.number()),
-        threads: v.optional(v.array(v.id("nodes"))),
-    },
+    args: updateArgs,
     handler: async (ctx, args) => {
         const node = await ctx.db.get(args.id);
         if (!node) {
@@ -97,9 +129,7 @@ export const update = mutation({
 });
 
 export const remove = mutation({
-    args: {
-        id: v.id("nodes"),
-    },
+    args: removeArgs,
     handler: async (ctx, args) => {
         const node = await ctx.db.get(args.id);
         if (!node) {
@@ -130,9 +160,7 @@ export const remove = mutation({
 });
 
 export const get = query({
-    args: {
-        id: v.id("nodes"),
-    },
+    args: getArgs,
     handler: async (ctx, args) => {
         const node = await ctx.db.get(args.id);
         if (!node) {
@@ -148,9 +176,7 @@ export const get = query({
 });
 
 export const listByFrame = query({
-    args: {
-        frameId: v.id("frames"),
-    },
+    args: listByFrameArgs,
     handler: async (ctx, args) => {
         const frame = await ctx.db.get(args.frameId);
         if (!frame) {
@@ -171,10 +197,7 @@ export const listByFrame = query({
 });
 
 export const connectNodes = mutation({
-    args: {
-        nodeId: v.id("nodes"),
-        targetNodeId: v.id("nodes"),
-    },
+    args: connectNodesArgs,
     handler: async (ctx, args) => {
         const node = await ctx.db.get(args.nodeId);
         const targetNode = await ctx.db.get(args.targetNodeId);
@@ -207,10 +230,7 @@ export const connectNodes = mutation({
 });
 
 export const disconnectNodes = mutation({
-    args: {
-        nodeId: v.id("nodes"),
-        targetNodeId: v.id("nodes"),
-    },
+    args: disconnectNodesArgs,
     handler: async (ctx, args) => {
         const node = await ctx.db.get(args.nodeId);
         const targetNode = await ctx.db.get(args.targetNodeId);
@@ -240,3 +260,18 @@ export const disconnectNodes = mutation({
         });
     },
 });
+
+// Type exports
+export type CreateNodeArgs = Infer<typeof createArgs>;
+
+export type UpdateNodeArgs = Infer<typeof updateArgs>;
+
+export type RemoveNodeArgs = Infer<typeof removeArgs>;
+
+export type GetNodeArgs = Infer<typeof getArgs>;
+
+export type ListNodeByFrameArgs = Infer<typeof listByFrameArgs>;
+
+export type ConnectNodesArgs = Infer<typeof connectNodesArgs>;
+
+export type DisconnectNodesArgs = Infer<typeof disconnectNodesArgs>;

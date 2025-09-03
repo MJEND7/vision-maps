@@ -1,13 +1,51 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, Infer } from "convex/values";
 import { requireAuth, requireVisionAccess } from "./utils/auth";
 import { Id } from "./_generated/dataModel";
 
+// Args schemas
+const getUserNotificationsArgs = v.object({
+  limit: v.optional(v.number()),
+  onlyUnread: v.optional(v.boolean()),
+});
+
+const getUnreadCountArgs = v.object({});
+
+const markAsReadArgs = v.object({
+  notificationId: v.id("notifications"),
+});
+
+const markAllAsReadArgs = v.object({});
+
+const deleteNotificationArgs = v.object({
+  notificationId: v.id("notifications"),
+});
+
+const createNotificationArgs = v.object({
+  recipientId: v.string(),
+  type: v.string(),
+  title: v.string(),
+  message: v.string(),
+  visionId: v.optional(v.id("visions")),
+  commentId: v.optional(v.id("comments")),
+});
+
+const acceptInviteArgs = v.object({
+  notificationId: v.id("notifications"),
+});
+
+const rejectInviteArgs = v.object({
+  notificationId: v.id("notifications"),
+});
+
+const createInviteNotificationArgs = v.object({
+  recipientId: v.string(),
+  visionId: v.id("visions"),
+  role: v.string(),
+});
+
 export const getUserNotifications = query({
-  args: {
-    limit: v.optional(v.number()),
-    onlyUnread: v.optional(v.boolean())
-  },
+  args: getUserNotificationsArgs,
   handler: async (ctx, args) => {
     const identity = await requireAuth(ctx);
     
@@ -56,7 +94,7 @@ export const getUserNotifications = query({
 });
 
 export const getUnreadCount = query({
-  args: {},
+  args: getUnreadCountArgs,
   handler: async (ctx) => {
     const identity = await requireAuth(ctx);
     
@@ -77,9 +115,7 @@ export const getUnreadCount = query({
 });
 
 export const markAsRead = mutation({
-  args: {
-    notificationId: v.id("notifications")
-  },
+  args: markAsReadArgs,
   handler: async (ctx, args) => {
     const identity = await requireAuth(ctx);
     
@@ -106,7 +142,7 @@ export const markAsRead = mutation({
 });
 
 export const markAllAsRead = mutation({
-  args: {},
+  args: markAllAsReadArgs,
   handler: async (ctx) => {
     const identity = await requireAuth(ctx);
     
@@ -137,9 +173,7 @@ export const markAllAsRead = mutation({
 });
 
 export const deleteNotification = mutation({
-  args: {
-    notificationId: v.id("notifications")
-  },
+  args: deleteNotificationArgs,
   handler: async (ctx, args) => {
     const identity = await requireAuth(ctx);
     
@@ -166,14 +200,7 @@ export const deleteNotification = mutation({
 });
 
 export const createNotification = mutation({
-  args: {
-    recipientId: v.string(),
-    type: v.string(),
-    title: v.string(),
-    message: v.string(),
-    visionId: v.optional(v.id("visions")),
-    commentId: v.optional(v.id("comments"))
-  },
+  args: createNotificationArgs,
   handler: async (ctx, args) => {
     const identity = await requireAuth(ctx);
     
@@ -198,9 +225,7 @@ export const createNotification = mutation({
 });
 
 export const acceptInvite = mutation({
-  args: {
-    notificationId: v.id("notifications")
-  },
+  args: acceptInviteArgs,
   handler: async (ctx, args) => {
     const identity = await requireAuth(ctx);
     
@@ -254,9 +279,7 @@ export const acceptInvite = mutation({
 });
 
 export const rejectInvite = mutation({
-  args: {
-    notificationId: v.id("notifications")
-  },
+  args: rejectInviteArgs,
   handler: async (ctx, args) => {
     const identity = await requireAuth(ctx);
     
@@ -293,11 +316,7 @@ export const rejectInvite = mutation({
 });
 
 export const createInviteNotification = mutation({
-  args: {
-    recipientId: v.string(),
-    visionId: v.id("visions"),
-    role: v.string()
-  },
+  args: createInviteNotificationArgs,
   handler: async (ctx, args) => {
     const identity = await requireAuth(ctx);
     
@@ -339,3 +358,14 @@ export const createInviteNotification = mutation({
     return notificationId;
   }
 });
+
+// Type exports
+export type GetUserNotificationsArgs = Infer<typeof getUserNotificationsArgs>;
+export type GetUnreadNotificationCountArgs = Infer<typeof getUnreadCountArgs>;
+export type MarkNotificationAsReadArgs = Infer<typeof markAsReadArgs>;
+export type MarkAllNotificationsAsReadArgs = Infer<typeof markAllAsReadArgs>;
+export type DeleteNotificationArgs = Infer<typeof deleteNotificationArgs>;
+export type CreateNotificationArgs = Infer<typeof createNotificationArgs>;
+export type AcceptInviteNotificationArgs = Infer<typeof acceptInviteArgs>;
+export type RejectInviteNotificationArgs = Infer<typeof rejectInviteArgs>;
+export type CreateInviteNotificationArgs = Infer<typeof createInviteNotificationArgs>;

@@ -5,7 +5,7 @@ import { DraggableTabs } from '@/components/ui/draggable-tabs';
 import { DraggableSidebar } from '@/components/ui/draggable-sidebar';
 import { PresenceFacePile } from '@/components/ui/face-pile';
 import { Button } from '@/components/ui/button';
-import { ChevronsDownUp, Frame, Play, Settings, TableProperties } from 'lucide-react';
+import { ChevronsDownUp, Frame, Settings, TableProperties } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import FrameComponent from '@/components/vision/frame';
 import { useState, useEffect, useCallback } from 'react';

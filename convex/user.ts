@@ -1,16 +1,27 @@
 import { internalMutation, query, QueryCtx } from "./_generated/server";
 import { UserJSON } from "@clerk/backend";
-import { v, Validator } from "convex/values";
+import { v, Validator, Infer } from "convex/values";
+
+// Args schemas
+const currentArgs = v.object({});
+
+const upsertFromClerkArgs = v.object({
+  data: v.any() as Validator<UserJSON>,
+});
+
+const deleteFromClerkArgs = v.object({
+  clerkUserId: v.string(),
+});
 
 export const current = query({
-  args: {},
+  args: currentArgs,
   handler: async (ctx) => {
     return await getCurrentUser(ctx);
   },
 });
 
 export const upsertFromClerk = internalMutation({
-  args: { data: v.any() as Validator<UserJSON> },
+  args: upsertFromClerkArgs,
   async handler(ctx, { data }) {
     const userAttributes = {
       name: `${data.first_name} ${data.last_name}`,
@@ -30,7 +41,7 @@ export const upsertFromClerk = internalMutation({
 });
 
 export const deleteFromClerk = internalMutation({
-  args: { clerkUserId: v.string() },
+  args: deleteFromClerkArgs,
   async handler(ctx, { clerkUserId }) {
     const user = await userByExternalId(ctx, clerkUserId);
 
@@ -61,6 +72,11 @@ export async function getCurrentUser(ctx: QueryCtx) {
 async function userByExternalId(ctx: QueryCtx, externalId: string) {
   return await ctx.db
     .query("users")
-    .withIndex("byExternalId", (q) => q.eq("externalId", externalId))
+    .withIndex("by_external_id", (q) => q.eq("externalId", externalId))
     .unique();
 }
+
+// Type exports
+export type GetCurrentUserArgs = Infer<typeof currentArgs>;
+export type UpsertUserFromClerkArgs = Infer<typeof upsertFromClerkArgs>;
+export type DeleteUserFromClerkArgs = Infer<typeof deleteFromClerkArgs>;

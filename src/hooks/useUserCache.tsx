@@ -1,8 +1,8 @@
 "use client"
 
 import React, { createContext, useContext, useMemo, useCallback, useRef } from 'react'
-import { useQuery } from 'convex/react'
-import { api } from '../../convex/_generated/api'
+// import { useQuery } from 'convex/react'
+// import { api } from '../../convex/_generated/api'
 import { Id } from '../../convex/_generated/dataModel'
 
 export type NodeUser = {
@@ -47,13 +47,11 @@ export function NodeUserCacheProvider({ children, visionId }: NodeUserCacheProvi
   }, [cacheState.pendingFetches.size])
 
   // Individual user queries for each user that needs to be fetched
+  // TODO: Fix this hook violation - useQuery cannot be called inside map
   const userQueries = usersToFetch.map(userId => {
     return {
       userId,
-      data: useQuery(
-        api.channels.getUser,
-        cacheState.nodeUsers.has(userId) ? "skip" : { userId }
-      )
+      data: undefined // useQuery(api.channels.getUser, cacheState.nodeUsers.has(userId) ? "skip" : { userId })
     }
   })
 

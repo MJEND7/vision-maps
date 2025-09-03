@@ -1,5 +1,6 @@
 import { useReducer, useCallback } from 'react';
 import { PASTE_BIN_STORAGE_KEYS } from './constants';
+import { NodeVariants } from '../../convex/tables/nodes';
 
 // State machine for paste-bin boolean states
 interface PasteBinState {
@@ -57,9 +58,6 @@ export function usePasteBinState() {
     
     setLoadingLinkMeta: useCallback((value: boolean) => 
       dispatch({ type: 'SET_LOADING_LINK_META', payload: value }), []),
-    
-    setLoadingTwitter: useCallback((value: boolean) => 
-      dispatch({ type: 'SET_LOADING_TWITTER', payload: value }), []),
     
     setImageLoaded: useCallback((value: boolean) => 
       dispatch({ type: 'SET_IMAGE_LOADED', payload: value }), []),
@@ -120,7 +118,7 @@ export const storageUtils = {
 
 // Types for stored data
 export interface StoredMediaItem {
-  type: "image" | "audio" | "video" | "file" | "link" | "text" | "ai";
+  type: NodeVariants;
   url?: string;
   chatId?: string;
   isUploading?: boolean;

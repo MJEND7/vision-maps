@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { ExternalLink, Loader2, Eye, ThumbsUp } from "lucide-react";
-import { LinkMetadata } from "./index";
+import { YouTubeMetadata } from "./index";
 
 interface YouTubeCardProps {
-    metadata: LinkMetadata;
+    metadata: YouTubeMetadata;
 }
 
 // Utility function to convert YouTube URLs to embed URLs

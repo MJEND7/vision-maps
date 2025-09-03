@@ -1,13 +1,62 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, Infer } from "convex/values";
 import { requireAuth, requireVisionAccess } from "./utils/auth";
 import { Vision, VisionAccessRole } from "./tables/visions";
 import { createDefaultChannel } from "./utils/channel";
 
+// Args schemas
+const createArgs = v.object({
+  organization: v.optional(v.string()),
+});
+
+const updateArgs = v.object({
+  id: v.id("visions"),
+  title: v.optional(v.string()),
+  banner: v.optional(v.string()),
+  description: v.optional(v.string()),
+  organization: v.optional(v.string()),
+});
+
+const removeArgs = v.object({
+  id: v.id("visions"),
+});
+
+const getArgs = v.object({
+  id: v.id("visions"),
+});
+
+const listArgs = v.object({
+  organization: v.optional(v.string()),
+  search: v.optional(v.string()),
+  sortBy: v.optional(v.union(v.literal("updatedAt"), v.literal("createdAt"), v.literal("title"))),
+  sortOrder: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
+  limit: v.optional(v.number()),
+  cursor: v.optional(v.string()),
+});
+
+const getMembersArgs = v.object({
+  visionId: v.id("visions"),
+});
+
+const addMemberArgs = v.object({
+  visionId: v.id("visions"),
+  userId: v.string(),
+  role: v.string(),
+});
+
+const removeMemberArgs = v.object({
+  visionId: v.id("visions"),
+  userId: v.string(),
+});
+
+const updateMemberRoleArgs = v.object({
+  visionId: v.id("visions"),
+  userId: v.string(),
+  newRole: v.string(),
+});
+
 export const create = mutation({
-  args: {
-    organization: v.optional(v.string()),
-  },
+  args: createArgs,
   handler: async (ctx, args) => {
     const identity = await requireAuth(ctx);
     const now = Date.now();
@@ -37,13 +86,7 @@ export const create = mutation({
 });
 
 export const update = mutation({
-  args: {
-    id: v.id("visions"),
-    title: v.optional(v.string()),
-    banner: v.optional(v.string()),
-    description: v.optional(v.string()),
-    organization: v.optional(v.string()),
-  },
+  args: updateArgs,
   handler: async (ctx, args) => {
     await requireVisionAccess(ctx, args.id, VisionAccessRole.Editor);
 
@@ -61,9 +104,7 @@ export const update = mutation({
 });
 
 export const remove = mutation({
-  args: {
-    id: v.id("visions"),
-  },
+  args: removeArgs,
   handler: async (ctx, args) => {
     await requireVisionAccess(ctx, args.id, VisionAccessRole.Owner);
 
@@ -108,9 +149,7 @@ export const remove = mutation({
 });
 
 export const get = query({
-  args: {
-    id: v.id("visions"),
-  },
+  args: getArgs,
   handler: async (ctx, args): Promise<Vision> => {
     await requireVisionAccess(ctx, args.id);
     
@@ -124,14 +163,7 @@ export const get = query({
 });
 
 export const list = query({
-  args: {
-    organization: v.optional(v.string()),
-    search: v.optional(v.string()),
-    sortBy: v.optional(v.union(v.literal("updatedAt"), v.literal("createdAt"), v.literal("title"))),
-    sortOrder: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
-    limit: v.optional(v.number()),
-    cursor: v.optional(v.string()),
-  },
+  args: listArgs,
   handler: async (ctx, args) => {
     const identity = await requireAuth(ctx);
     const limit = args.limit ?? 20;
@@ -218,9 +250,7 @@ export const list = query({
 });
 
 export const getMembers = query({
-  args: {
-    visionId: v.id("visions"),
-  },
+  args: getMembersArgs,
   handler: async (ctx, args) => {
     await requireVisionAccess(ctx, args.visionId);
 
@@ -233,7 +263,7 @@ export const getMembers = query({
     for (const visionUser of visionUsers) {
       const user = await ctx.db
         .query("users")
-        .withIndex("byExternalId", (q) => q.eq("externalId", visionUser.userId))
+        .withIndex("by_external_id", (q) => q.eq("externalId", visionUser.userId))
         .first();
 
       if (user) {
@@ -253,11 +283,7 @@ export const getMembers = query({
 });
 
 export const addMember = mutation({
-  args: {
-    visionId: v.id("visions"),
-    userId: v.string(),
-    role: v.string(),
-  },
+  args: addMemberArgs,
   handler: async (ctx, args) => {
     await requireVisionAccess(ctx, args.visionId, VisionAccessRole.Owner);
 
@@ -284,10 +310,7 @@ export const addMember = mutation({
 });
 
 export const removeMember = mutation({
-  args: {
-    visionId: v.id("visions"),
-    userId: v.string(),
-  },
+  args: removeMemberArgs,
   handler: async (ctx, args) => {
     await requireVisionAccess(ctx, args.visionId, VisionAccessRole.Owner);
 
@@ -316,11 +339,7 @@ export const removeMember = mutation({
 });
 
 export const updateMemberRole = mutation({
-  args: {
-    visionId: v.id("visions"),
-    userId: v.string(),
-    newRole: v.string(),
-  },
+  args: updateMemberRoleArgs,
   handler: async (ctx, args) => {
     await requireVisionAccess(ctx, args.visionId, VisionAccessRole.Owner);
 
@@ -347,3 +366,14 @@ export const updateMemberRole = mutation({
     });
   },
 });
+
+// TypeScript types
+export type CreateVisionArgs = Infer<typeof createArgs>;
+export type UpdateVisionArgs = Infer<typeof updateArgs>;
+export type RemoveVisionArgs = Infer<typeof removeArgs>;
+export type GetVisionArgs = Infer<typeof getArgs>;
+export type ListVisionsArgs = Infer<typeof listArgs>;
+export type GetVisionMembersArgs = Infer<typeof getMembersArgs>;
+export type AddVisionMemberArgs = Infer<typeof addMemberArgs>;
+export type RemoveVisionMemberArgs = Infer<typeof removeMemberArgs>;
+export type UpdateVisionMemberRoleArgs = Infer<typeof updateMemberRoleArgs>;

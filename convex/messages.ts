@@ -1,22 +1,42 @@
 import { query, mutation, httpAction, internalQuery } from "./_generated/server";
 import { PersistentTextStreaming, StreamId } from "@convex-dev/persistent-text-streaming";
-import { v } from "convex/values";
+import { v, Infer } from "convex/values";
 import { requireAuth } from "./utils/auth";
 import { components, internal } from "./_generated/api";
 import { PaginationOptions } from "convex/server";
 import OpenAI from "openai";
 import { Id } from "./_generated/dataModel";
 
+// Args schemas
+const listMessagesByChatArgs = v.object({
+    chatId: v.id("chats"),
+    cursor: v.optional(v.string()),
+    numItems: v.optional(v.number()),
+});
+
+const clearMessagesArgs = v.object({
+    chatId: v.id("chats"),
+});
+
+const sendMessageArgs = v.object({
+    chatId: v.id("chats"),
+    content: v.string(),
+});
+
+const getChatHistoryArgs = v.object({
+    chatId: v.id("chats"),
+});
+
+const getStreamBodyArgs = v.object({
+    streamId: v.string(),
+});
+
 export const persistentTextStreaming = new PersistentTextStreaming(
     components.persistentTextStreaming
 );
 
 export const listMessagesByChat = query({
-    args: {
-        chatId: v.id("chats"),
-        cursor: v.optional(v.string()),
-        numItems: v.optional(v.number())
-    },
+    args: listMessagesByChatArgs,
     handler: async (ctx, args) => {
         const numItems = args.numItems ?? 50;
 
@@ -35,9 +55,7 @@ export const listMessagesByChat = query({
 });
 
 export const clearMessages = mutation({
-    args: {
-        chatId: v.id("chats")
-    },
+    args: clearMessagesArgs,
     handler: async (ctx, args) => {
         const messages = await ctx.db
             .query("messages")
@@ -48,10 +66,7 @@ export const clearMessages = mutation({
 });
 
 export const sendMessage = mutation({
-    args: {
-        chatId: v.id("chats"),
-        content: v.string(),
-    },
+    args: sendMessageArgs,
     handler: async (ctx, args) => {
         const identity = await requireAuth(ctx);
 
@@ -72,9 +87,7 @@ export const sendMessage = mutation({
 });
 
 export const getChatHistory = internalQuery({
-    args: {
-        chatId: v.id("chats")
-    },
+    args: getChatHistoryArgs,
     handler: async (ctx, args) => {
         const messages = await ctx.db
             .query("messages")
@@ -118,9 +131,7 @@ export const getChatHistory = internalQuery({
 });
 
 export const getStreamBody = query({
-    args: {
-        streamId: v.string(),
-    },
+    args: getStreamBodyArgs,
     handler: async (ctx, args) => {
         return await persistentTextStreaming.getStreamBody(
             ctx,
@@ -175,3 +186,12 @@ export const streamChat = httpAction(async (ctx, request) => {
 
     return response;
 });
+
+// Type exports
+export type ListMessagesByChatArgs = Infer<typeof listMessagesByChatArgs>;
+export type ClearMessagesArgs = Infer<typeof clearMessagesArgs>;
+export type SendMessageArgs = Infer<typeof sendMessageArgs>;
+export type GetChatHistoryArgs = Infer<typeof getChatHistoryArgs>;
+export type GetStreamBodyArgs = Infer<typeof getStreamBodyArgs>;
+
+// Note: streamChat is an httpAction, not a mutation/query, so we don't export types for it

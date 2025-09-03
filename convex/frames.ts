@@ -1,12 +1,41 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, Infer } from "convex/values";
 import { requireVisionAccess } from "./utils/auth";
 
+// Args schemas
+const createArgs = v.object({
+  channelId: v.id("channels"),
+  title: v.string(),
+});
+
+const updateArgs = v.object({
+  id: v.id("frames"),
+  title: v.optional(v.string()),
+});
+
+const removeArgs = v.object({
+  id: v.id("frames"),
+});
+
+const getArgs = v.object({
+  id: v.id("frames"),
+});
+
+const listByChannelArgs = v.object({
+  channelId: v.id("channels"),
+});
+
+const reorderArgs = v.object({
+  channelId: v.id("channels"),
+  frameIds: v.array(v.id("frames")),
+});
+
+const listByVisionArgs = v.object({
+  visionId: v.id("visions"),
+});
+
 export const create = mutation({
-  args: {
-    channelId: v.id("channels"),
-    title: v.string(),
-  },
+  args: createArgs,
   handler: async (ctx, args) => {
     const channel = await ctx.db.get(args.channelId);
     if (!channel) {
@@ -42,10 +71,7 @@ export const create = mutation({
 });
 
 export const update = mutation({
-  args: {
-    id: v.id("frames"),
-    title: v.optional(v.string()),
-  },
+  args: updateArgs,
   handler: async (ctx, args) => {
     const frame = await ctx.db.get(args.id);
     if (!frame) {
@@ -67,9 +93,7 @@ export const update = mutation({
 });
 
 export const remove = mutation({
-  args: {
-    id: v.id("frames"),
-  },
+  args: removeArgs,
   handler: async (ctx, args) => {
     const frame = await ctx.db.get(args.id);
     if (!frame) {
@@ -94,9 +118,7 @@ export const remove = mutation({
 });
 
 export const get = query({
-  args: {
-    id: v.id("frames"),
-  },
+  args: getArgs,
   handler: async (ctx, args) => {
     const frame = await ctx.db.get(args.id);
     if (!frame) {
@@ -112,9 +134,7 @@ export const get = query({
 });
 
 export const listByChannel = query({
-  args: {
-    channelId: v.id("channels"),
-  },
+  args: listByChannelArgs,
   handler: async (ctx, args) => {
     const channel = await ctx.db.get(args.channelId);
     if (!channel) {
@@ -142,10 +162,7 @@ export const listByChannel = query({
 });
 
 export const reorder = mutation({
-  args: {
-    channelId: v.id("channels"),
-    frameIds: v.array(v.id("frames")),
-  },
+  args: reorderArgs,
   handler: async (ctx, args) => {
     const channel = await ctx.db.get(args.channelId);
     if (!channel) {
@@ -178,9 +195,7 @@ export const reorder = mutation({
 });
 
 export const listByVision = query({
-  args: {
-    visionId: v.id("visions"),
-  },
+  args: listByVisionArgs,
   handler: async (ctx, args) => {
     await requireVisionAccess(ctx, args.visionId);
 
@@ -199,3 +214,12 @@ export const listByVision = query({
     return frames;
   },
 });
+
+// Type exports
+export type CreateFrameArgs = Infer<typeof createArgs>;
+export type UpdateFrameArgs = Infer<typeof updateArgs>;
+export type RemoveFrameArgs = Infer<typeof removeArgs>;
+export type GetFrameArgs = Infer<typeof getArgs>;
+export type ListFramesByChannelArgs = Infer<typeof listByChannelArgs>;
+export type ReorderFramesArgs = Infer<typeof reorderArgs>;
+export type ListFramesByVisionArgs = Infer<typeof listByVisionArgs>;

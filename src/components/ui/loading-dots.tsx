@@ -27,7 +27,7 @@ export function LoadingDots({ className = "", size = "md" }: LoadingDotsProps) {
       y: [0, -8, 0],
       transition: {
         duration: 0.6,
-        ease: "easeInOut",
+        ease: "easeInOut" as const,
       },
     },
   };

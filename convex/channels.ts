@@ -1,7 +1,60 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, Infer } from "convex/values";
 import { requireVisionAccess } from "./utils/auth";
 import { Doc, Id } from "./_generated/dataModel";
+
+// Args schemas
+const createArgs = v.object({
+  visionId: v.id("visions"),
+  title: v.string(),
+  description: v.optional(v.string()),
+});
+
+const updateArgs = v.object({
+  id: v.id("channels"),
+  title: v.optional(v.string()),
+  description: v.optional(v.string()),
+});
+
+const removeArgs = v.object({
+  id: v.id("channels"),
+});
+
+const getArgs = v.object({
+  id: v.id("channels"),
+});
+
+const getWithNodesArgs = v.object({
+  id: v.id("channels"),
+  paginationOpts: v.optional(v.object({
+    numItems: v.number(),
+    cursor: v.optional(v.string()),
+  })),
+  filters: v.optional(v.object({
+    search: v.optional(v.string()),
+    variant: v.optional(v.string()),
+    userIds: v.optional(v.array(v.id("users"))),
+    sortBy: v.optional(v.string()), // "latest" or "oldest"
+  })),
+});
+
+const reorderArgs = v.object({
+  visionId: v.id("visions"),
+  channelIds: v.array(v.id("channels")),
+});
+
+const listByVisionArgs = v.object({
+  visionId: v.id("visions"),
+});
+
+const getVisionUsersArgs = v.object({
+  visionId: v.id("visions"),
+  search: v.optional(v.string()),
+});
+
+const getUserArgs = v.object({
+  userId: v.id("users"),
+});
 
 export type NodeWithFrame = Doc<"nodes"> & {
   frameTitle: string | null;
@@ -15,11 +68,7 @@ export type ChannelWithNodesResponse = {
 };
 
 export const create = mutation({
-  args: {
-    visionId: v.id("visions"),
-    title: v.string(),
-    description: v.optional(v.string()),
-  },
+  args: createArgs,
   handler: async (ctx, args) => {
     await requireVisionAccess(ctx, args.visionId);
 
@@ -48,11 +97,7 @@ export const create = mutation({
 });
 
 export const update = mutation({
-  args: {
-    id: v.id("channels"),
-    title: v.optional(v.string()),
-    description: v.optional(v.string()),
-  },
+  args: updateArgs,
   handler: async (ctx, args) => {
     const channel = await ctx.db.get(args.id);
     if (!channel) {
@@ -75,9 +120,7 @@ export const update = mutation({
 });
 
 export const remove = mutation({
-  args: {
-    id: v.id("channels"),
-  },
+  args: removeArgs,
   handler: async (ctx, args) => {
     const channel = await ctx.db.get(args.id);
     if (!channel) {
@@ -111,9 +154,7 @@ export const remove = mutation({
 });
 
 export const get = query({
-  args: {
-    id: v.id("channels"),
-  },
+  args: getArgs,
   handler: async (ctx, args) => {
     const channel = await ctx.db.get(args.id);
     if (!channel) {
@@ -129,19 +170,7 @@ export const get = query({
 });
 
 export const getWithNodes = query({
-  args: {
-    id: v.id("channels"),
-    paginationOpts: v.optional(v.object({
-      numItems: v.number(),
-      cursor: v.optional(v.string())
-    })),
-    filters: v.optional(v.object({
-      search: v.optional(v.string()),
-      variant: v.optional(v.string()),
-      userIds: v.optional(v.array(v.id("users"))),
-      sortBy: v.optional(v.string()) // "latest" or "oldest"
-    }))
-  },
+  args: getWithNodesArgs,
   handler: async (ctx, args) => {
     const channel = await ctx.db.get(args.id);
     if (!channel) {
@@ -221,10 +250,7 @@ export const getWithNodes = query({
 });
 
 export const reorder = mutation({
-  args: {
-    visionId: v.id("visions"),
-    channelIds: v.array(v.id("channels")),
-  },
+  args: reorderArgs,
   handler: async (ctx, args) => {
     await requireVisionAccess(ctx, args.visionId);
 
@@ -250,9 +276,7 @@ export const reorder = mutation({
 });
 
 export const listByVision = query({
-  args: {
-    visionId: v.id("visions"),
-  },
+  args: listByVisionArgs,
   handler: async (ctx, args) => {
     await requireVisionAccess(ctx, args.visionId);
 
@@ -273,10 +297,7 @@ export const listByVision = query({
 });
 
 export const getVisionUsers = query({
-  args: {
-    visionId: v.id("visions"),
-    search: v.optional(v.string())
-  },
+  args: getVisionUsersArgs,
   handler: async (ctx, args) => {
     await requireVisionAccess(ctx, args.visionId);
 
@@ -341,9 +362,7 @@ export const getVisionUsers = query({
 });
 
 export const getUser = query({
-  args: {
-    userId: v.id("users")
-  },
+  args: getUserArgs,
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
     if (!user || !('name' in user)) {
@@ -358,3 +377,14 @@ export const getUser = query({
     };
   },
 });
+
+// Type exports
+export type CreateChannelArgs = Infer<typeof createArgs>;
+export type UpdateChannelArgs = Infer<typeof updateArgs>;
+export type RemoveChannelArgs = Infer<typeof removeArgs>;
+export type GetChannelArgs = Infer<typeof getArgs>;
+export type GetChannelWithNodesArgs = Infer<typeof getWithNodesArgs>;
+export type ReorderChannelsArgs = Infer<typeof reorderArgs>;
+export type ListChannelsByVisionArgs = Infer<typeof listByVisionArgs>;
+export type GetVisionUsersArgs = Infer<typeof getVisionUsersArgs>;
+export type GetUserArgs = Infer<typeof getUserArgs>;

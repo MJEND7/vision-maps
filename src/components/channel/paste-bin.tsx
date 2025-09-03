@@ -10,14 +10,15 @@ import { FilePreview } from "./file-preview";
 import { useUploadThing } from "@/utils/uploadthing";
 import { X, FileText, Send, Brain } from "lucide-react";
 import Image from "next/image";
-import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard, SkeletonCard, ChatCard, LinkMetadata } from "./metadata";
-import { TweetSkeleton } from 'react-tweet';
+import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard, SkeletonCard, ChatCard, LinkMetadata, GitHubMetadata, FigmaMetadata, YouTubeMetadata, TwitterMetadata, NotionMetadata, LoomMetadata, SpotifyMetadata, AppleMusicMetadata, WebsiteMetadata } from "./metadata";
 import { Textarea } from "../ui/textarea";
 import { usePasteBinState, pasteBinStorage, type StoredLinkMeta, type StoredMediaItem } from "@/lib/paste-bin-state";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { UserResource } from "@clerk/types";
+import { CreateNodeArgs } from "../../../convex/nodes";
+import { NodeVariants } from "../../../convex/tables/nodes";
 
 // Paste-bin mode enum
 export enum PasteBinMode {
@@ -49,27 +50,72 @@ export interface EmbedData {
     type: string;
 }
 
-type MediaType = "image" | "audio" | "video" | "file" | "link" | "text" | "ai";
-
-interface MediaItem {
-    type: MediaType;
+interface Media {
+    type: NodeVariants;
+    // File properties (for uploaded media)
     file?: File;
-    url?: string;
-    chatId?: string,
-    isUploading?: boolean;
-    uploadedUrl?: string;
     fileName?: string;
     fileSize?: number;
     fileType?: string;
+    uploadedUrl?: string;
     customName?: string;
+
+    // Link/Embed properties (for external content) - matching LinkMetadata structure
+    url?: string;
+    title?: string;
+    description?: string;
+    image?: string;
+    siteName?: string;
+    favicon?: string;
+    ogType?: string;
+    author?: string;
+    publishedTime?: string;
+    modifiedTime?: string;
+
+    // Platform-specific fields from LinkMetadata
+    stars?: number; // GitHub
+    forks?: number; // GitHub
+    language?: string; // GitHub
+    topics?: string[]; // GitHub
+    team?: string; // Figma
+    figmaFileType?: string; // Figma
+    thumbnail?: string; // YouTube
+    channelName?: string; // YouTube
+    duration?: string; // YouTube, Spotify, etc.
+    views?: number; // YouTube, Loom
+    likes?: number; // YouTube, Twitter
+    publishedAt?: string; // YouTube, Twitter
+    videoUrl?: string; // YouTube
+    videoDuration?: string; // YouTube
+    videoWidth?: string; // YouTube
+    videoHeight?: string; // YouTube
+    twitterCreator?: string; // Twitter
+    twitterSite?: string; // Twitter
+    username?: string; // Twitter
+    avatar?: string; // Twitter
+    retweets?: number; // Twitter
+    replies?: number; // Twitter
+    twitterType?: "tweet" | "profile" | "media"; // Twitter
+    tweetId?: string; // Twitter
+    workspace?: string; // Notion
+    icon?: string; // Notion
+    lastEdited?: string; // Notion
+    pageType?: string; // Notion
+    artist?: string; // Spotify, AppleMusic
+    album?: string; // Spotify, AppleMusic
+    spotifyType?: "track" | "album" | "playlist" | "artist"; // Spotify
+    appleMusicType?: "song" | "album" | "playlist" | "artist"; // AppleMusic
+    createdAt?: string; // Loom
+    creator?: string; // Loom
+
+    // Chat properties (for AI nodes)
+    chatId?: string;
 }
 
-type LinkMeta = LinkMetadata;
-
-export default function PasteBin({ user }: { user: UserResource }) {
+export default function PasteBin({ onCreateNode }: { user: UserResource, onCreateNode: (data: Omit<CreateNodeArgs, "channel">) => void }) {
     // State management with reducer
     const { state, actions } = usePasteBinState();
-    const { isDragOver, isLoadingLinkMeta, isLoadingTwitter, imageLoaded } = state;
+    const { isDragOver, isLoadingLinkMeta, imageLoaded } = state;
 
     // Component state
     const [mode, setMode] = useState<PasteBinMode>(PasteBinMode.IDLE);
@@ -80,9 +126,8 @@ export default function PasteBin({ user }: { user: UserResource }) {
     const [drivenMessageIds, setDrivenMessageIds] = useState<Set<string>>(new Set())
     const [chatId, setChatId] = useState<string | null>(null);
 
-    // Keep legacy states for now during transition
-    const [mediaItem, setMediaItem] = useState<MediaItem | null>(null);
-    const [linkMeta, setLinkMeta] = useState<LinkMeta | null>(null);
+    // Unified media state
+    const [media, setMedia] = useState<Media | null>(null);
     const [isTextMode, setIsTextMode] = useState(false);
     const [isAiMode, setIsAiMode] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -95,6 +140,57 @@ export default function PasteBin({ user }: { user: UserResource }) {
     const createChat = useMutation(api.chats.createChat);
     const sendMessage = useMutation(api.messages.sendMessage);
     const deleteChat = useMutation(api.chats.deleteChat);
+
+    // Helper function to convert Media to LinkMetadata for card components
+    const mediaToLinkMetadata = useCallback((media: Media): LinkMetadata => {
+        return {
+            type: media.type,
+            title: media.title || media.fileName || 'Untitled',
+            url: media.url || '',
+            description: media.description,
+            image: media.image,
+            siteName: media.siteName,
+            favicon: media.favicon,
+            ogType: media.ogType,
+            author: media.author,
+            publishedTime: media.publishedTime,
+            modifiedTime: media.modifiedTime,
+            // Platform-specific fields
+            stars: media.stars,
+            forks: media.forks,
+            language: media.language,
+            topics: media.topics,
+            team: media.team,
+            thumbnail: media.thumbnail,
+            channelName: media.channelName,
+            duration: media.duration,
+            views: media.views,
+            likes: media.likes,
+            publishedAt: media.publishedAt,
+            videoUrl: media.videoUrl,
+            videoDuration: media.videoDuration,
+            videoWidth: media.videoWidth,
+            videoHeight: media.videoHeight,
+            twitterCreator: media.twitterCreator,
+            twitterSite: media.twitterSite,
+            username: media.username,
+            avatar: media.avatar,
+            retweets: media.retweets,
+            replies: media.replies,
+            twitterType: media.twitterType,
+            tweetId: media.tweetId,
+            workspace: media.workspace,
+            icon: media.icon,
+            lastEdited: media.lastEdited,
+            pageType: media.pageType,
+            artist: media.artist,
+            album: media.album,
+            spotifyType: media.spotifyType,
+            appleMusicType: media.appleMusicType,
+            createdAt: media.createdAt,
+            creator: media.creator,
+        } as LinkMetadata;
+    }, []);
 
     // Load saved data from localStorage on mount
     useEffect(() => {
@@ -118,37 +214,38 @@ export default function PasteBin({ user }: { user: UserResource }) {
             setIsAiMode(savedData.isAiMode);
         }
 
-        // Restore media item if valid
+        // Restore media if valid
         if (savedData.mediaItem) {
             const parsedMedia = savedData.mediaItem as StoredMediaItem;
             // Don't restore File objects as they can't be serialized
-            if (parsedMedia.type !== 'file' || parsedMedia.uploadedUrl) {
-                // Convert stored media item to MediaItem format
-                const restoredMediaItem: MediaItem = {
-                    type: parsedMedia.type as MediaType,
+            if (parsedMedia.type !== NodeVariants.Link || parsedMedia.uploadedUrl) {
+                // Convert stored media item to unified Media format
+                const restoredMedia: Media = {
+                    type: parsedMedia.type as NodeVariants,
                     url: parsedMedia.url,
                     chatId: parsedMedia.chatId,
-                    isUploading: parsedMedia.isUploading || false,
                     uploadedUrl: parsedMedia.uploadedUrl,
                     fileName: parsedMedia.fileName,
                     fileSize: parsedMedia.fileSize,
                     fileType: parsedMedia.fileType,
                     customName: parsedMedia.customName,
                 };
-                setMediaItem(restoredMediaItem);
+                setMedia(restoredMedia);
                 // Set image as loaded during initial load without causing re-renders
-                if (parsedMedia.type === 'image') {
+                if (restoredMedia.type === NodeVariants.Image) {
                     setTimeout(() => actions.setImageLoaded(true), 0);
                 }
                 // Set mode for text/AI items
-                if (parsedMedia.type === 'text') {
-                    setMode(PasteBinMode.TEXT);
-                    setIsTextMode(true);
-                } else if (parsedMedia.type === 'ai') {
-                    setMode(PasteBinMode.AI);
-                    setIsAiMode(true);
-                } else if (parsedMedia.type === 'image' || parsedMedia.type === 'audio' || parsedMedia.type === 'video' || parsedMedia.type === 'file') {
-                    setMode(PasteBinMode.MEDIA);
+                switch (restoredMedia.type) {
+                    case NodeVariants.Text:
+                        setMode(PasteBinMode.TEXT);
+                        setIsTextMode(true);
+                    case NodeVariants.AI:
+                        setMode(PasteBinMode.AI);
+                        setIsAiMode(true);
+                    default:
+                        setMode(PasteBinMode.MEDIA);
+
                 }
             }
         }
@@ -156,19 +253,19 @@ export default function PasteBin({ user }: { user: UserResource }) {
         // Restore link meta if valid
         if (savedData.linkMeta) {
             const storedMeta = savedData.linkMeta as StoredLinkMeta;
-            // Convert StoredLinkMeta to LinkMeta format with required fields
-            const restoredLinkMeta: LinkMeta = {
-                type: storedMeta.type,
+            // Convert StoredLinkMeta to unified Media format
+            const restoredMedia: Media = {
+                type: storedMeta.type as NodeVariants,
                 title: storedMeta.title || 'Untitled Link',
                 description: storedMeta.description,
                 url: storedMeta.url,
                 image: storedMeta.image,
                 siteName: storedMeta.siteName,
             };
-            setLinkMeta(restoredLinkMeta);
+            setMedia(restoredMedia);
             setMode(PasteBinMode.EMBED);
         }
-    }, []);
+    }, [actions]);
 
     // Cleanup timers on unmount
     useEffect(() => {
@@ -197,7 +294,7 @@ export default function PasteBin({ user }: { user: UserResource }) {
 
     // Reset to original state if input is empty for 3 seconds
     useEffect(() => {
-        if (mode === PasteBinMode.TEXT && !mediaItem) {
+        if (mode === PasteBinMode.TEXT && !media) {
             // Clear existing timer
             if (emptyResetTimerRef.current) {
                 clearTimeout(emptyResetTimerRef.current);
@@ -221,16 +318,11 @@ export default function PasteBin({ user }: { user: UserResource }) {
                 emptyResetTimerRef.current = null;
             }
         };
-    }, [mode, mediaItem, textContent, actions]);
+    }, [mode, media, textContent, actions]);
 
-    const updateMediaItem = useCallback((item: MediaItem | null) => {
-        setMediaItem(item);
-        pasteBinStorage.save.mediaItem(item);
-    }, []);
-
-    const updateLinkMeta = useCallback((meta: LinkMeta | null) => {
-        setLinkMeta(meta);
-        pasteBinStorage.save.linkMeta(meta);
+    const updateMedia = useCallback((mediaItem: Media | null) => {
+        setMedia(mediaItem);
+        pasteBinStorage.save.mediaItem(mediaItem);
     }, []);
 
     // Debounced text content update
@@ -270,51 +362,60 @@ export default function PasteBin({ user }: { user: UserResource }) {
 
     const { startUpload, isUploading } = useUploadThing("mediaUploader", {
         onClientUploadComplete: (res) => {
+            console.log("UPLOAD THING: ", res)
             if (res && res[0]) {
-                if (mediaItem) {
-                    updateMediaItem({ ...mediaItem, uploadedUrl: res[0].ufsUrl, isUploading: false });
-                }
+                setMedia(currentMedia => {
+                    if (currentMedia) {
+                        const updatedMedia = { ...currentMedia, uploadedUrl: res[0].ufsUrl };
+                        pasteBinStorage.save.mediaItem(updatedMedia);
+                        return updatedMedia;
+                    }
+                    return currentMedia;
+                });
             }
         },
         onUploadError: (error: Error) => {
             console.error("Upload failed:", error);
-            if (mediaItem) {
-                updateMediaItem({ ...mediaItem, isUploading: false });
-            }
+            setMedia(currentMedia => {
+                if (currentMedia) {
+                    const updatedMedia = { ...currentMedia, isUploading: false };
+                    pasteBinStorage.save.mediaItem(updatedMedia);
+                    return updatedMedia;
+                }
+                return currentMedia;
+            });
         },
     });
 
-    const determineMediaType = (file: File): MediaType => {
+    const determineMediaType = (file: File): NodeVariants => {
         const type = file.type;
-        if (type.startsWith("image/")) return "image";
-        if (type.startsWith("audio/")) return "audio";
-        if (type.startsWith("video/")) return "video";
-        return "file";
+        if (type.startsWith("image/")) return NodeVariants.Image;
+        if (type.startsWith("audio/")) return NodeVariants.Audio;
+        if (type.startsWith("video/")) return NodeVariants.Video;
+        return NodeVariants.Link; // Using Link as default for file types
     };
 
-    const detectLinkType = useCallback((url: string): string => {
+    const detectLinkType = useCallback((url: string): NodeVariants => {
         try {
             const hostname = new URL(url).hostname.toLowerCase();
 
-            if (hostname.includes('github.com')) return 'GitHub';
-            if (hostname.includes('figma.com')) return 'Figma';
-            if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) return 'YouTube';
-            if (hostname.includes('notion.so') || hostname.includes('notion.com')) return 'Notion';
-            if (hostname.includes('twitter.com') || hostname.includes('x.com')) return 'Twitter';
-            if (hostname.includes('loom.com')) return 'Loom';
-            if (hostname.includes('spotify.com')) return 'Spotify';
-            if (hostname.includes('music.apple.com')) return 'AppleMusic';
-            if (hostname.includes('instagram.com')) return 'Instagram';
-            if (hostname.includes('tiktok.com')) return 'TikTok';
+            if (hostname.includes('github.com')) return NodeVariants.GitHub;
+            if (hostname.includes('figma.com')) return NodeVariants.Figma;
+            if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) return NodeVariants.YouTube;
+            if (hostname.includes('notion.so') || hostname.includes('notion.com')) return NodeVariants.Notion;
+            if (hostname.includes('twitter.com') || hostname.includes('x.com')) return NodeVariants.Twitter;
+            if (hostname.includes('loom.com')) return NodeVariants.Loom;
+            if (hostname.includes('spotify.com')) return NodeVariants.Spotify;
+            if (hostname.includes('music.apple.com')) return NodeVariants.AppleMusic;
 
-            return 'Link'; // Default to generic website
+            return NodeVariants.Link; // Default to generic website
         } catch (error) {
             console.error('Error parsing URL:', url, error);
-            return 'Link';
+            return NodeVariants.Link;
         }
     }, []);
 
-    const fetchLinkMetadata = useCallback(async (url: string): Promise<LinkMeta> => {
+    const fetchLinkMetadata = useCallback(async (url: string): Promise<any> => {
         try {
             const response = await fetch('/api/og', {
                 method: 'POST',
@@ -330,22 +431,22 @@ export default function PasteBin({ user }: { user: UserResource }) {
                 throw new Error(data.error || 'Failed to fetch metadata');
             }
 
-            // Map backend platform types to frontend display types
-            const typeMapping: Record<string, string> = {
-                github: 'GitHub',
-                youtube: 'YouTube',
-                twitter: 'Twitter',
-                figma: 'Figma',
-                notion: 'Notion',
-                loom: 'Loom',
-                spotify: 'Spotify',
-                applemusic: 'AppleMusic',
-                website: 'Link'
+            // Map backend platform types to NodeVariants
+            const typeMapping: Record<string, NodeVariants> = {
+                github: NodeVariants.GitHub,
+                youtube: NodeVariants.YouTube,
+                twitter: NodeVariants.Twitter,
+                figma: NodeVariants.Figma,
+                notion: NodeVariants.Notion,
+                loom: NodeVariants.Loom,
+                spotify: NodeVariants.Spotify,
+                applemusic: NodeVariants.AppleMusic,
+                website: NodeVariants.Link
             };
 
             return {
                 ...data.metadata,
-                type: typeMapping[data.platformType] || 'Link'
+                type: typeMapping[data.platformType] || NodeVariants.Link
             };
         } catch (error) {
             console.error('Error fetching metadata:', error);
@@ -359,98 +460,53 @@ export default function PasteBin({ user }: { user: UserResource }) {
         }
     }, [detectLinkType]);
 
-
-
-    // Utility functions first
-    const isTwitterUrl = (url: string): boolean => {
-        try {
-            const urlObj = new URL(url);
-            const hostname = urlObj.hostname.toLowerCase();
-            return hostname.includes('twitter.com') || hostname.includes('x.com');
-        } catch {
-            return false;
-        }
-    };
-
-    const isLoomUrl = (url: string): boolean => {
-        try {
-            const urlObj = new URL(url);
-            const hostname = urlObj.hostname.toLowerCase();
-            return hostname.includes('loom.com');
-        } catch {
-            return false;
-        }
-    };
-
     // Core handlers in dependency order
     const handleFileSelect = useCallback((file: File) => {
         const mediaType = determineMediaType(file);
         const previewUrl = URL.createObjectURL(file);
 
-        const newMediaItem: MediaItem = {
+        const newMedia: Media = {
             type: mediaType,
             file,
             url: previewUrl,
             fileName: file.name,
             fileSize: file.size,
             fileType: file.type,
-            isUploading: false,
         };
 
         setMode(PasteBinMode.MEDIA);
-        updateMediaItem(newMediaItem);
+        updateMedia(newMedia);
         pasteBinStorage.save.mode(PasteBinMode.MEDIA);
-        updateLinkMeta(null);
         actions.setImageLoaded(false);
-    }, [actions, updateMediaItem, updateLinkMeta]);
+
+        // Start upload immediately
+        startUpload([file]);
+    }, [actions, updateMedia, startUpload]);
 
     const handleLinkPaste = useCallback(async (url: string) => {
         setMode(PasteBinMode.EMBED);
-        updateMediaItem(null);
+        updateMedia(null);
         pasteBinStorage.save.mode(PasteBinMode.EMBED);
-        updateLinkMeta(null);
-
-        // Skip API call for Twitter URLs - let react-tweet handle it directly
-        if (isTwitterUrl(url)) {
-            actions.setLoadingTwitter(true);
-            // Small delay to show the TweetSkeleton briefly
-            setTimeout(() => {
-                updateLinkMeta({
-                    type: 'Twitter',
-                    title: 'Twitter Post',
-                    url: url
-                });
-                actions.setLoadingTwitter(false);
-            }, 500);
-            return;
-        }
-
-        // Skip API call for Loom URLs - load directly into iframe
-        if (isLoomUrl(url)) {
-            actions.setLoadingLinkMeta(true);
-            // Small delay to show loading state
-            setTimeout(() => {
-                updateLinkMeta({
-                    type: 'Loom',
-                    title: 'Loom Video',
-                    url: url
-                });
-                actions.setLoadingLinkMeta(false);
-            }, 300);
-            return;
-        }
-
         actions.setLoadingLinkMeta(true);
 
         try {
             const meta = await fetchLinkMetadata(url);
-            updateLinkMeta(meta);
+            // Convert LinkMetadata to unified Media format
+
+            updateMedia({
+                type: meta.type as NodeVariants,
+                title: meta.title,
+                description: meta.description,
+                url: meta.url,
+                image: meta.image,
+                siteName: meta.siteName,
+            });
         } catch (error) {
             console.error('Failed to fetch link metadata:', error);
         } finally {
             actions.setLoadingLinkMeta(false);
         }
-    }, [actions, updateMediaItem, updateLinkMeta, fetchLinkMetadata]);
+    }, [actions, updateMedia, fetchLinkMetadata]);
 
     // Input handlers that depend on handleLinkPaste and handleFileSelect
     const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -464,7 +520,7 @@ export default function PasteBin({ user }: { user: UserResource }) {
             handleLinkPaste(text);
             updateTextContent("");  // Clear input after pasting link
         }
-    }, [handleFileSelect, handleLinkPaste, updateTextContent, mode]);
+    }, [handleFileSelect, handleLinkPaste, updateTextContent]);
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const value = e.target.value;
@@ -493,7 +549,7 @@ export default function PasteBin({ user }: { user: UserResource }) {
                 }
             }, 500);
         }
-    }, [handleLinkPaste, updateTextContent, isTextMode, isAiMode, updateMediaItem]);
+    }, [handleLinkPaste, updateTextContent, mode]);
 
     const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && textContent) {
@@ -556,15 +612,15 @@ export default function PasteBin({ user }: { user: UserResource }) {
             }
         }
 
-        updateMediaItem(null);
-        updateLinkMeta(null);
+        updateMedia(null);
         setTextContent("");
         setMode(PasteBinMode.IDLE);
-        pasteBinStorage.save.textContent("");
-        pasteBinStorage.save.mode(PasteBinMode.IDLE);
         setIsTextMode(false);
         updateIsAiMode(false);
         updateChatId(null);
+
+        pasteBinStorage.save.textContent("");
+        pasteBinStorage.save.mode(PasteBinMode.IDLE);
 
         // Clear timers
         if (debounceTimerRef.current) {
@@ -589,62 +645,116 @@ export default function PasteBin({ user }: { user: UserResource }) {
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
-    }, [actions, updateMediaItem, updateLinkMeta, updateChatId, updateIsAiMode, chatId, isAiMode, deleteChat]);
+    }, [actions, updateMedia, updateChatId, updateIsAiMode, chatId, isAiMode, deleteChat]);
 
     const handleCreate = useCallback(async () => {
-        if (mediaItem) {
-            const finalName = mediaItem.fileName;
+        const node = () => {
+            if (media) {
+                // Handle file uploads
+                if (media.file || media.uploadedUrl) {
+                    const finalName = media.fileName;
 
-            if (!finalName && mediaItem.type !== "link") {
-                alert("Please provide a name for this media");
-                return;
-            }
+                    if (!finalName && media.type !== NodeVariants.Link) {
+                        alert("Please provide a name for this media");
+                        return;
+                    }
 
-            if (mediaItem.file) {
-                if (mediaItem) {
-                    updateMediaItem({ ...mediaItem, isUploading: true, customName: finalName });
+                    // If still uploading, wait for upload to complete
+                    if (isUploading) {
+                        console.log("Upload in progress, please wait...");
+                        return;
+                    }
+
+                    // Upload should already be completed at this point
+                    const url = media.uploadedUrl;
+                    if (!url && media.file) {
+                        console.log("No uploaded URL available, upload may have failed");
+                        return;
+                    }
+
+                    onCreateNode({
+                        title: media.fileName || media.title || `A ${media.type} Node`,
+                        variant: media.type,
+                        value: url || media.url || '',
+                        thought: textContent,
+                    })
+                    return;
                 }
-                await startUpload([mediaItem.file]);
-            }
-        }
 
-        if (linkMeta) {
-            console.log("Creating link:", linkMeta);
+                // Handle links/embeds
+                if (media.url) {
+                    onCreateNode({
+                        title: media.title || 'Unnamed link',
+                        variant: media.type,
+                        value: media.url,
+                        thought: textContent,
+                    })
+                    return;
+                }
+
+                // Handle AI chat
+                if (media.chatId) {
+                    onCreateNode({
+                        title: media.title || "AI Chat",
+                        variant: NodeVariants.AI,
+                        value: media.chatId,
+                    })
+                    return;
+                }
+            }
+
+            // Handle text mode without media
+            if (isTextMode || isAiMode) {
+                let value;
+                if (isAiMode && chatId) {
+                    value = chatId
+                } else {
+                    value = textContent
+                }
+
+                onCreateNode({
+                    title: "Node",
+                    variant: isAiMode ? NodeVariants.AI : NodeVariants.Text,
+                    value: value,
+                })
+            }
         }
 
         // Clear all data and localStorage after successful creation (don't delete chat)
+        node();
         await clearMedia(false);
-    }, [mediaItem, linkMeta, startUpload, clearMedia, updateMediaItem]);
+    }, [media, clearMedia, onCreateNode, textContent, isTextMode, isAiMode, chatId]);
 
     const isValidForCreation = useCallback(() => {
-        if (mediaItem) {
-            if (mediaItem.type === "text" || mediaItem.type === "ai") {
-                return !!mediaItem.customName;
-            } else if (mediaItem.type !== "link") {
-                return !!mediaItem.fileName && !mediaItem.isUploading;
+        if (media) {
+            if (media.type === NodeVariants.Text || media.type === NodeVariants.AI) {
+                return !!media.customName || !!media.title;
+            } else if (media.file) {
+                // For media files, upload must be completed and have an uploaded URL
+                return !!media.fileName && !isUploading && !!media.uploadedUrl;
+            } else if (media.url) {
+                // For links/embeds
+                return !isLoadingLinkMeta;
             }
         }
-        return !!linkMeta && !isLoadingLinkMeta;
-    }, [mediaItem, linkMeta, isLoadingLinkMeta]);
+        return (isTextMode || isAiMode) && !!textContent.trim();
+    }, [media, isLoadingLinkMeta, isTextMode, isAiMode, textContent]);
 
     const getDisplayName = useCallback(() => {
-        if (mediaItem) {
-            if (mediaItem.type === "text") {
-                return mediaItem.customName || "Text note";
+        if (media) {
+            if (media.type === NodeVariants.Text) {
+                return media.customName || media.title || "Text note";
             }
-            if (mediaItem.type === "ai") {
+            if (media.type === NodeVariants.AI) {
                 return "AI Assistant";
             }
-            return mediaItem.fileName || "Unnamed file";
-        }
-        if (linkMeta) {
-            return linkMeta.title || "Unnamed link";
+            return media.fileName || media.title || "Unnamed item";
         }
         if (isLoadingLinkMeta) {
             return "Loading metadata...";
         }
         return "";
-    }, [mediaItem, linkMeta, isLoadingLinkMeta]);
+    }, [media, isLoadingLinkMeta]);
 
     return (
         <div
@@ -755,14 +865,14 @@ export default function PasteBin({ user }: { user: UserResource }) {
                                     </motion.div>
                                 )}
 
-                                {mediaItem && (
+                                {media && (media.file || media.uploadedUrl) && (
                                     <motion.div
                                         key="media"
                                         className="h-full w-full overflow-hidden"
                                         initial={{ height: 0, opacity: 0 }}
                                         animate={{
-                                            height: (mediaItem.type === "image" && !imageLoaded) ? 0 : "auto",
-                                            opacity: (mediaItem.type === "image" && !imageLoaded) ? 0 : 1
+                                            height: (media.type === NodeVariants.Image && !imageLoaded) ? 0 : "auto",
+                                            opacity: (media.type === NodeVariants.Image && !imageLoaded) ? 0 : 1
                                         }}
                                         exit={{ height: 0, opacity: 0 }}
                                         transition={{
@@ -784,7 +894,7 @@ export default function PasteBin({ user }: { user: UserResource }) {
                                                 delay: 0.1
                                             }}
                                         >
-                                            {mediaItem.isUploading && (
+                                            {isUploading && (
                                                 <div className="text-center">
                                                     <div className="text-xs text-muted-foreground">
                                                         Uploading...
@@ -793,11 +903,11 @@ export default function PasteBin({ user }: { user: UserResource }) {
                                             )}
 
                                             <div className="flex justify-center items-center">
-                                                {mediaItem.type === "image" && (
+                                                {media.type === NodeVariants.Image && (
                                                     <div className="w-full max-w-sm mx-auto">
                                                         <Image
-                                                            src={mediaItem.uploadedUrl || mediaItem.url!}
-                                                            alt={mediaItem.fileName || "Pasted image"}
+                                                            src={media.uploadedUrl || media.url!}
+                                                            alt={media.fileName || "Pasted image"}
                                                             width={0}
                                                             height={0}
                                                             className="w-full h-full object-cover rounded-lg"
@@ -807,31 +917,31 @@ export default function PasteBin({ user }: { user: UserResource }) {
                                                     </div>
                                                 )}
 
-                                                {mediaItem.type === "audio" && (
+                                                {media.type === NodeVariants.Audio && (
                                                     <div className="w-full max-w-sm mx-auto">
                                                         <AudioPlayer
-                                                            src={mediaItem.uploadedUrl || mediaItem.url!}
-                                                            title={mediaItem.customName || mediaItem.fileName}
+                                                            src={media.uploadedUrl || media.url!}
+                                                            title={media.customName || media.fileName}
                                                         />
                                                     </div>
                                                 )}
 
-                                                {mediaItem.type === "video" && (
+                                                {media.type === NodeVariants.Video && (
                                                     <div className="w-full max-w-sm mx-auto">
                                                         <VideoPlayer
-                                                            src={mediaItem.uploadedUrl || mediaItem.url!}
-                                                            title={mediaItem.customName || mediaItem.fileName}
+                                                            src={media.uploadedUrl || media.url!}
+                                                            title={media.customName || media.fileName}
                                                         />
                                                     </div>
                                                 )}
 
-                                                {mediaItem.type === "file" && (
+                                                {media.type === NodeVariants.Link && (
                                                     <div className="w-full max-w-sm mx-auto">
                                                         <FilePreview
-                                                            fileName={mediaItem.customName || mediaItem.fileName!}
-                                                            fileSize={mediaItem.fileSize}
-                                                            fileType={mediaItem.fileType}
-                                                            downloadUrl={mediaItem.uploadedUrl}
+                                                            fileName={media.customName || media.fileName!}
+                                                            fileSize={media.fileSize}
+                                                            fileType={media.fileType}
+                                                            downloadUrl={media.uploadedUrl}
                                                         />
                                                     </div>
                                                 )}
@@ -842,7 +952,7 @@ export default function PasteBin({ user }: { user: UserResource }) {
                                 )}
 
                                 {mode === PasteBinMode.AI && chatId && (
-                                    <div className="h-[400px] w-full p-4">
+                                    <div className="h-[400px] w-full p-4 overflow-hidden">
                                         <ChatCard drivenIds={drivenMessageIds} onFocusInput={() => {
                                             textareaRef.current?.focus();
                                         }} chatId={chatId} />
@@ -880,38 +990,7 @@ export default function PasteBin({ user }: { user: UserResource }) {
                                     </motion.div>
                                 )}
 
-                                {isLoadingTwitter && (
-                                    <motion.div
-                                        key="twitter-loading"
-                                        className="w-full overflow-hidden"
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: "auto", opacity: 1 }}
-                                        transition={{
-                                            type: "spring",
-                                            stiffness: 280,
-                                            damping: 30,
-                                            mass: 1.0,
-                                        }}
-                                    >
-                                        <motion.div
-                                            className="p-4 flex justify-center"
-                                            initial={{ y: 20, scale: 0.95 }}
-                                            animate={{ y: 0, scale: 1 }}
-                                            transition={{
-                                                type: "spring",
-                                                stiffness: 300,
-                                                damping: 25,
-                                                delay: 0.1
-                                            }}
-                                        >
-                                            <div className="w-full">
-                                                <TweetSkeleton />
-                                            </div>
-                                        </motion.div>
-                                    </motion.div>
-                                )}
-
-                                {linkMeta && (
+                                {media && media.url && !media.file && (
                                     <motion.div
                                         key="link"
                                         className="w-full overflow-hidden"
@@ -937,17 +1016,15 @@ export default function PasteBin({ user }: { user: UserResource }) {
                                             }}
                                         >
                                             <div className="w-full">
-                                                {linkMeta.type === 'GitHub' && <GitHubCard metadata={linkMeta} />}
-                                                {linkMeta.type === 'Figma' && <FigmaCard metadata={linkMeta} />}
-                                                {linkMeta.type === 'YouTube' && <YouTubeCard metadata={linkMeta} />}
-                                                {linkMeta.type === 'Twitter' && <TwitterCard metadata={linkMeta} />}
-                                                {linkMeta.type === 'Notion' && <NotionCard metadata={linkMeta} />}
-                                                {linkMeta.type === 'Loom' && <LoomCard metadata={linkMeta} />}
-                                                {linkMeta.type === 'Spotify' && <SpotifyCard metadata={linkMeta} />}
-                                                {linkMeta.type === 'AppleMusic' && <AppleMusicCard metadata={linkMeta} />}
-                                                {(linkMeta.type === 'Link' || !['GitHub', 'Figma', 'YouTube', 'Twitter', 'Notion', 'Loom', 'Spotify', 'AppleMusic'].includes(linkMeta.type)) &&
-                                                    <WebsiteCard metadata={linkMeta} />
-                                                }
+                                                {media.type === NodeVariants.GitHub && <GitHubCard metadata={mediaToLinkMetadata(media) as GitHubMetadata} />}
+                                                {media.type === NodeVariants.Figma && <FigmaCard metadata={mediaToLinkMetadata(media) as FigmaMetadata} />}
+                                                {media.type === NodeVariants.YouTube && <YouTubeCard metadata={mediaToLinkMetadata(media) as YouTubeMetadata} />}
+                                                {media.type === NodeVariants.Twitter && <TwitterCard metadata={mediaToLinkMetadata(media) as TwitterMetadata} />}
+                                                {media.type === NodeVariants.Notion && <NotionCard metadata={mediaToLinkMetadata(media) as NotionMetadata} />}
+                                                {media.type === NodeVariants.Loom && <LoomCard metadata={mediaToLinkMetadata(media) as LoomMetadata} />}
+                                                {media.type === NodeVariants.Spotify && <SpotifyCard metadata={mediaToLinkMetadata(media) as SpotifyMetadata} />}
+                                                {media.type === NodeVariants.AppleMusic && <AppleMusicCard metadata={mediaToLinkMetadata(media) as AppleMusicMetadata} />}
+                                                {media.type === NodeVariants.Link && <WebsiteCard metadata={mediaToLinkMetadata(media) as WebsiteMetadata} />}
                                             </div>
                                         </motion.div>
                                     </motion.div>
@@ -1040,7 +1117,7 @@ export default function PasteBin({ user }: { user: UserResource }) {
                             {/* Expanded mode buttons */}
                             {mode !== PasteBinMode.IDLE && (
                                 <motion.div
-                                    className="absolute right-2 bottom-2 flex gap-2"
+                                    className="absolute right-2 bottom-2 flex gap-2 bg-background p-1"
                                     initial={{ opacity: 0, y: 10, scale: 0.8 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, scale: 0.8 }}
