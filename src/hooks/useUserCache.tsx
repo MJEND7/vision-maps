@@ -1,8 +1,8 @@
 "use client"
 
 import React, { createContext, useContext, useMemo, useCallback, useRef } from 'react'
-// import { useQuery } from 'convex/react'
-// import { api } from '../../convex/_generated/api'
+import { useQuery } from 'convex/react'
+import { api } from '../../convex/_generated/api'
 import { Id } from '../../convex/_generated/dataModel'
 
 export type NodeUser = {
@@ -20,6 +20,7 @@ type NodeUserCacheState = {
 
 type NodeUserCacheContextType = {
   getUserForNode: (userId: Id<"users">) => NodeUser | null
+  prefetchUsers: (userIds: Id<"users">[]) => void
 }
 
 const NodeUserCacheContext = createContext<NodeUserCacheContextType | null>(null)
@@ -41,34 +42,45 @@ export function NodeUserCacheProvider({ children, visionId }: NodeUserCacheProvi
   // Track pending fetches to avoid duplicate requests
   const pendingFetchesRef = useRef<Set<Id<"users">>>(new Set())
   
-  // Dynamic query hook - only fetch users that aren't cached and aren't being fetched
-  const usersToFetch = useMemo(() => {
-    return Array.from(cacheState.pendingFetches).slice(0, 10) // Batch limit of 10
+  // Get the first user that needs to be fetched (one at a time to avoid hooks violations)
+  const nextUserToFetch = useMemo(() => {
+    const pending = Array.from(cacheState.pendingFetches)
+    return pending.length > 0 ? pending[0] : null
   }, [cacheState.pendingFetches.size])
 
-  // Individual user queries for each user that needs to be fetched
-  // TODO: Fix this hook violation - useQuery cannot be called inside map
-  const userQueries = usersToFetch.map(userId => {
-    return {
-      userId,
-      data: undefined // useQuery(api.channels.getUser, cacheState.nodeUsers.has(userId) ? "skip" : { userId })
-    }
-  })
+  // Single user query - fetch one user at a time
+  const userData = useQuery(
+    api.channels.getUser,
+    nextUserToFetch && !cacheState.nodeUsers.has(nextUserToFetch) 
+      ? { userId: nextUserToFetch }
+      : "skip"
+  )
 
-  // Process completed queries and update cache
+  // Process completed query and update cache
   React.useEffect(() => {
-    userQueries.forEach(({ userId, data }) => {
-      if (data && !cacheState.nodeUsers.has(userId)) {
-        // Add to cache
-        cacheState.nodeUsers.set(userId, data)
-        
-        // Remove from pending fetches
-        cacheState.pendingFetches.delete(userId)
-        cacheState.fetchingUsers.delete(userId)
-        pendingFetchesRef.current.delete(userId)
+    if (userData && nextUserToFetch && !cacheState.nodeUsers.has(nextUserToFetch)) {
+      // Add to cache
+      cacheState.nodeUsers.set(nextUserToFetch, userData)
+      
+      // Remove from pending fetches
+      cacheState.pendingFetches.delete(nextUserToFetch)
+      cacheState.fetchingUsers.delete(nextUserToFetch)
+      pendingFetchesRef.current.delete(nextUserToFetch)
+    }
+  }, [userData, nextUserToFetch, cacheState])
+
+  const prefetchUsers = useCallback((userIds: Id<"users">[]) => {
+    // Add unique users that aren't cached or already being fetched
+    userIds.forEach(userId => {
+      if (!cacheState.nodeUsers.has(userId) && 
+          !cacheState.fetchingUsers.has(userId) && 
+          !pendingFetchesRef.current.has(userId)) {
+        cacheState.pendingFetches.add(userId)
+        cacheState.fetchingUsers.add(userId)
+        pendingFetchesRef.current.add(userId)
       }
     })
-  }, [userQueries.map(q => q.data).join(',')]) // Depend on query results
+  }, [cacheState])
 
   const getUserForNode = useCallback((userId: Id<"users">): NodeUser | null => {
     // Check if user is in cache
@@ -87,8 +99,9 @@ export function NodeUserCacheProvider({ children, visionId }: NodeUserCacheProvi
   }, [cacheState])
 
   const contextValue = useMemo<NodeUserCacheContextType>(() => ({
-    getUserForNode
-  }), [getUserForNode])
+    getUserForNode,
+    prefetchUsers
+  }), [getUserForNode, prefetchUsers])
 
   return (
     <NodeUserCacheContext.Provider value={contextValue}>

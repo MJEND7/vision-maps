@@ -56,7 +56,8 @@ const getUserArgs = v.object({
   userId: v.id("users"),
 });
 
-export type NodeWithFrame = Doc<"nodes"> & {
+export type Node = Doc<"nodes">;
+export type NodeWithFrame = Node & {
   frameTitle: string | null;
 };
 

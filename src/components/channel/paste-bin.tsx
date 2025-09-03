@@ -119,9 +119,6 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
 
     // Component state
     const [mode, setMode] = useState<PasteBinMode>(PasteBinMode.IDLE);
-    // Future implementation:
-    // const [mediaData, setMediaData] = useState<MediaData | null>(null);
-    // const [embedData, setEmbedData] = useState<EmbedData | null>(null);
     const [textContent, setTextContent] = useState("");
     const [drivenMessageIds, setDrivenMessageIds] = useState<Set<string>>(new Set())
     const [chatId, setChatId] = useState<string | null>(null);
@@ -307,7 +304,7 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
                     setIsTextMode(false);
                     setTextContent("");
                     pasteBinStorage.save.textContent("");
-                }, 3000);
+                }, 1500);
             }
         }
 
@@ -602,6 +599,25 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
     }, [mode, textContent, newChat, handleSendMessage, updateIsAiMode]);
 
     const clearMedia = useCallback(async (deleteUnusedChat = true) => {
+        // Delete any uploaded media files if not clearing after successful creation
+        if (media && media.uploadedUrl && deleteUnusedChat) {
+            try {
+                const response = await fetch('/api/uploadthing/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ fileUrl: media.uploadedUrl }),
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to delete uploaded file:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error deleting uploaded file:', error);
+            }
+        }
+
         // Delete any chat that was created but not used (no messages sent)
         // Only delete if this is a cancellation, not after successful creation
         if (chatId && isAiMode && deleteUnusedChat) {
@@ -645,7 +661,7 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
-    }, [actions, updateMedia, updateChatId, updateIsAiMode, chatId, isAiMode, deleteChat]);
+    }, [actions, updateMedia, updateChatId, updateIsAiMode, chatId, isAiMode, deleteChat, media]);
 
     const handleCreate = useCallback(async () => {
         const node = () => {
@@ -758,7 +774,7 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
 
     return (
         <div
-            className={`absolute -bottom-5 w-full max-w-lg mx-auto`}
+            className={`absolute inset-x-0 bottom-10 w-full max-w-lg mx-auto`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
