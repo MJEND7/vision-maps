@@ -258,13 +258,13 @@ export default function VisionDetailPage() {
             newTabs.delete(channelId);
             return newTabs;
         });
-        
+
         setTabOrder(prev => {
             // Filter out the channel tab and any frame tabs that belong to this channel
             const updatedOrder = prev.filter(tab => {
                 // Remove if it's the channel being deleted
                 if (tab.id === channelId) return false;
-                
+
                 // Remove if it's a frame that belongs to this channel
                 if (tab.type === ViewMode.FRAME && framesByChannel[channelId]?.some(frame => frame._id === tab.id)) {
                     // Also remove from tabs Map
@@ -275,12 +275,12 @@ export default function VisionDetailPage() {
                     });
                     return false;
                 }
-                
+
                 return true;
             });
-            
+
             // Update selected tab if needed
-            if (selectedTab && (selectedTab.id === channelId || 
+            if (selectedTab && (selectedTab.id === channelId ||
                 (selectedTab.type === ViewMode.FRAME && framesByChannel[channelId]?.some(frame => frame._id === selectedTab.id)))) {
                 if (updatedOrder.length > 0) {
                     setSelectedTab(updatedOrder[updatedOrder.length - 1]);
@@ -288,7 +288,7 @@ export default function VisionDetailPage() {
                     setSelectedTab(null);
                 }
             }
-            
+
             return updatedOrder;
         });
 
@@ -314,11 +314,11 @@ export default function VisionDetailPage() {
             newTabs.delete(frameId);
             return newTabs;
         });
-        
+
         // Remove from tab order
         setTabOrder(prev => {
             const updatedOrder = prev.filter(tab => tab.id !== frameId);
-            
+
             if (selectedTab?.id === frameId) {
                 if (updatedOrder.length > 0) {
                     setSelectedTab(updatedOrder[updatedOrder.length - 1]);
@@ -326,7 +326,7 @@ export default function VisionDetailPage() {
                     setSelectedTab(null);
                 }
             }
-            
+
             return updatedOrder;
         });
 
@@ -347,11 +347,11 @@ export default function VisionDetailPage() {
             frameIds.forEach(frameId => newTabs.delete(frameId));
             return newTabs;
         });
-        
+
         // Remove from tab order
         setTabOrder(prev => {
             const updatedOrder = prev.filter(tab => !frameIds.includes(tab.id));
-            
+
             if (selectedTab && frameIds.includes(selectedTab.id)) {
                 if (updatedOrder.length > 0) {
                     setSelectedTab(updatedOrder[updatedOrder.length - 1]);
@@ -359,7 +359,7 @@ export default function VisionDetailPage() {
                     setSelectedTab(null);
                 }
             }
-            
+
             return updatedOrder;
         });
 
@@ -389,7 +389,7 @@ export default function VisionDetailPage() {
             const currentFrames = prev[channelId] || [];
             const frameMap = new Map(currentFrames.map(f => [f._id, f]));
             const reorderedFrames = frameIds.map(id => frameMap.get(id)).filter(Boolean);
-            
+
             return {
                 ...prev,
                 [channelId]: reorderedFrames
@@ -442,8 +442,8 @@ export default function VisionDetailPage() {
                 return <FrameComponent />;
             case ViewMode.SETTINGS:
                 return (
-                    <SettingsComponent 
-                        id={selectedTab.id} 
+                    <SettingsComponent
+                        id={selectedTab.id}
                         onChannelDeleted={handleChannelDeleted}
                         onFrameDeleted={handleFrameDeleted}
                         onFramesDeleted={handleFramesDeleted}
@@ -543,7 +543,7 @@ export default function VisionDetailPage() {
             return currentTabs;
         });
 
-        setTabOrder(prev => prev.map(tab => 
+        setTabOrder(prev => prev.map(tab =>
             tab.id === id ? { ...tab, title: newTitle } : tab
         ));
 
@@ -659,13 +659,13 @@ export default function VisionDetailPage() {
 
         setTabOrder(prev => {
             const newOrder = prev.filter(tab => tab.id !== id);
-            
+
             if (newOrder.length === 0) {
                 setSelectedTab(null);
             } else if (selectedTab?.id === id) {
                 setSelectedTab(newOrder[newOrder.length - 1]);
             }
-            
+
             return newOrder;
         });
     }
@@ -710,100 +710,107 @@ export default function VisionDetailPage() {
                         className="h-full w-[280px] bg-card border border-border space-y-2"
                     >
                         <TitleCard
-                        OpenSettings={(id) => {
-                            openTab(ViewMode.SETTINGS, id, ViewMode.SETTINGS)
-                        }}
-                        isLoading={isLoading}
-                        vision={vision}
-                    />
-                    <hr />
-                    <div className="px-3 w-full space-y-4">
-                        <div className="w-full flex items-center justify-between">
-                            <Button
-                                variant={"outline"}
-                                className="text-xs text-muted-foreground flex items-center gap-1"
-                                onClick={handleCreateChannel}
-                            >
-                                <TableProperties size={15} /> New channel
-                            </Button>
-                            <Button
-                                variant={"outline"}
-                                className="text-xs text-muted-foreground flex items-center gap-1"
-                                onClick={() => setOpenChannels(new Set())}
-                            >
-                                <ChevronsDownUp />
+                            OpenSettings={(id) => {
+                                openTab(ViewMode.SETTINGS, id, ViewMode.SETTINGS)
+                            }}
+                            isLoading={isLoading}
+                            vision={vision}
+                        />
+                        <hr />
+                        <div className="px-3 w-full space-y-4">
+                            <div className="w-full flex items-center justify-between">
+                                <Button
+                                    variant={"outline"}
+                                    className="text-xs text-muted-foreground flex items-center gap-1"
+                                    onClick={handleCreateChannel}
+                                >
+                                    <TableProperties size={15} /> New channel
+                                </Button>
+                                <Button
+                                    variant={"outline"}
+                                    className="text-xs text-muted-foreground flex items-center gap-1"
+                                    onClick={() => setOpenChannels(new Set())}
+                                >
+                                    <ChevronsDownUp />
+                                </Button>
+                            </div>
+                            {optimisticChannels && optimisticChannels.length > 0 ? (
+                                <DraggableSidebar
+                                    channels={optimisticChannels}
+                                    framesByChannel={optimisticFrames}
+                                    openChannels={openChannels}
+                                    selectedTabId={selectedTab?.id}
+                                    editingChannel={editingChannel}
+                                    editingChannelName={editingChannelName}
+                                    editingFrame={editingFrame}
+                                    editingFrameName={editingFrameName}
+                                    onChannelReorder={handleChannelReorder}
+                                    onChannelReorderEnd={syncChannelOrder}
+                                    onFrameReorder={handleFrameReorder}
+                                    onFrameReorderEnd={syncFrameOrder}
+                                    onToggleChannel={toggleChannel}
+                                    onOpenTab={(type, id, title) => {
+                                        if (type === "channel") {
+                                            openTab(ViewMode.CHANNEL, id, title);
+                                        } else {
+                                            openTab(ViewMode.FRAME, id, title);
+                                        }
+                                    }}
+                                    onCreateFrame={handleCreateFrame}
+                                    onEditChannel={startEditingChannel}
+                                    onEditFrame={startEditingFrame}
+                                    onSaveChannel={saveChannelName}
+                                    onSaveFrame={saveFrameName}
+                                    onCancelEditChannel={cancelEditingChannel}
+                                    onCancelEditFrame={cancelEditingFrame}
+                                    onEditChannelNameChange={setEditingChannelName}
+                                    onEditFrameNameChange={setEditingFrameName}
+                                />
+                            ) : (
+                                <div className="text-xs text-muted-foreground/60 px-3">
+                                    {channels === undefined ? 'Loading channels...' : 'No channels yet'}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Middle */}
+                <div className="flex flex-col w-full bg-background">
+                    {/* Tabs stay fixed at the top */}
+                    <div className="shrink-0">
+                        <DraggableTabs
+                            tabs={tabsForDraggable}
+                            selectedTab={selectedTabForDraggable}
+                            TabSelectAction={handleTabSelect}
+                            TabRemoveAction={removeTab}
+                            TabReorderAction={handleTabReorder}
+                            renderTabIconAction={renderTabIconForDraggable}
+                        />
+                    </div>
+
+                    {/* Content fills remaining space and scrolls if needed */}
+                    <div className="flex-1 overflow-auto">
+                        {renderContent()}
+                    </div>
+                </div>
+
+                {/* Right bar */}
+                <div className="h-full w-[400px] bg-card border border-border p-4">
+                    <div className="flex justify-between">
+                        <div className="">
+                            <PresenceFacePile visionId={visionId} />
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                            <ThemeSwitcher size="sm" />
+                            <Button className="text-xs" size={"sm"} variant={"outline"}>
+                                Share
                             </Button>
                         </div>
-                        {optimisticChannels && optimisticChannels.length > 0 ? (
-                            <DraggableSidebar
-                                channels={optimisticChannels}
-                                framesByChannel={optimisticFrames}
-                                openChannels={openChannels}
-                                selectedTabId={selectedTab?.id}
-                                editingChannel={editingChannel}
-                                editingChannelName={editingChannelName}
-                                editingFrame={editingFrame}
-                                editingFrameName={editingFrameName}
-                                onChannelReorder={handleChannelReorder}
-                                onChannelReorderEnd={syncChannelOrder}
-                                onFrameReorder={handleFrameReorder}
-                                onFrameReorderEnd={syncFrameOrder}
-                                onToggleChannel={toggleChannel}
-                                onOpenTab={(type, id, title) => {
-                                    if (type === "channel") {
-                                        openTab(ViewMode.CHANNEL, id, title);
-                                    } else {
-                                        openTab(ViewMode.FRAME, id, title);
-                                    }
-                                }}
-                                onCreateFrame={handleCreateFrame}
-                                onEditChannel={startEditingChannel}
-                                onEditFrame={startEditingFrame}
-                                onSaveChannel={saveChannelName}
-                                onSaveFrame={saveFrameName}
-                                onCancelEditChannel={cancelEditingChannel}
-                                onCancelEditFrame={cancelEditingFrame}
-                                onEditChannelNameChange={setEditingChannelName}
-                                onEditFrameNameChange={setEditingFrameName}
-                            />
-                        ) : (
-                            <div className="text-xs text-muted-foreground/60 px-3">
-                                {channels === undefined ? 'Loading channels...' : 'No channels yet'}
-                            </div>
-                        )}
                     </div>
                 </div>
-            </div>
-
-            {/* Middle */}
-            <div className="overflow-hidden w-full bg-background">
-                <DraggableTabs
-                    tabs={tabsForDraggable}
-                    selectedTab={selectedTabForDraggable}
-                    TabSelectAction={handleTabSelect}
-                    TabRemoveAction={removeTab}
-                    TabReorderAction={handleTabReorder}
-                    renderTabIconAction={renderTabIconForDraggable}
-                />
-                {renderContent()}
-            </div>
-
-            {/* Right bar */}
-            <div className="h-full w-[400px] bg-card border border-border p-4">
-                <div className="flex justify-between">
-                    <div className="">
-                        <PresenceFacePile visionId={visionId} />
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                        <ThemeSwitcher size="sm" />
-                        <Button className="text-xs" size={"sm"} variant={"outline"}>
-                            Share
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        </main>
+            </main>
         </NodeUserCacheProvider>
     );
 }

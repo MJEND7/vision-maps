@@ -143,10 +143,8 @@ export interface StoredLinkMeta {
 // Paste-bin specific storage functions
 export const pasteBinStorage = {
   load: () => ({
-    inputValue: storageUtils.get<string>(PASTE_BIN_STORAGE_KEYS.INPUT_VALUE, ''),
     mediaItem: storageUtils.get<StoredMediaItem | null>(PASTE_BIN_STORAGE_KEYS.MEDIA_ITEM, null),
     linkMeta: storageUtils.get<StoredLinkMeta | null>(PASTE_BIN_STORAGE_KEYS.LINK_META, null),
-    thought: storageUtils.get<string>(PASTE_BIN_STORAGE_KEYS.THOUGHT, ''),
     textContent: storageUtils.get<string>(PASTE_BIN_STORAGE_KEYS.TEXT_CONTENT, ''),
     chatId: storageUtils.get<string | null>(PASTE_BIN_STORAGE_KEYS.CHAT_ID, null),
     isAiMode: storageUtils.get<boolean>(PASTE_BIN_STORAGE_KEYS.IS_AI_MODE, false),
@@ -154,14 +152,12 @@ export const pasteBinStorage = {
   }),
 
   save: {
-    inputValue: (value: string) => storageUtils.set(PASTE_BIN_STORAGE_KEYS.INPUT_VALUE, value),
     mediaItem: (value: any) => {
       // Remove File object before saving as it can't be serialized
       const serializableValue = value ? { ...value, file: undefined } : null;
       storageUtils.set(PASTE_BIN_STORAGE_KEYS.MEDIA_ITEM, serializableValue);
     },
     linkMeta: (value: any) => storageUtils.set(PASTE_BIN_STORAGE_KEYS.LINK_META, value),
-    thought: (value: string) => storageUtils.set(PASTE_BIN_STORAGE_KEYS.THOUGHT, value),
     textContent: (value: string) => storageUtils.set(PASTE_BIN_STORAGE_KEYS.TEXT_CONTENT, value),
     chatId: (value: string | null) => storageUtils.set(PASTE_BIN_STORAGE_KEYS.CHAT_ID, value),
     isAiMode: (value: boolean) => storageUtils.set(PASTE_BIN_STORAGE_KEYS.IS_AI_MODE, value),
