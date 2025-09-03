@@ -9,13 +9,14 @@ import { AudioPlayer } from "./audio-player";
 import { VideoPlayer } from "./video-player";
 import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard, ChatCard } from "./metadata";
 import { useOGMetadataWithCache } from "@/utils/ogMetadata";
+import { Brain, ExternalLink } from "lucide-react";
 
 // Component for nodes that need metadata fetching
 function NodeWithMetadata({ node, variant }: { node: NodeWithFrame, variant: NodeVariants }) {
     const { fetchWithCache } = useOGMetadataWithCache();
     const [metadata, setMetadata] = React.useState<any>(null);
     const [isLoading, setIsLoading] = React.useState(true);
-    
+
     // Fetch metadata when component mounts
     React.useEffect(() => {
         const fetchMetadata = async () => {
@@ -115,7 +116,26 @@ function renderNodeContent(node: NodeWithFrame) {
             return <NodeWithMetadata node={node} variant={variant} />;
 
         case NodeVariants.AI:
-            return <ChatCard drivenIds={new Set()} onFocusInput={() => { }} chatId={node.value} />;
+            return (
+                <div className="overflow-hidden min-h-[15rem] min-w-[20rem] border border-accent rounded-lg flex flex-col justify-between">
+                    <div className="flex text-xs items-center justify-between gap-2 font-semibold p-3">
+                        <div className="flex items-center gap-2">
+                            LLM Node
+                        </div>
+                    </div>
+                    <div className="flex flex-col items-center justify-center gap-2">
+                            <Brain size={20} />
+                    </div>
+                    <div className="bg-accent flex items-center justify-between border-t border-accent p-3">
+                        <p className="text-sm font-semibold ">{node.title}</p>
+                        <button className="text-[10px] text-blue-600 hover:underline flex items-center gap-1">
+                            <ExternalLink size={12} />
+                            Open Chat
+                        </button>
+                    </div>
+                </div>
+            )
+        //<ChatCard drivenIds={new Set()} onFocusInput={() => { }} chatId={node.value} />;
 
         case NodeVariants.Text:
             return (
@@ -199,7 +219,9 @@ export default function ChannelNode({ node, nodeUser }: { node: NodeWithFrame, n
 
                     {/* Render content based on node variant */}
                     <div className="mt-1 w-full max-w-md">
+                        <div className="min-w-[500px]">
                         {renderNodeContent(node)}
+                        </div>
                     </div>
                 </div>
             </div>

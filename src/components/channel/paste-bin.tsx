@@ -772,7 +772,7 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
                     }}
                 >
                     <motion.div
-                        className="w-full overflow-hidden rounded-2xl shadow-md border border-accent bg-background/30 backdrop-blur-lg"
+                        className="w-full overflow-hidden rounded-2xl shadow-md border border-accent bg-background"
                         animate={{
                             height: mode === PasteBinMode.AI ? "400px" :
                                 mode !== PasteBinMode.IDLE ? "auto" :

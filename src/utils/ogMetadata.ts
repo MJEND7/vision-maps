@@ -51,6 +51,7 @@ export interface OGMetadata {
     createdAt?: string;
     creator?: string;
     figmaFileType?: string;
+    fileType?: string;
 }
 
 export interface OGFetchResult {
