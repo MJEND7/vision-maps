@@ -3,7 +3,7 @@
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -30,8 +30,6 @@ export default function Channel({ channelId, user }: { channelId: string, user: 
     const titleRef = useRef<HTMLInputElement>(null)
     const descriptionRef = useRef<HTMLTextAreaElement>(null)
     const scrollContainerRef = useRef<HTMLDivElement>(null)
-    const [isLoadingMore, setIsLoadingMore] = useState(false)
-    const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
 
     // Debounce search query
     useEffect(() => {
@@ -59,69 +57,22 @@ export default function Channel({ channelId, user }: { channelId: string, user: 
     const { getUserForNode, prefetchUsers } = useNodeUserCache()
 
     useEffect(() => {
-        if (data?.channel) {
+        if (data?.channel.title) {
             setTitleValue(data.channel.title)
+        }
+
+        if (data?.channel.description) {
             setDescriptionValue(data.channel.description || "")
         }
-    }, [data?.channel])
+    }, [data?.channel.title, data?.channel.description])
 
     // Pre-fetch unique users from nodes when data changes
     useEffect(() => {
         if (data?.nodes) {
-            // Extract unique user IDs from nodes
             const uniqueUserIds = Array.from(new Set(data.nodes.map(node => node.userId)))
-            // Pre-fetch these users
             prefetchUsers(uniqueUserIds)
         }
     }, [data?.nodes, prefetchUsers])
-
-    // Scroll to bottom when new data loads or on initial load
-    const scrollToBottom = useCallback(() => {
-        if (scrollContainerRef.current) {
-            scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
-        }
-    }, []);
-
-    // Auto scroll to bottom when nodes change, but only if not loading more
-    useEffect(() => {
-        if (data?.nodes && shouldAutoScroll && !isLoadingMore) {
-            setTimeout(scrollToBottom, 100);
-        }
-    }, [data?.nodes, scrollToBottom, isLoadingMore, shouldAutoScroll]);
-
-    // Handle scroll events for load more
-    const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-        
-        // Determine if user is near bottom (within 100px) to enable auto-scroll
-        const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
-        setShouldAutoScroll(isNearBottom);
-        
-        // Check if scrolled near the top (for loading more)
-        if (scrollTop < 100 && !isLoadingMore && data?.nodes && data.nodes.length > 0) {
-            // Disable auto-scroll when loading more
-            setShouldAutoScroll(false);
-            setIsLoadingMore(true);
-            // TODO: Implement actual load more functionality
-            // Reset loading state after a delay (placeholder)
-            setTimeout(() => {
-                setIsLoadingMore(false);
-                // Keep auto-scroll disabled until user scrolls near bottom again
-            }, 1000);
-        }
-    }, [isLoadingMore, data?.nodes]);
-
-    useEffect(() => {
-        if (isEditingTitle && titleRef.current) {
-            titleRef.current.focus()
-        }
-    }, [isEditingTitle])
-
-    useEffect(() => {
-        if (isEditingDescription && descriptionRef.current) {
-            descriptionRef.current.focus()
-        }
-    }, [isEditingDescription])
 
     if (isLoading) {
         return null
@@ -130,23 +81,23 @@ export default function Channel({ channelId, user }: { channelId: string, user: 
     const channel = data.channel;
 
     const handleTitleSave = async () => {
+        setIsEditingTitle(false)
         if (titleValue.trim() !== channel.title) {
             await updateChannel({
                 id: channelId as Id<"channels">,
                 title: titleValue.trim()
             })
         }
-        setIsEditingTitle(false)
     }
 
     const handleDescriptionSave = async () => {
-        if (descriptionValue.trim() !== (channel.description || "")) {
+        setIsEditingDescription(false)
+        if (descriptionValue && descriptionValue.trim() !== (channel.description || "")) {
             await updateChannel({
                 id: channelId as Id<"channels">,
                 description: descriptionValue.trim()
             })
         }
-        setIsEditingDescription(false)
     }
 
     const handleTitleKeyDown = (e: React.KeyboardEvent) => {
@@ -169,10 +120,7 @@ export default function Channel({ channelId, user }: { channelId: string, user: 
 
     const handleNodeCreation = async (data: Omit<CreateNodeArgs, "channel">) => {
         console.log("Node: ", data)
-        // Enable auto-scroll for new nodes created by user
-        setShouldAutoScroll(true);
         await createNode({ ...data, channel: channelId as Id<"channels"> });
-        //TODO some loading state stuff
     }
 
     return (
@@ -194,7 +142,7 @@ export default function Channel({ channelId, user }: { channelId: string, user: 
                             onClick={() => setIsEditingTitle(true)}
                         >
                             <h1 className="font-semibold text-3xl">
-                                {channel.title}
+                                {titleValue}
                             </h1>
                             <svg
                                 className="w-4 h-4 opacity-0 group-hover:opacity-50 transition-opacity"
@@ -224,7 +172,7 @@ export default function Channel({ channelId, user }: { channelId: string, user: 
                                 onClick={() => setIsEditingDescription(true)}
                             >
                                 <h2 className="text-sm text-muted-foreground">
-                                    {channel.description || "Add description..."}
+                                    {descriptionValue || "Add description..."}
                                 </h2>
                             </button>
                             <svg
@@ -294,27 +242,11 @@ export default function Channel({ channelId, user }: { channelId: string, user: 
             </div>
 
             {/* Nodes List */}
-            <div 
+            <div
                 ref={scrollContainerRef}
-                onScroll={handleScroll}
                 className="h-[75%] relative flex flex-col items-start space-y-8 overflow-y-auto scroll-smooth pb-32"
                 style={{ scrollBehavior: 'smooth' }}
             >
-                {/* Skeleton loader for loading more */}
-                {isLoadingMore && (
-                    <div className="w-full space-y-4 animate-pulse">
-                        {[...Array(3)].map((_, i) => (
-                            <div key={`skeleton-${i}`} className="flex items-start gap-3">
-                                <div className="h-8 w-8 bg-gray-200 rounded-full" />
-                                <div className="space-y-2 flex-1">
-                                    <div className="h-4 w-32 bg-gray-200 rounded" />
-                                    <div className="h-20 w-full bg-gray-200 rounded-lg" />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
                 {isLoading ? (
                     <div className="text-center text-gray-500 py-10">
                         Loading nodes...
@@ -333,7 +265,7 @@ export default function Channel({ channelId, user }: { channelId: string, user: 
                         )
                     })
                 )}
-                
+
                 {/* Over-scroll padding for PasteBin */}
                 <div className="h-48 flex-shrink-0" />
             </div>
