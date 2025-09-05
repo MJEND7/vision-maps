@@ -565,27 +565,38 @@ export default function VisionDetailPage() {
     }
 
     const renderContent = () => {
-        switch (selectedTab?.type) {
-            case ViewMode.CHANNEL:
-                return <Channel user={user} channelId={selectedTab.id} />;
-            case ViewMode.FRAME:
-                return <FrameComponent />;
-            case ViewMode.SETTINGS:
-                return (
-                    <SettingsComponent
-                        id={selectedTab.id}
-                        onChannelDeleted={handleChannelDeleted}
-                        onFrameDeleted={handleFrameDeleted}
-                        onFramesDeleted={handleFramesDeleted}
-                    />
-                );
-            default:
-                return (
+        const tabsArray = Array.from(tabs.values());
+        
+        return (
+            <>
+                {tabsArray.map(tab => (
+                    <div 
+                        key={tab.id}
+                        className={cn("h-full", selectedTab?.id !== tab.id && "hidden")}
+                    >
+                        {tab.type === ViewMode.CHANNEL && (
+                            <Channel user={user} channelId={tab.id} />
+                        )}
+                        {tab.type === ViewMode.FRAME && (
+                            <FrameComponent />
+                        )}
+                        {tab.type === ViewMode.SETTINGS && (
+                            <SettingsComponent
+                                id={tab.id}
+                                onChannelDeleted={handleChannelDeleted}
+                                onFrameDeleted={handleFrameDeleted}
+                                onFramesDeleted={handleFramesDeleted}
+                            />
+                        )}
+                    </div>
+                ))}
+                {tabs.size === 0 && (
                     <p className="flex h-full w-full items-center justify-center text-center text-sm text-primary/70 bg-accent">
                         No file selected
                     </p>
-                );
-        }
+                )}
+            </>
+        );
     };
 
     const renderTabIcon = (t: ViewMode) => {
@@ -619,7 +630,19 @@ export default function VisionDetailPage() {
             newMap.set(id, newTabData);
             return newMap;
         });
-        setTabOrder(prev => [...prev, newTabData]);
+        setTabOrder(prev => {
+            const newOrder = [...prev, newTabData];
+            if (newOrder.length > 10) {
+                const tabToRemove = newOrder[0];
+                setTabs((currentTabs) => {
+                    const updatedTabs = new Map(currentTabs);
+                    updatedTabs.delete(tabToRemove.id);
+                    return updatedTabs;
+                });
+                return newOrder.slice(1);
+            }
+            return newOrder;
+        });
         setSelectedTab(newTabData);
     }
 
@@ -1056,7 +1079,7 @@ export default function VisionDetailPage() {
                 )}
 
                 <div className={cn(
-                    "flex flex-col flex-1 bg-background relative",
+                    "flex flex-col flex-1 overflow-hidden bg-background relative",
                     isMobile && "pt-[53px]"
                 )}>
                     <motion.div
