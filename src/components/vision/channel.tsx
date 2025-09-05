@@ -36,6 +36,7 @@ import {
     NodeListSkeleton,
 } from "../channel/channel-skeleton";
 import InfiniteScroll from 'react-infinite-scroll-component';
+import { Textarea } from "../ui/textarea";
 
 export default function Channel({
     channelId,
@@ -374,47 +375,25 @@ export default function Channel({
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">Channel Title</label>
-                                        {isEditingTitle ? (
-                                            <input
-                                                ref={titleRef}
-                                                value={titleValue}
-                                                onChange={(e) => setTitleValue(e.target.value)}
-                                                onBlur={handleTitleSave}
-                                                onKeyDown={handleTitleKeyDown}
-                                                className="w-full px-3 py-2 text-sm border rounded-md bg-background"
-                                                autoFocus
-                                            />
-                                        ) : (
-                                            <div
-                                                className="w-full px-3 py-2 text-sm border rounded-md bg-background cursor-pointer hover:bg-accent"
-                                                onClick={() => setIsEditingTitle(true)}
-                                            >
-                                                {titleValue}
-                                            </div>
-                                        )}
+                                        <Input
+                                            ref={titleRef}
+                                            value={titleValue}
+                                            onChange={(e) => setTitleValue(e.target.value)}
+                                            onBlur={handleTitleSave}
+                                            className="w-full px-3 py-2 rounded-md"
+                                        />
                                     </div>
 
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">Description</label>
-                                        {isEditingDescription ? (
-                                            <textarea
-                                                ref={descriptionRef}
-                                                value={descriptionValue}
-                                                onChange={(e) => setDescriptionValue(e.target.value)}
-                                                onBlur={handleDescriptionSave}
-                                                onKeyDown={handleDescriptionKeyDown}
-                                                className="w-full px-3 py-2 text-sm border rounded-md bg-background resize-none"
-                                                rows={3}
-                                                autoFocus
-                                            />
-                                        ) : (
-                                            <div
-                                                className="w-full px-3 py-2 text-sm border rounded-md bg-background cursor-pointer hover:bg-accent min-h-[76px]"
-                                                onClick={() => setIsEditingDescription(true)}
-                                            >
-                                                {descriptionValue || "Add description..."}
-                                            </div>
-                                        )}
+                                        <Textarea
+                                            ref={descriptionRef}
+                                            value={descriptionValue}
+                                            onChange={(e) => setDescriptionValue(e.target.value)}
+                                            onBlur={handleDescriptionSave}
+                                            className="w-full px-3 py-2 border rounded-md resize-none"
+                                            rows={5}
+                                        />
                                     </div>
                                 </div>
                             </PopoverContent>

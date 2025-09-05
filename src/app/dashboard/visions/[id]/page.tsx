@@ -5,7 +5,7 @@ import { DraggableTabs } from '@/components/ui/draggable-tabs';
 import { DraggableSidebar } from '@/components/ui/draggable-sidebar';
 import { PresenceFacePile } from '@/components/ui/face-pile';
 import { Button } from '@/components/ui/button';
-import { ChevronsDownUp, Frame, Settings, TableProperties, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronsDownUp, Frame, Settings, TableProperties, ChevronLeft, ChevronRight, ListTree, PanelRight, PanelRightClose } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import FrameComponent from '@/components/vision/frame';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -833,7 +833,7 @@ export default function VisionDetailPage() {
                 {isMobile && (
                     <motion.div
                         ref={mobileHeaderRef}
-                        className="absolute top-0 left-0 right-0 z-50 border-b px-4 py-2 bg-background"
+                        className="absolute top-0 left-0 right-0 z-40 px-3 py-3 bg-accent"
                         initial={{ y: -50, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ duration: 0.3 }}
@@ -844,13 +844,10 @@ export default function VisionDetailPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={toggleLeftSidebar}
-                                    className={cn("p-2", sidebarState.leftOpen && "bg-accent")}
+                                    className={cn("p-2 bg-background")}
                                 >
-                                    <ChevronLeft className="w-4 h-4" />
+                                    <ListTree className="w-4 h-4" />
                                 </Button>
-                                <h1 className="text-sm font-medium truncate max-w-[150px]">
-                                    {vision?.title || 'Loading...'}
-                                </h1>
                             </div>
 
                             <div className="flex items-center gap-2">
@@ -858,9 +855,9 @@ export default function VisionDetailPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={toggleRightSidebar}
-                                    className={cn("p-2", sidebarState.rightOpen && "bg-accent")}
+                                    className={cn("p-2 bg-background")}
                                 >
-                                    <ChevronRight className="w-4 h-4" />
+                                    <PanelRight className="w-4 h-4" />
                                 </Button>
                             </div>
                         </div>
@@ -876,12 +873,7 @@ export default function VisionDetailPage() {
                                 animate={{ x: 0 }}
                                 exit={{ x: -280 }}
                                 transition={{ duration: 0.3, ease: "easeInOut" }}
-                                className="h-full bg-card border-r border-border flex z-40 absolute top-0 left-0 shadow-lg"
-                                style={{
-                                    width: 280,
-                                    marginTop: 50,
-                                    height: 'calc(100vh - 50px)'
-                                }}
+                                className="w-[250px] h-full bg-card border-r border-border flex z-50 absolute top-0 left-0 shadow-lg"
                             >
                                 <div className="flex-1 space-y-2 overflow-hidden">
                                     <TitleCard
@@ -1065,7 +1057,7 @@ export default function VisionDetailPage() {
 
                 <div className={cn(
                     "flex flex-col flex-1 bg-background relative",
-                    isMobile && "pt-[50px]"
+                    isMobile && "pt-[53px]"
                 )}>
                     <motion.div
                         className="shrink-0"
@@ -1104,11 +1096,7 @@ export default function VisionDetailPage() {
                                 animate={{ x: 0 }}
                                 exit={{ x: 400 }}
                                 transition={{ duration: 0.3, ease: "easeInOut" }}
-                                className="w-full bg-card border-l border-border p-4 z-40 absolute top-0 right-0 shadow-lg"
-                                style={{
-                                    marginTop: 50,
-                                    height: 'calc(100vh - 50px)'
-                                }}
+                                className="w-full h-screen bg-card border-l border-border p-4 z-40 absolute top-0 right-0 shadow-lg"
                             >
                                 <div className="flex justify-between">
                                     <div className="">
@@ -1120,6 +1108,17 @@ export default function VisionDetailPage() {
                                         <Button className="text-xs" size={"sm"} variant={"outline"}>
                                             Share
                                         </Button>
+
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={toggleRightSidebar}
+                                                className={cn("p-2 bg-background")}
+                                            >
+                                                <PanelRightClose className="w-4 h-4" />
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
                             </motion.div>
