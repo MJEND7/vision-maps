@@ -188,7 +188,7 @@ export function ChatCard({ chatId, drivenIds, onFocusInput }: AiCardProps) {
                         scrollableTarget="scrollable-chat-container"
                         inverse={true}
                         style={{ display: "flex", flexDirection: "column-reverse" }}
-                        className="w-full space-y-4 p-2"
+                        className="w-full p-2"
                     >
                         <div ref={messagesEndRef} />
                         {allMessages.map((message, index) => (
@@ -197,7 +197,7 @@ export function ChatCard({ chatId, drivenIds, onFocusInput }: AiCardProps) {
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: index * 0.02 }}
-                                    className="mb-10"
+                                    className="mb-3"
                                 >
                                     <MessageItem message={message} isUser={false}>
                                         <ServerMessage
@@ -214,7 +214,7 @@ export function ChatCard({ chatId, drivenIds, onFocusInput }: AiCardProps) {
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: index * 0.02 + 0.05 }}
-                                    className="mb-10"
+                                    className="mb-3"
                                 >
                                     <MessageItem message={message} isUser={true}>
                                         {message.content}

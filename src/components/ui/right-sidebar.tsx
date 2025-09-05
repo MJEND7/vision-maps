@@ -94,7 +94,7 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="ai" className="flex-1 flex flex-col mt-0 pt-4 min-h-0">
+                <TabsContent value="ai" className="flex-1 flex flex-col mt-0 min-h-0">
                     {!selectedChatId ? (
                         <ChatList
                             chats={transformedChats}

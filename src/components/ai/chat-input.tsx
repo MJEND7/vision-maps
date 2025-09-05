@@ -38,10 +38,10 @@ export function ChatInput({ onSendMessage, disabled = false, placeholder = "Type
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
-        rows={1}
+        rows={4}
         className={cn(
-          "flex-1 min-h-[38px] max-h-32 px-3 py-2 resize-none",
-          "text-sm border border-input bg-background",
+          "flex-1 min-h-[38px] max-h-32 px-3 py-2 mb-8 resize-none",
+          "border border-input bg-background",
           "rounded-md placeholder:text-muted-foreground",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           "disabled:cursor-not-allowed disabled:opacity-50",
