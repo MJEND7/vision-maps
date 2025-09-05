@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ROUTES } from '@/lib/constants';
 import { timeSinceFromDateString } from '@/utils/date';
 import { useState, useEffect } from 'react';
-import { Map, Scan, Search, Grid3X3, List, Plus, Trash2, MoreHorizontal, Download, Share, SlidersHorizontal, Filter } from 'lucide-react';
+import { Map, Scan, Search, Grid3X3, List, Plus, Trash2, MoreHorizontal, Download, Share, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
