@@ -137,16 +137,30 @@ export function useOGMetadataWithCache() {
         } catch (error) {
             console.error('Error fetching metadata:', error);
 
-            // Return fallback metadata
-            return {
-                metadata: {
-                    title: new URL(url).hostname,
-                    description: "",
-                    url
-                },
-                type: NodeVariants.Link,
-                fromCache: false
-            };
+            // Return fallback metadata with URL validation
+            try {
+                const fallbackUrl = new URL(url);
+                return {
+                    metadata: {
+                        title: fallbackUrl.hostname,
+                        description: "",
+                        url
+                    },
+                    type: NodeVariants.Link,
+                    fromCache: false
+                };
+            } catch (urlError) {
+                console.error('Invalid URL in fallback:', urlError);
+                return {
+                    metadata: {
+                        title: "Invalid URL",
+                        description: "",
+                        url: ""
+                    },
+                    type: NodeVariants.Link,
+                    fromCache: false
+                };
+            }
         }
     }, [convex, storeMutation]);
 
@@ -179,12 +193,27 @@ export async function fetchOGMetadata(url: string): Promise<OGFetchResult> {
     } catch (error) {
         console.error('Error fetching OG metadata:', error);
 
-        return {
-            metadata: {
-                title: new URL(url).hostname,
-                description: "",
-            },
-            platformType: 'website'
-        };
+        // Return fallback metadata with URL validation
+        try {
+            const fallbackUrl = new URL(url);
+            return {
+                metadata: {
+                    title: fallbackUrl.hostname,
+                    description: "",
+                    url
+                },
+                platformType: 'website'
+            };
+        } catch (urlError) {
+            console.error('Invalid URL in fetchOGMetadata fallback:', urlError);
+            return {
+                metadata: {
+                    title: "Invalid URL",
+                    description: "",
+                    url: ""
+                },
+                platformType: 'website'
+            };
+        }
     }
 }

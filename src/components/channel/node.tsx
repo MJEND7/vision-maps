@@ -21,6 +21,18 @@ function NodeWithMetadata({ node, variant }: { node: NodeWithFrame, variant: Nod
     React.useEffect(() => {
         const fetchMetadata = async () => {
             try {
+                // Validate URL before fetching
+                if (!node.value || typeof node.value !== 'string') {
+                    console.error('Invalid node value:', node.value);
+                    setMetadata({
+                        title: 'Invalid URL',
+                        description: '',
+                        url: '',
+                        type: variant
+                    });
+                    return;
+                }
+
                 // If no rich metadata, fetch from cache/API
                 const result = await fetchWithCache(node.value);
                 setMetadata({
@@ -29,6 +41,13 @@ function NodeWithMetadata({ node, variant }: { node: NodeWithFrame, variant: Nod
                 });
             } catch (error) {
                 console.error('Error fetching metadata:', error);
+                // Set fallback metadata on error
+                setMetadata({
+                    title: 'Unable to load content',
+                    description: 'There was an error loading this content',
+                    url: node.value || '',
+                    type: variant
+                });
             } finally {
                 setIsLoading(false);
             }

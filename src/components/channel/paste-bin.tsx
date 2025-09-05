@@ -1076,7 +1076,7 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
                             }}
                             placeholder={
                                 mode !== PasteBinMode.IDLE
-                                    ? mode === PasteBinMode.AI ? "Type you message here..." : `Enter a thought about: ${getDisplayName()}`
+                                    ? mode === PasteBinMode.AI ? "Type you message here..." : `Type your thought here...`
                                     : "Enter media..."
                             }
                             value={textContent}

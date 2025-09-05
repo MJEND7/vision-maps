@@ -208,7 +208,17 @@ function extractPlatformSpecificMetadata(result: any, url: string, platformType:
 
 export async function POST(request: NextRequest) {
   try {
-    const { url } = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
+
+    const { url } = body;
 
     if (!url) {
       return NextResponse.json(
@@ -242,10 +252,18 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Open Graph scraper error:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch metadata' },
-        { status: 500 }
-      );
+      
+      // Return fallback metadata instead of error for soft failure
+      const fallbackMetadata = extractBaseMetadata({}, url);
+      fallbackMetadata.title = new URL(url).hostname;
+      fallbackMetadata.description = 'Unable to fetch metadata for this URL';
+      
+      return NextResponse.json({ 
+        success: true, 
+        metadata: fallbackMetadata,
+        platformType,
+        fallback: true 
+      });
     }
 
     // Extract platform-specific metadata using switch statement
