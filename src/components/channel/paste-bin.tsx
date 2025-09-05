@@ -752,7 +752,7 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
 
     return (
         <div
-            className={`absolute inset-x-0 bottom-10 w-full max-w-lg mx-auto`}
+            className={`absolute inset-x-0 bottom-8 w-full max-w-lg mx-auto`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}

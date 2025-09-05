@@ -104,6 +104,9 @@ dependencies:
   react-icons:
     specifier: ^5.5.0
     version: 5.5.0(react@19.1.1)
+  react-infinite-scroll-component:
+    specifier: ^6.1.0
+    version: 6.1.0(react@19.1.1)
   react-markdown:
     specifier: ^10.1.0
     version: 10.1.0(@types/react@19.1.11)(react@19.1.1)
@@ -131,6 +134,9 @@ dependencies:
   uploadthing:
     specifier: ^7.7.4
     version: 7.7.4(next@15.2.3)(tailwindcss@4.1.12)
+  zustand:
+    specifier: ^5.0.8
+    version: 5.0.8(@types/react@19.1.11)(react@19.1.1)
 
 devDependencies:
   '@eslint/eslintrc':
@@ -5987,6 +5993,15 @@ packages:
       react: 19.1.1
     dev: false
 
+  /react-infinite-scroll-component@6.1.0(react@19.1.1):
+    resolution: {integrity: sha512-SQu5nCqy8DxQWpnUVLx7V7b7LcA37aM7tvoWjTLZp1dk6EJibM5/4EJKzOnl07/BsM1Y40sKLuqjCwwH/xV0TQ==}
+    peerDependencies:
+      react: '>=16.0.0'
+    dependencies:
+      react: 19.1.1
+      throttle-debounce: 2.3.0
+    dev: false
+
   /react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
     dev: true
@@ -6782,6 +6797,11 @@ packages:
       source-map-support: 0.5.21
     dev: false
 
+  /throttle-debounce@2.3.0:
+    resolution: {integrity: sha512-H7oLPV0P7+jgvrk+6mwwwBDmxTaxnu9HMXmloNLXwnNO0ZxZ31Orah2n8lU1eMPvsaowP2CX+USCgyovXfdOFQ==}
+    engines: {node: '>=8'}
+    dev: false
+
   /tinyglobby@0.2.14:
     resolution: {integrity: sha512-tX5e7OM1HnYr2+a2C/4V0htOcSQcoSTH9KgJnVvNm5zm/cyEWKJ7j7YutsH9CxMdtOkkLFy2AHrMci9IM8IPZQ==}
     engines: {node: '>=12.0.0'}
@@ -7340,6 +7360,28 @@ packages:
       '@types/react': 19.1.11
       react: 19.1.1
       use-sync-external-store: 1.5.0(react@19.1.1)
+    dev: false
+
+  /zustand@5.0.8(@types/react@19.1.11)(react@19.1.1):
+    resolution: {integrity: sha512-gyPKpIaxY9XcO2vSMrLbiER7QMAMGOQZVRdJ6Zi782jkbzZygq5GI9nG8g+sMgitRtndwaBSl7uiqC49o1SSiw==}
+    engines: {node: '>=12.20.0'}
+    peerDependencies:
+      '@types/react': '>=18.0.0'
+      immer: '>=9.0.6'
+      react: '>=18.0.0'
+      use-sync-external-store: '>=1.2.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      immer:
+        optional: true
+      react:
+        optional: true
+      use-sync-external-store:
+        optional: true
+    dependencies:
+      '@types/react': 19.1.11
+      react: 19.1.1
     dev: false
 
   /zwitch@2.0.4:

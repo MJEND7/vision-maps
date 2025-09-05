@@ -1,35 +1,56 @@
-"use client"
+"use client";
 
-import { useQuery, useMutation } from "convex/react"
-import { api } from "../../../convex/_generated/api"
-import { Id } from "../../../convex/_generated/dataModel"
-import { useState, useRef, useEffect } from "react"
-import { Search } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MultiUserSelector } from "@/components/ui/multi-user-selector"
-import { useNodeUserCache } from "@/hooks/useUserCache"
-import PasteBin from "../channel/paste-bin"
-import { UserResource } from "@clerk/types"
-import { CreateNodeArgs } from "../../../convex/nodes"
-import { NODE_VARIANTS } from "@/lib/constants"
-import ChannelNode from "../channel/node"
+import {
+    useQuery,
+    useMutation,
+    usePaginatedQuery,
+} from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
+import { useState, useRef, useEffect } from "react";
+import { Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { MultiUserSelector } from "@/components/ui/multi-user-selector";
+import { useNodeUserCache } from "@/hooks/useUserCache";
+import PasteBin from "../channel/paste-bin";
+import { UserResource } from "@clerk/types";
+import { CreateNodeArgs } from "../../../convex/nodes";
+import { NODE_VARIANTS } from "@/lib/constants";
+import ChannelNode from "../channel/node";
+import {
+    ChannelSkeleton,
+    NodeListSkeleton,
+} from "../channel/channel-skeleton";
+import InfiniteScroll from 'react-infinite-scroll-component';
 
-export default function Channel({ channelId, user }: { channelId: string, user: UserResource }) {
-    const [searchQuery, setSearchQuery] = useState("")
-    const [debouncedSearch, setDebouncedSearch] = useState("")
-    const [selectedVariant, setSelectedVariant] = useState("all")
-    const [selectedUsers, setSelectedUsers] = useState<string[]>(["all"])
-    const [sortBy, setSortBy] = useState("latest")
+export default function Channel({
+    channelId,
+    user,
+}: {
+    channelId: string;
+    user: UserResource;
+}) {
+    const [searchQuery, setSearchQuery] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [selectedVariant, setSelectedVariant] = useState("all");
+    const [selectedUsers, setSelectedUsers] = useState<string[]>(["all"]);
+    const [sortBy, setSortBy] = useState("latest");
 
-    const [isEditingTitle, setIsEditingTitle] = useState(false)
-    const [isEditingDescription, setIsEditingDescription] = useState(false)
-    const [titleValue, setTitleValue] = useState("")
-    const [descriptionValue, setDescriptionValue] = useState("")
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [isEditingDescription, setIsEditingDescription] = useState(false);
+    const [titleValue, setTitleValue] = useState("");
+    const [descriptionValue, setDescriptionValue] = useState("");
 
-    const titleRef = useRef<HTMLInputElement>(null)
-    const descriptionRef = useRef<HTMLTextAreaElement>(null)
-    const scrollContainerRef = useRef<HTMLDivElement>(null)
+    const titleRef = useRef<HTMLInputElement>(null);
+    const descriptionRef = useRef<HTMLTextAreaElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     // Debounce search query
     useEffect(() => {
@@ -39,89 +60,122 @@ export default function Channel({ channelId, user }: { channelId: string, user: 
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    const data = useQuery(api.channels.getWithNodes, {
-        id: channelId as Id<"channels">,
-        filters: {
-            search: debouncedSearch || undefined,
-            variant: selectedVariant === "all" ? undefined : selectedVariant,
-            userIds: selectedUsers.includes("all") ? undefined : selectedUsers as Id<"users">[],
-            sortBy: sortBy === "latest" ? "oldest" : "latest" // Flip the sort to get newest at bottom
-        }
-    })
-    const updateChannel = useMutation(api.channels.update)
-    const isLoading = data == undefined
-
     const createNode = useMutation(api.nodes.create);
+    const updateChannel = useMutation(api.channels.update);
+    const channel = useQuery(api.channels.get, {
+        id: channelId as Id<"channels">,
+    });
+
+    const isChannelLoading = channel == undefined;
 
     // Get the getUserForNode function from the node user cache hook
-    const { getUserForNode, prefetchUsers } = useNodeUserCache()
+    const { getUserForNode, prefetchUsers } = useNodeUserCache();
 
     useEffect(() => {
-        if (data?.channel.title) {
-            setTitleValue(data.channel.title)
+        if (channel?.title) {
+            setTitleValue(channel?.title);
         }
 
-        if (data?.channel.description) {
-            setDescriptionValue(data.channel.description || "")
+        if (channel?.description) {
+            setDescriptionValue(channel?.description || "");
         }
-    }, [data?.channel.title, data?.channel.description])
+    }, [channel?.title, channel?.description]);
+
+    const {
+        results: storedNodes,
+        status,
+        loadMore,
+    } = usePaginatedQuery(
+        api.nodes.listByChannel,
+        {
+            channelId: channelId as Id<"channels">,
+            filters: {
+                search: debouncedSearch || undefined,
+                variant: selectedVariant === "all" ? undefined : selectedVariant,
+                userIds: selectedUsers.includes("all")
+                    ? undefined
+                    : (selectedUsers as Id<"users">[]),
+                sortBy: sortBy === "latest" ? "oldest" : "latest", // Flip the sort to get newest at bottom
+            },
+        },
+        { initialNumItems: 10 }
+    );
+
+    const isDone = status == "Exhausted";
+    const isLoadingNodes =
+        status == "LoadingMore" || status == "LoadingFirstPage";
 
     // Pre-fetch unique users from nodes when data changes
     useEffect(() => {
-        if (data?.nodes) {
-            const uniqueUserIds = Array.from(new Set(data.nodes.map(node => node.userId)))
-            prefetchUsers(uniqueUserIds)
+        if (storedNodes.length > 0) {
+            const userMap: Set<Id<"users">> = new Set();
+            storedNodes.map((node) => {
+                if (!userMap.has(node.userId)) {
+                    userMap.add(node.userId);
+                }
+            });
+            prefetchUsers(Array.from(userMap));
         }
-    }, [data?.nodes, prefetchUsers])
+    }, [storedNodes, prefetchUsers]);
 
-    if (isLoading) {
-        return null
+    if (isChannelLoading) {
+        return <ChannelSkeleton />;
     }
 
-    const channel = data.channel;
-
     const handleTitleSave = async () => {
-        setIsEditingTitle(false)
+        setIsEditingTitle(false);
         if (titleValue.trim() !== channel.title) {
             await updateChannel({
                 id: channelId as Id<"channels">,
-                title: titleValue.trim()
-            })
+                title: titleValue.trim(),
+            });
         }
-    }
+    };
 
     const handleDescriptionSave = async () => {
-        setIsEditingDescription(false)
-        if (descriptionValue && descriptionValue.trim() !== (channel.description || "")) {
+        setIsEditingDescription(false);
+        if (
+            descriptionValue &&
+            descriptionValue.trim() !== (channel.description || "")
+        ) {
             await updateChannel({
                 id: channelId as Id<"channels">,
-                description: descriptionValue.trim()
-            })
+                description: descriptionValue.trim(),
+            });
         }
-    }
+    };
 
     const handleTitleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            handleTitleSave()
-        } else if (e.key === 'Escape') {
-            setTitleValue(channel.title)
-            setIsEditingTitle(false)
+        if (e.key === "Enter") {
+            handleTitleSave();
+        } else if (e.key === "Escape") {
+            setTitleValue(channel.title);
+            setIsEditingTitle(false);
         }
-    }
+    };
 
     const handleDescriptionKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && e.metaKey) {
-            handleDescriptionSave()
-        } else if (e.key === 'Escape') {
-            setDescriptionValue(channel.description || "")
-            setIsEditingDescription(false)
+        if (e.key === "Enter" && e.metaKey) {
+            handleDescriptionSave();
+        } else if (e.key === "Escape") {
+            setDescriptionValue(channel.description || "");
+            setIsEditingDescription(false);
         }
-    }
+    };
 
-    const handleNodeCreation = async (data: Omit<CreateNodeArgs, "channel">) => {
-        console.log("Node: ", data)
+    const handleNodeCreation = async (
+        data: Omit<CreateNodeArgs, "channel">
+    ) => {
         await createNode({ ...data, channel: channelId as Id<"channels"> });
-    }
+        requestAnimationFrame(() => {
+            if (scrollContainerRef.current) {
+                scrollContainerRef.current.scrollTo({
+                    top: scrollContainerRef.current.scrollHeight,
+                    behavior: "smooth",
+                });
+            }
+        });
+    };
 
     return (
         <div className="h-full px-20 py-6 space-y-8">
@@ -141,16 +195,19 @@ export default function Channel({ channelId, user }: { channelId: string, user: 
                             className="group cursor-pointer flex items-center gap-2"
                             onClick={() => setIsEditingTitle(true)}
                         >
-                            <h1 className="font-semibold text-3xl">
-                                {titleValue}
-                            </h1>
+                            <h1 className="font-semibold text-3xl">{titleValue}</h1>
                             <svg
                                 className="w-4 h-4 opacity-0 group-hover:opacity-50 transition-opacity"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
                             >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                />
                             </svg>
                         </div>
                     )}
@@ -181,7 +238,12 @@ export default function Channel({ channelId, user }: { channelId: string, user: 
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
                             >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                />
                             </svg>
                         </div>
                     )}
@@ -191,14 +253,20 @@ export default function Channel({ channelId, user }: { channelId: string, user: 
                 {/* Search and Filter Controls */}
                 <div className="relative flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
                     <div className="flex w-full gap-2 items-center">
-                        <Select value={selectedVariant} onValueChange={setSelectedVariant}>
-                            <SelectTrigger size='sm' className='sm:w-auto w-full'>
+                        <Select
+                            value={selectedVariant}
+                            onValueChange={setSelectedVariant}
+                        >
+                            <SelectTrigger size="sm" className="sm:w-auto w-full">
                                 <SelectValue placeholder="All types" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All types</SelectItem>
                                 {NODE_VARIANTS.map((variant) => (
-                                    <SelectItem key={variant.value} value={variant.value}>
+                                    <SelectItem
+                                        key={variant.value}
+                                        value={variant.value}
+                                    >
                                         {variant.label}
                                     </SelectItem>
                                 ))}
@@ -215,9 +283,9 @@ export default function Channel({ channelId, user }: { channelId: string, user: 
                             </SelectContent>
                         </Select>
 
-                        {data?.channel?.vision && (
+                        {channel?.vision && (
                             <MultiUserSelector
-                                visionId={data.channel.vision}
+                                visionId={channel.vision}
                                 value={selectedUsers}
                                 onValueChange={setSelectedUsers}
                                 placeholder="All users"
@@ -228,7 +296,10 @@ export default function Channel({ channelId, user }: { channelId: string, user: 
 
                     <div className="sm:w-auto w-full flex gap-2">
                         <div className="relative w-full sm:w-[300px]">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+                            <Search
+                                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
+                                size={16}
+                            />
                             <Input
                                 type="text"
                                 placeholder="Search nodes..."
@@ -243,33 +314,43 @@ export default function Channel({ channelId, user }: { channelId: string, user: 
 
             {/* Nodes List */}
             <div
+                id="scrollableDiv"
                 ref={scrollContainerRef}
-                className="h-[75%] relative flex flex-col items-start space-y-8 overflow-y-auto scroll-smooth pb-32"
-                style={{ scrollBehavior: 'smooth' }}
+                className={`max-h-[80%] relative flex ${sortBy === "latest" ? "flex-col-reverse" : "flex-col"}  gap-8 overflow-y-auto scroll-smooth`}
+                style={{ scrollBehavior: "smooth" }}
             >
-                {isLoading ? (
-                    <div className="text-center text-gray-500 py-10">
-                        Loading nodes...
-                    </div>
-                ) : data.nodes.length === 0 ? (
-                    <div className="text-sm text-center text-muted-foreground/70 py-10">
-                        No nodes found.
-                    </div>
-                ) : (
-                    data.nodes.map((node) => {
-                        const nodeUser = getUserForNode(node.userId)
-                        return (
-                            <div key={node._id}>
-                                <ChannelNode node={node} nodeUser={nodeUser} />
-                            </div>
-                        )
-                    })
-                )}
+                <InfiniteScroll
+                    dataLength={storedNodes.length}
+                    next={() => loadMore(10)}
+                    className={`flex ${sortBy === "latest" ? "flex-col-reverse" : "flex-col"} gap-8`}
+                    inverse={sortBy === "latest"} //
+                    hasMore={!isDone}
+                    loader={<NodeListSkeleton count={1} />}
+                    scrollableTarget="scrollableDiv"
+                >
+                    {storedNodes.length === 0 && !isLoadingNodes ? (
+                        <div className="text-sm text-center text-muted-foreground/70 py-10">
+                            No nodes found.
+                        </div>
+                    ) : (
+                        <>
+                            <div className={`${sortBy === "latest" ? "inline" : "hidden"} h-[65px] shrink-0`} />
+                            {storedNodes.map((node, i) => {
+                                const nodeUser = getUserForNode(node.userId);
+                                return (
+                                    <div key={i}>
+                                        <ChannelNode node={node} nodeUser={nodeUser} />
+                                    </div>
+                                );
+                            })}
+                            <div className={`${sortBy === "latest" ? "hidden" : "inline"} h-[65px] shrink-0`} />
+                        </>
+                    )}
 
-                {/* Over-scroll padding for PasteBin */}
-                <div className="h-48 flex-shrink-0" />
+                </InfiniteScroll>
             </div>
+
             <PasteBin onCreateNode={handleNodeCreation} user={user} />
-        </div >
-    )
+        </div>
+    );
 }

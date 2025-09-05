@@ -24,20 +24,6 @@ const getArgs = v.object({
   id: v.id("channels"),
 });
 
-const getWithNodesArgs = v.object({
-  id: v.id("channels"),
-  paginationOpts: v.optional(v.object({
-    numItems: v.number(),
-    cursor: v.optional(v.string()),
-  })),
-  filters: v.optional(v.object({
-    search: v.optional(v.string()),
-    variant: v.optional(v.string()),
-    userIds: v.optional(v.array(v.id("users"))),
-    sortBy: v.optional(v.string()), // "latest" or "oldest"
-  })),
-});
-
 const reorderArgs = v.object({
   visionId: v.id("visions"),
   channelIds: v.array(v.id("channels")),
@@ -167,86 +153,6 @@ export const get = query({
     }
 
     return channel;
-  },
-});
-
-export const getWithNodes = query({
-  args: getWithNodesArgs,
-  handler: async (ctx, args) => {
-    const channel = await ctx.db.get(args.id);
-    if (!channel) {
-      throw new Error("Channel not found");
-    }
-
-    if (channel.vision) {
-      await requireVisionAccess(ctx, channel.vision);
-    }
-
-    // Start with base query
-    let nodesQuery = ctx.db
-      .query("nodes")
-      .withIndex("by_channel", (q) => q.eq("channel", args.id));
-
-    // Apply sorting (default to latest)
-    const sortBy = args.filters?.sortBy || "latest";
-    const orderedQuery = nodesQuery.order(sortBy === "latest" ? "desc" : "asc");
-
-    // Apply pagination
-    const paginationResult = await orderedQuery.paginate({
-      numItems: args.paginationOpts?.numItems ?? 10,
-      cursor: args.paginationOpts?.cursor ?? null
-    });
-
-    // Filter nodes based on search criteria
-    let filteredNodes = paginationResult.page;
-
-    // Apply search filter on title and thought
-    if (args.filters?.search) {
-      const searchTerm = args.filters.search.toLowerCase();
-      filteredNodes = filteredNodes.filter(node => 
-        node.title.toLowerCase().includes(searchTerm) ||
-        (node.thought && node.thought.toLowerCase().includes(searchTerm))
-      );
-    }
-
-    // Apply variant filter
-    if (args.filters?.variant) {
-      const variant = args.filters.variant;
-      filteredNodes = filteredNodes.filter(node => 
-        node.variant === variant
-      );
-    }
-
-    // Apply user filter
-    if (args.filters?.userIds && args.filters.userIds.length > 0) {
-      const userIds = args.filters.userIds;
-      filteredNodes = filteredNodes.filter(node => 
-        userIds.includes(node.userId)
-      );
-    }
-
-    // Fetch frame information for each node
-    const nodesWithFrames = await Promise.all(
-      filteredNodes.map(async (node) => {
-        let frameTitle = null;
-        if (node.frame) {
-          const frame = await ctx.db.get(node.frame as Id<"frames">);
-          frameTitle = frame?.title || null;
-        }
-        
-        return {
-          ...node,
-          frameTitle
-        };
-      })
-    );
-
-    return {
-      channel,
-      nodes: nodesWithFrames,
-      isDone: paginationResult.isDone,
-      continueCursor: paginationResult.continueCursor
-    };
   },
 });
 
@@ -384,7 +290,6 @@ export type CreateChannelArgs = Infer<typeof createArgs>;
 export type UpdateChannelArgs = Infer<typeof updateArgs>;
 export type RemoveChannelArgs = Infer<typeof removeArgs>;
 export type GetChannelArgs = Infer<typeof getArgs>;
-export type GetChannelWithNodesArgs = Infer<typeof getWithNodesArgs>;
 export type ReorderChannelsArgs = Infer<typeof reorderArgs>;
 export type ListChannelsByVisionArgs = Infer<typeof listByVisionArgs>;
 export type GetVisionUsersArgs = Infer<typeof getVisionUsersArgs>;

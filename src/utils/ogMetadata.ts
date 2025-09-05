@@ -71,11 +71,9 @@ export function useOGMetadataWithCache() {
     }> => {
         try {
             // First, check convex cache
-            console.log('Checking cache for URL:', url);
             const cachedData = await convex.query(api.ogMetadata.getByUrl, { url });
 
             if (cachedData) {
-                console.log('Found cached data:', cachedData);
                 // Map platform type to NodeVariant
                 const typeMapping: Record<string, NodeVariants> = {
                     github: NodeVariants.GitHub,
