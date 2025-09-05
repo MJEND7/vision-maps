@@ -717,7 +717,7 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
         // Clear all data and localStorage after successful creation (don't delete chat)
         node();
         await clearMedia(false);
-    }, [media, clearMedia, onCreateNode, textContent, isTextMode, isAiMode, chatId]);
+    }, [media, clearMedia, onCreateNode, textContent, isTextMode, isAiMode, chatId, isUploading]);
 
     const isValidForCreation = useCallback(() => {
         if (media) {
@@ -732,23 +732,23 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
             }
         }
         return (isTextMode || isAiMode) && !!textContent.trim();
-    }, [media, isLoadingLinkMeta, isTextMode, isAiMode, textContent]);
+    }, [media, isLoadingLinkMeta, isTextMode, isAiMode, textContent, isUploading]);
 
-    const getDisplayName = useCallback(() => {
-        if (media) {
-            if (media.type === NodeVariants.Text) {
-                return media.customName || media.title || "Text note";
-            }
-            if (media.type === NodeVariants.AI) {
-                return "AI Assistant";
-            }
-            return media.fileName || media.title || "Unnamed item";
-        }
-        if (isLoadingLinkMeta) {
-            return "Loading metadata...";
-        }
-        return "";
-    }, [media, isLoadingLinkMeta]);
+    // const getDisplayName = useCallback(() => {
+    //     if (media) {
+    //         if (media.type === NodeVariants.Text) {
+    //             return media.customName || media.title || "Text note";
+    //         }
+    //         if (media.type === NodeVariants.AI) {
+    //             return "AI Assistant";
+    //         }
+    //         return media.fileName || media.title || "Unnamed item";
+    //     }
+    //     if (isLoadingLinkMeta) {
+    //         return "Loading metadata...";
+    //     }
+    //     return "";
+    // }, [media, isLoadingLinkMeta]);
 
     return (
         <div

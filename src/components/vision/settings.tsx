@@ -13,6 +13,7 @@ import { useUploadThing } from "@/utils/uploadthing";
 import { Camera, Search, MoreVertical, Crown, Edit2, UserPlus, X, Upload, ImageIcon, Trash2, Save, AlertTriangle, TableProperties, Frame, Filter, ChevronDown, Check } from "lucide-react";
 import { VisionAccessRole } from "../../../convex/tables/visions";
 import { Textarea } from "../ui/textarea";
+import Image from "next/image";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -310,10 +311,11 @@ export default function SettingsComponent({
                     >
                         {vision.banner ? (
                             <div className="relative aspect-video w-full max-h-[200px] p-2">
-                                <img
+                                <Image
                                     src={vision.banner}
                                     alt="Vision banner"
-                                    className="w-full h-full object-cover rounded-lg"
+                                    fill
+                                    className="object-cover rounded-lg"
                                 />
                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex flex-col items-center justify-center gap-2">
                                     <div className="flex gap-4">

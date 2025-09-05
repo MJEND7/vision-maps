@@ -13,6 +13,7 @@ import {
     TweetSkeleton,
 } from 'react-tweet'
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 
 type Props = {
     tweet: ITweet
@@ -31,7 +32,7 @@ export const MyTweet = ({ tweet: t, components }: Props) => {
                     <div>
                         {tweet.mediaDetails.length <= 1 ? (
                             <div className="h-[312px] w-full flex gap-3 items-end">
-                                <img className='w-auto max-h-[300px] rounded-md' src={tweet.mediaDetails[0].media_url_https} alt="" />
+                                <Image className='w-auto max-h-[300px] rounded-md' src={tweet.mediaDetails[0].media_url_https} alt="" width={400} height={300} />
                             </div>
                         ) : (
                             <TweetMedia tweet={tweet} components={components} />

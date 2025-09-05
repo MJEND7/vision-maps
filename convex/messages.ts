@@ -3,7 +3,7 @@ import { PersistentTextStreaming, StreamId } from "@convex-dev/persistent-text-s
 import { v, Infer } from "convex/values";
 import { requireAuth } from "./utils/auth";
 import { components, internal } from "./_generated/api";
-import { PaginationOptions } from "convex/server";
+import { PaginationOptions, paginationOptsValidator } from "convex/server";
 import OpenAI from "openai";
 import { Id } from "./_generated/dataModel";
 
@@ -12,6 +12,8 @@ const listMessagesByChatArgs = v.object({
     chatId: v.id("chats"),
     cursor: v.optional(v.string()),
     numItems: v.optional(v.number()),
+    paginationOpts:  paginationOptsValidator
+
 });
 
 const clearMessagesArgs = v.object({
@@ -38,7 +40,25 @@ export const persistentTextStreaming = new PersistentTextStreaming(
 export const listMessagesByChat = query({
     args: listMessagesByChatArgs,
     handler: async (ctx, args) => {
-        const numItems = args.numItems ?? 50;
+        const identity = await requireAuth(ctx);
+        
+        if (!identity?.userId) {
+            throw new Error("Authentication required");
+        }
+
+        // Verify user owns the chat
+        const chat = await ctx.db.get(args.chatId);
+        if (!chat) {
+            throw new Error("Chat not found");
+        }
+
+        if (chat.userId !== identity.userId.toString()) {
+            throw new Error("Unauthorized: You can only access your own chats");
+        }
+
+        // Handle both direct args and paginationOpts for compatibility
+        const numItems = args.paginationOpts?.numItems ?? args.numItems ?? 20;
+        const cursor = args.paginationOpts?.cursor ?? args.cursor ?? null;
 
         const query = ctx.db
             .query("messages")
@@ -47,7 +67,7 @@ export const listMessagesByChat = query({
 
         const paginationOpts: PaginationOptions = {
             numItems,
-            cursor: args.cursor || null
+            cursor
         };
 
         return await query.paginate(paginationOpts);

@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { ExternalLink } from "lucide-react";
 import { ReactNode } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { formatDate } from "@/utils/date";
 
 type ImageAspect = 'landscape' | 'portrait' | 'square' | 'none';
@@ -103,9 +104,11 @@ export function BaseCard({
             {/* Image Section */}
             {image && (
                 <div className={`${imageClasses} bg-gray-100 overflow-hidden`}>
-                    <img
+                    <Image
                         src={image}
                         alt={title}
+                        width={400}
+                        height={300}
                         className={`w-full h-full object-cover ${imageAspect === 'portrait' ? 'rounded-lg' : ''}`}
                     />
                 </div>

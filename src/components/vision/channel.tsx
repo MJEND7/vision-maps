@@ -41,9 +41,11 @@ import { Textarea } from "../ui/textarea";
 export default function Channel({
     channelId,
     user,
+    onOpenChat,
 }: {
     channelId: string;
     user: UserResource;
+    onOpenChat?: (chatId: string) => void;
 }) {
     const [searchQuery, setSearchQuery] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -504,7 +506,7 @@ export default function Channel({
                                     const nodeUser = getUserForNode(node.userId);
                                     return (
                                         <div key={i}>
-                                            <ChannelNode node={node} nodeUser={nodeUser} />
+                                            <ChannelNode node={node} nodeUser={nodeUser} onOpenChat={onOpenChat} />
                                         </div>
                                     );
                                 })}

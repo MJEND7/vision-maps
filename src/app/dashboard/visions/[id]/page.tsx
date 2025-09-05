@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { DraggableTabs } from '@/components/ui/draggable-tabs';
 import { DraggableSidebar } from '@/components/ui/draggable-sidebar';
 import { PresenceFacePile } from '@/components/ui/face-pile';
+import { RightSidebarContent, RightSidebarContentRef } from '@/components/ui/right-sidebar';
 import { Button } from '@/components/ui/button';
 import { ChevronsDownUp, Frame, Settings, TableProperties, ChevronLeft, ChevronRight, ListTree, PanelRight, PanelRightClose } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
@@ -77,8 +78,8 @@ function TitleCard({ isLoading, vision, OpenSettings, className }: {
     )
 }
 
-export default function VisionDetailPage() {
-    const { isLoaded, isSignedIn, user } = useUser();
+function VisionDetailPageContent() {
+    const { user } = useUser();
     const params = useParams();
     const visionId = params.id as Id<"visions">;
     const [tabs, setTabs] = useState<Map<string, { title: string, id: string, type: ViewMode }>>(new Map());
@@ -94,6 +95,7 @@ export default function VisionDetailPage() {
     const [editingFrameName, setEditingFrameName] = useState<string>('');
     const [sidebarState, setSidebarState] = useState<SidebarState>(DEFAULT_SIDEBAR_STATE);
     const [isMobile, setIsMobile] = useState(false);
+    const rightSidebarContentRef = useRef<RightSidebarContentRef>(null);
     const leftResizeRef = useRef<HTMLDivElement>(null);
     const rightResizeRef = useRef<HTMLDivElement>(null);
     const leftSidebarRef = useRef<HTMLDivElement>(null);
@@ -104,12 +106,12 @@ export default function VisionDetailPage() {
 
     const vision = useQuery(
         api.visions.get,
-        isLoaded && isSignedIn ? { id: visionId } : "skip"
+        { id: visionId }
     );
 
     const channels = useQuery(
         api.channels.listByVision,
-        isLoaded && isSignedIn && visionId ? { visionId } : "skip"
+        { visionId }
     );
 
     const createChannel = useMutation(api.channels.create);
@@ -560,10 +562,6 @@ export default function VisionDetailPage() {
         }
     }, [isResizing, handleLeftResize, handleRightResize, stopResize]);
 
-    if (!isLoaded || !isSignedIn) {
-        return null;
-    }
-
     const renderContent = () => {
         const tabsArray = Array.from(tabs.values());
         
@@ -574,8 +572,8 @@ export default function VisionDetailPage() {
                         key={tab.id}
                         className={cn("h-full", selectedTab?.id !== tab.id && "hidden")}
                     >
-                        {tab.type === ViewMode.CHANNEL && (
-                            <Channel user={user} channelId={tab.id} />
+                        {tab.type === ViewMode.CHANNEL && user && (
+                            <Channel user={user} channelId={tab.id} onOpenChat={handleOpenChat} />
                         )}
                         {tab.type === ViewMode.FRAME && (
                             <FrameComponent />
@@ -799,6 +797,18 @@ export default function VisionDetailPage() {
         setEditingFrame(null);
         setEditingFrameName('');
     };
+
+    const handleOpenChat = useCallback((chatId: string) => {
+        // Open the chat via ref
+        rightSidebarContentRef.current?.openChat(chatId);
+        
+        // Open right sidebar if it's collapsed
+        setSidebarState(prev => ({
+            ...prev,
+            rightCollapsed: false,
+            rightOpen: isMobile ? true : prev.rightOpen
+        }));
+    }, [isMobile]);
 
     const removeTab = (id: string) => {
         setTabs((currentTabs) => {
@@ -1119,9 +1129,9 @@ export default function VisionDetailPage() {
                                 animate={{ x: 0 }}
                                 exit={{ x: 400 }}
                                 transition={{ duration: 0.3, ease: "easeInOut" }}
-                                className="w-full h-screen bg-card border-l border-border p-4 z-40 absolute top-0 right-0 shadow-lg"
+                                className="w-full h-screen bg-card border-l border-border z-40 absolute top-0 right-0 shadow-lg flex flex-col"
                             >
-                                <div className="flex justify-between">
+                                <div className="flex justify-between p-4 border-b shrink-0">
                                     <div className="">
                                         <PresenceFacePile visionId={visionId} />
                                     </div>
@@ -1144,19 +1154,23 @@ export default function VisionDetailPage() {
                                         </div>
                                     </div>
                                 </div>
+                                
+                                <div className="flex-1 min-h-0">
+                                    <RightSidebarContent ref={rightSidebarContentRef} visionId={visionId} />
+                                </div>
                             </motion.div>
                         )}
                     </AnimatePresence>
                 ) : (
                     !sidebarState.rightCollapsed && (
                         <div
-                            className="h-full bg-card border-l border-border p-4 relative z-40"
+                            className="h-full bg-card border-l border-border relative z-40 flex flex-col"
                             style={{
                                 width: sidebarState.rightWidth,
                                 height: '100vh'
                             }}
                         >
-                            <div className="flex justify-between">
+                            <div className="flex justify-between p-4 border-b shrink-0">
                                 <div className="">
                                     <PresenceFacePile visionId={visionId} />
                                 </div>
@@ -1167,6 +1181,10 @@ export default function VisionDetailPage() {
                                         Share
                                     </Button>
                                 </div>
+                            </div>
+                            
+                            <div className="flex-1 min-h-0">
+                                <RightSidebarContent ref={rightSidebarContentRef} visionId={visionId} />
                             </div>
 
                             <Button
@@ -1200,4 +1218,14 @@ export default function VisionDetailPage() {
             </main>
         </NodeUserCacheProvider>
     );
+}
+
+export default function VisionDetailPage() {
+    const { isLoaded, isSignedIn } = useUser();
+    
+    if (!isLoaded || !isSignedIn) {
+        return null;
+    }
+    
+    return <VisionDetailPageContent />;
 }

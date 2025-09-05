@@ -90,7 +90,7 @@ function NodeWithMetadata({ node, variant }: { node: NodeWithFrame, variant: Nod
 }
 
 // Render node content based on variant
-function renderNodeContent(node: NodeWithFrame) {
+function renderNodeContent(node: NodeWithFrame, onOpenChat?: (chatId: string) => void) {
     const variant = node.variant as NodeVariants;
 
     switch (variant) {
@@ -147,7 +147,10 @@ function renderNodeContent(node: NodeWithFrame) {
                     </div>
                     <div className="bg-accent flex items-center justify-between border-t border-accent p-3">
                         <p className="text-sm font-semibold ">{node.title}</p>
-                        <button className="text-[10px] text-blue-600 hover:underline flex items-center gap-1">
+                        <button 
+                            onClick={() => onOpenChat?.(node.value)}
+                            className="text-[10px] text-blue-600 hover:underline flex items-center gap-1"
+                        >
                             <ExternalLink size={12} />
                             Open Chat
                         </button>
@@ -178,7 +181,15 @@ function renderNodeContent(node: NodeWithFrame) {
     }
 }
 
-export default function ChannelNode({ node, nodeUser }: { node: NodeWithFrame, nodeUser: NodeUser | null }) {
+export default function ChannelNode({ 
+    node, 
+    nodeUser, 
+    onOpenChat 
+}: { 
+    node: NodeWithFrame, 
+    nodeUser: NodeUser | null,
+    onOpenChat?: (chatId: string) => void
+}) {
     // Show loading state if user data isn't available yet
     if (!nodeUser) {
         return (
@@ -240,7 +251,7 @@ export default function ChannelNode({ node, nodeUser }: { node: NodeWithFrame, n
 
                     {/* Render content based on node variant */}
                     <div className="w-[calc(100vw-5rem)] sm:w-auto sm:min-w-[600px]">
-                        {renderNodeContent(node)}
+                        {renderNodeContent(node, onOpenChat)}
                     </div>
                 </div>
             </div>

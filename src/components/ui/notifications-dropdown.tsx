@@ -7,6 +7,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "./button";
 import { Avatar } from "./avatar";
+import Image from "next/image";
 
 // Simple time formatting function
 function formatTimeAgo(dateString: string): string {
@@ -161,9 +162,11 @@ export default function NotificationsDropdown() {
                                             <div className="flex-shrink-0">
                                                 {notification.sender?.picture ? (
                                                     <Avatar className="h-8 w-8">
-                                                        <img
+                                                        <Image
                                                             src={notification.sender.picture}
                                                             alt={notification.sender.name}
+                                                            width={32}
+                                                            height={32}
                                                         />
                                                     </Avatar>
                                                 ) : (

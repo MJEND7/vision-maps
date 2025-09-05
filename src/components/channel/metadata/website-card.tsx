@@ -1,6 +1,7 @@
 import { Globe } from "lucide-react";
 import { BaseCard } from "./base-card";
 import { WebsiteMetadata } from "./index";
+import Image from "next/image";
 
 interface WebsiteCardProps {
     metadata: WebsiteMetadata;
@@ -16,9 +17,11 @@ export function WebsiteCard({ metadata }: WebsiteCardProps) {
     };
 
     const websiteIcon = metadata.favicon ? (
-        <img
+        <Image
             src={metadata.favicon}
             alt=""
+            width={24}
+            height={24}
             className="w-6 h-6 rounded object-cover"
             onError={(e) => {
                 const target = e.target as HTMLImageElement;

@@ -191,7 +191,7 @@ export function DraggableTabs({
         });
       }
     }
-  }, [selectedTab?.id]);
+  }, [selectedTab]);
 
   return (
     <div
