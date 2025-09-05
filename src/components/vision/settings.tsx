@@ -492,7 +492,7 @@ export default function SettingsComponent({
                                 placeholder={`Search ${activeTab}...`}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 text-xs placeholder:text-xs h-9"
+                                className="pl-10 text-xs placeholder:text-base md:placeholder:text-xs h-9"
                             />
                         </div>
                         {activeTab === "users" && (
@@ -520,7 +520,7 @@ export default function SettingsComponent({
                                             <div className="p-2">
                                                 <Input
                                                     placeholder="Search channels..."
-                                                    className="text-xs placeholder:text-xs h-8"
+                                                    className="text-xs placeholder:text-base md:placeholder:text-xs h-8"
                                                 />
                                             </div>
                                             <div className="max-h-48 overflow-y-auto">

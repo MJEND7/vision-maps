@@ -375,7 +375,7 @@ export default function Channel({
                                 placeholder="Search nodes..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-8 h-8 text-xs placeholder:text-xs rounded-md"
+                                className="pl-8 h-8 text-xs placeholder:text-base md:placeholder:text-xs rounded-md"
                             />
                         </div>
                     </div>
@@ -438,7 +438,7 @@ export default function Channel({
                                 placeholder="Search nodes..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-8 h-8 text-sm placeholder:text-xs rounded-md"
+                                className="pl-8 h-8 text-sm placeholder:text-base md:placeholder:text-xs rounded-md"
                             />
                         </div>
                     </div>

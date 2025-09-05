@@ -1066,7 +1066,7 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
                     <motion.div className="relative w-full h-full">
                         <Textarea
                             ref={textareaRef}
-                            className={`w-full text-sm dark:bg-background bg-background h-full resize-none transition-all duration-200 ${mode !== PasteBinMode.IDLE
+                            className={`w-full dark:bg-background bg-background h-full resize-none transition-all duration-200 ${mode !== PasteBinMode.IDLE
                                 ? "pr-24 rounded-xl shadow-sm hover:shadow-lg focus:shadow-lg py-3 px-4"
                                 : "pr-16 rounded-3xl shadow-sm hover:shadow-lg focus:shadow-lg py-0 px-4 overflow-hidden"
                                 }`}
