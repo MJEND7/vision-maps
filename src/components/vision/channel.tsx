@@ -167,6 +167,7 @@ export default function Channel({
         data: Omit<CreateNodeArgs, "channel">
     ) => {
         await createNode({ ...data, channel: channelId as Id<"channels"> });
+        setSortBy("latest");
         requestAnimationFrame(() => {
             if (scrollContainerRef.current) {
                 scrollContainerRef.current.scrollTo({
@@ -316,13 +317,12 @@ export default function Channel({
             <div
                 id="scrollableDiv"
                 ref={scrollContainerRef}
-                className={`max-h-[80%] relative flex ${sortBy === "latest" ? "flex-col-reverse" : "flex-col"}  gap-8 overflow-y-auto scroll-smooth`}
-                style={{ scrollBehavior: "smooth" }}
+                className={`max-h-[80%] relative flex ${sortBy === "latest" ? "flex-col-reverse" : "flex-col"} overflow-y-auto`}
             >
                 <InfiniteScroll
                     dataLength={storedNodes.length}
                     next={() => loadMore(10)}
-                    className={`flex ${sortBy === "latest" ? "flex-col-reverse" : "flex-col"} gap-8`}
+                    className={`flex scroll-smooth ${sortBy === "latest" ? "flex-col-reverse" : "flex-col"} gap-8`}
                     inverse={sortBy === "latest"} //
                     hasMore={!isDone}
                     loader={<NodeListSkeleton count={1} />}
