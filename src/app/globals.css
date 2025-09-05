@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import '@clerk/themes/shadcn.css';
+@import 'react-tweet/theme.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -132,6 +133,9 @@
     body {
         @apply overflow-x-hidden bg-white dark:bg-background;
         @apply bg-background text-foreground font-sans;
+    }
+
+    .background-grid {
         /* Prevent overscroll bounce */
         overscroll-behavior-y: none;
         overscroll-behavior-x: none;
@@ -160,7 +164,7 @@
         background-position: left top, left top, center;
     }
 
-    .dark body {
+    .dark .background-grid {
         /* Dark mode background */
         background-image:
             linear-gradient(to right,
@@ -179,6 +183,13 @@
         background-position: left top, left top, center;
     }
 
+        .inset-rounded { 
+            @apply [mask-image:radial-gradient(circle_20px_at_top_left,transparent_20px,black_21px)];
+        }
+
+    button {
+        @apply cursor-pointer;
+    }
 }
 
 @layer utilities {
@@ -285,41 +296,48 @@
     .scrollbar-hide::-webkit-scrollbar {
         display: none;
     }
+
+    /* React Tweet customizations */
+    .react-tweet-theme {
+        @apply rounded-lg overflow-hidden;
+    }
+    
+    /* Override tweet container styles to match our design */
+    [data-theme] .react-tweet {
+        @apply max-w-none;
+    }
 }
+
 @layer components {
-  .default-button-hover {
-    @apply relative bg-white text-black overflow-hidden transition-colors duration-300 ease-in-out;
-  }
+    .default-button-hover {
+        @apply relative bg-white text-black overflow-hidden transition-colors duration-300 ease-in-out;
+    }
 
-  /* Gradient layer */
-  .default-button-hover::before {
-    content: "";
-    @apply absolute inset-0 opacity-0 transition-opacity duration-300 ease-in-out;
-    background-image: radial-gradient(
-      ellipse at bottom,
-      rgba(192, 192, 192, 0.4) 0%,
-      rgba(192, 192, 192, 0.2) 30%,
-      transparent 60%
-    );
-  }
+    /* Gradient layer */
+    .default-button-hover::before {
+        content: "";
+        @apply absolute inset-0 opacity-0 transition-opacity duration-300 ease-in-out;
+        background-image: radial-gradient(ellipse at bottom,
+                rgba(192, 192, 192, 0.4) 0%,
+                rgba(192, 192, 192, 0.2) 30%,
+                transparent 60%);
+    }
 
-  /* Light mode hover */
-  .default-button-hover:hover::before {
-    @apply opacity-100;
-  }
+    /* Light mode hover */
+    .default-button-hover:hover::before {
+        @apply opacity-100;
+    }
 
-  /* Dark mode base */
-  .dark .default-button-hover {
-    @apply bg-white text-black;
-  }
+    /* Dark mode base */
+    .dark .default-button-hover {
+        @apply bg-white text-black;
+    }
 
-  /* Dark mode gradient */
-  .dark .default-button-hover::before {
-    background-image: radial-gradient(
-      ellipse at bottom,
-      rgba(0, 0, 0, 0.3) 0%,
-      rgba(0, 0, 0, 0.15) 30%,
-      transparent 60%
-    );
-  }
+    /* Dark mode gradient */
+    .dark .default-button-hover::before {
+        background-image: radial-gradient(ellipse at bottom,
+                rgba(0, 0, 0, 0.3) 0%,
+                rgba(0, 0, 0, 0.15) 30%,
+                transparent 60%);
+    }
 }

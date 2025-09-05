@@ -6,6 +6,9 @@ import ConvexClientProvider from "../components/ConvexClientProvider";
 import FaviconSwitcher from "../components/FaviconSwitcher";
 import { Toaster } from "../components/ui/sonner";
 import { shadcn } from "@clerk/themes";
+import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
+import { extractRouterConfig } from "uploadthing/server";
+import { uploadThingFileRouter } from "./api/uploadthing/core";
 
 export const metadata: Metadata = {
     title: "Vision",
@@ -44,6 +47,9 @@ export default function RootLayout({
             <body
                 className="antialiased"
             >
+                <NextSSRPlugin
+                    routerConfig={extractRouterConfig(uploadThingFileRouter)}
+                />
                 <FaviconSwitcher />
                 <ClerkProvider dynamic appearance={{
                     theme: shadcn

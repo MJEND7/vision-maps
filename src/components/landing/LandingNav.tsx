@@ -63,7 +63,7 @@ export default function LandingNav({
     }, []);
 
     return (
-        <div className="flex gap-1 items-center justify-center w-full p-2 fixed top-0 z-[100]">
+        <div className="flex gap-1 items-center justify-center w-full p-2 fixed top-0 z-[40]">
             <motion.header
                 initial={{ y: -50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -144,7 +144,7 @@ export default function LandingNav({
                             Vision Maps
                         </motion.p>
                     </Link>
-                    <div className="sm:flex hidden justify-center gap-3">
+                    <div className="sm:flex hidden justify-center gap-2">
                         {[
                             { name: "Features", href: ROUTES.LANDING.FEATURES },
                             { name: "About", href: ROUTES.LANDING.ABOUT },
@@ -171,7 +171,7 @@ export default function LandingNav({
                             </Link>
                         </Unauthenticated>
                         <Authenticated>
-                            <Link href={ROUTES.PROFILE_VISIONS}>
+                            <Link href={ROUTES.PROFILE.VISIONS}>
                                 <Button size="lg">Dashboard</Button>
                             </Link>
                         </Authenticated>
@@ -255,7 +255,7 @@ export default function LandingNav({
                                             </Button>
                                         </Link>
                                     ) : (
-                                        <Link href={ROUTES.VISIONS} className="w-full">
+                                        <Link href={ROUTES.PROFILE.VISIONS} className="w-full">
                                             <Button size={"lg"} className="w-full" variant="outline">
                                                 Visions
                                             </Button>
@@ -263,7 +263,7 @@ export default function LandingNav({
                                     )}
                                     {/* Theme Switcher in Mobile Menu */}
                                     {isLoaded && (
-                                        <ThemeSwitcher />
+                                        <ThemeSwitcher size="sm" />
                                     )}
                                 </div>
                                 <Link href={ROUTES.SIGNUP}>
@@ -278,7 +278,7 @@ export default function LandingNav({
             <div
                 className="hidden sm:flex  items-center justify-between w-auto rounded-r-4xl rounded-l-xl backdrop-blur-[5px] dark:bg-background/50 dark:backdrop-blur-md bg-accent/50 border pl-2 pr-3 py-2"
             >
-                <ThemeSwitcher />
+                <ThemeSwitcher size="sm" />
             </div>
         </div>
     );

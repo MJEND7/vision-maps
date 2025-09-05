@@ -1,0 +1,82 @@
+import { internalMutation, query, QueryCtx } from "./_generated/server";
+import { UserJSON } from "@clerk/backend";
+import { v, Validator, Infer } from "convex/values";
+
+// Args schemas
+const currentArgs = v.object({});
+
+const upsertFromClerkArgs = v.object({
+  data: v.any() as Validator<UserJSON>,
+});
+
+const deleteFromClerkArgs = v.object({
+  clerkUserId: v.string(),
+});
+
+export const current = query({
+  args: currentArgs,
+  handler: async (ctx) => {
+    return await getCurrentUser(ctx);
+  },
+});
+
+export const upsertFromClerk = internalMutation({
+  args: upsertFromClerkArgs,
+  async handler(ctx, { data }) {
+    const userAttributes = {
+      name: `${data.first_name} ${data.last_name}`,
+      email: data.email_addresses?.[0]?.email_address,
+      externalId: data.id,
+      tokenIdentifier: `https://clerk.com|${data.id}`,
+      picture: data.image_url,
+    };
+
+    const user = await userByExternalId(ctx, data.id);
+    if (user === null) {
+      await ctx.db.insert("users", userAttributes);
+    } else {
+      await ctx.db.patch(user._id, userAttributes);
+    }
+  },
+});
+
+export const deleteFromClerk = internalMutation({
+  args: deleteFromClerkArgs,
+  async handler(ctx, { clerkUserId }) {
+    const user = await userByExternalId(ctx, clerkUserId);
+
+    if (user !== null) {
+      await ctx.db.delete(user._id);
+    } else {
+      console.warn(
+        `Can't delete user, there is none for Clerk user ID: ${clerkUserId}`,
+      );
+    }
+  },
+});
+
+export async function getCurrentUserOrThrow(ctx: QueryCtx) {
+  const userRecord = await getCurrentUser(ctx);
+  if (!userRecord) throw new Error("Can't get current user");
+  return userRecord;
+}
+
+export async function getCurrentUser(ctx: QueryCtx) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (identity === null) {
+    return null;
+  }
+  return await userByExternalId(ctx, identity.subject.replace("https://clerk.com|", ""));
+}
+
+async function userByExternalId(ctx: QueryCtx, externalId: string) {
+  return await ctx.db
+    .query("users")
+    .withIndex("by_external_id", (q) => q.eq("externalId", externalId))
+    .unique();
+}
+
+// Type exports
+export type GetCurrentUserArgs = Infer<typeof currentArgs>;
+export type UpsertUserFromClerkArgs = Infer<typeof upsertFromClerkArgs>;
+export type DeleteUserFromClerkArgs = Infer<typeof deleteFromClerkArgs>;

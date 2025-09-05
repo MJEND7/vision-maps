@@ -203,7 +203,6 @@ export default function Carousel({
         }}
         onDragEnd={handleDragEnd}
         animate={{ x: -(currentIndex * trackItemOffset) }}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         transition={effectiveTransition as any}
         onAnimationComplete={handleAnimationComplete}
       >
@@ -225,7 +224,6 @@ export default function Carousel({
                 rotateY: rotateY,
                 ...(round && { borderRadius: "50%" }),
               }}
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               transition={effectiveTransition as any}
             >
               <div className={`${round ? "p-0 m-0" : "mb-4 p-5"}`}>

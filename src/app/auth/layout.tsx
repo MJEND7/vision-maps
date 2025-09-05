@@ -17,7 +17,7 @@ export default function AuthLayout({
 
     useEffect(() => {
         if (isLoaded && isSignedIn) {
-            router.push(ROUTES.PROFILE_VISIONS);
+            router.push(ROUTES.PROFILE.VISIONS);
         }
     }, [isLoaded, isSignedIn, router]);
 
@@ -37,7 +37,7 @@ export default function AuthLayout({
     return (
         <div className="min-h-screen bg-transparent flex flex-col">
             {/* Main Content */}
-            <div className="w-screen h-[300px] dark:inline hidden overflow-none sm:h-screen bg-transparent absolute sm:top-0 top-15">
+            <div className="w-screen h-[300px] dark:inline hidden overflow-none sm:h-screen bg-transparent absolute top-0">
                 <LightRays
                     raysOrigin="top-center"
                     raysSpeed={1.5}
@@ -47,9 +47,7 @@ export default function AuthLayout({
                     mouseInfluence={0.1}
                     noiseAmount={0.1}
                     distortion={0.05}
-                    className="custom-rays"
                 />
-
             </div>
             <motion.div className="sm:inline absolute hidden left-55 top-20">
                 <div className="relative">

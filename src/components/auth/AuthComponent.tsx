@@ -84,14 +84,14 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
             if (isSignIn && signIn) {
                 await signIn.authenticateWithRedirect({
                     strategy,
-                    redirectUrl: ROUTES.PROFILE_VISIONS,
-                    redirectUrlComplete: ROUTES.PROFILE_VISIONS,
+                    redirectUrl: ROUTES.PROFILE.VISIONS,
+                    redirectUrlComplete: ROUTES.PROFILE.VISIONS,
                 });
             } else if (signUp) {
                 await signUp.authenticateWithRedirect({
                     strategy,
                     redirectUrl: ROUTES.SSO_CALLBACK,
-                    redirectUrlComplete: ROUTES.VISIONS,
+                    redirectUrlComplete: ROUTES.PROFILE.VISIONS,
                 });
             } else {
                 throw new Error("Failed to get a version of this component (oauth)")
@@ -137,7 +137,7 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
                 </Button>
             </div>
 
-            <div className="bg-background border border-border h-full sm:h-auto sm:rounded-xl rounded-b-xl shadow-lg sm:p-8 p-4 pt-15">
+            <div className="bg-background border border-border h-full sm:h-auto sm:rounded-xl shadow-lg sm:p-8 p-4 pt-15">
                 <div className="text-center mb-6">
                     <h2 className="text-2xl font-display font-bold mb-2">
                         {isSignIn ? "Welcome back, Vision" : "Create your account"}
