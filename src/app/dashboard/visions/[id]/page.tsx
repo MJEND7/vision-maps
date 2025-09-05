@@ -564,11 +564,11 @@ function VisionDetailPageContent() {
 
     const renderContent = () => {
         const tabsArray = Array.from(tabs.values());
-        
+
         return (
             <>
                 {tabsArray.map(tab => (
-                    <div 
+                    <div
                         key={tab.id}
                         className={cn("h-full", selectedTab?.id !== tab.id && "hidden")}
                     >
@@ -799,15 +799,17 @@ function VisionDetailPageContent() {
     };
 
     const handleOpenChat = useCallback((chatId: string) => {
-        // Open the chat via ref
-        rightSidebarContentRef.current?.openChat(chatId);
-        
         // Open right sidebar if it's collapsed
         setSidebarState(prev => ({
             ...prev,
             rightCollapsed: false,
             rightOpen: isMobile ? true : prev.rightOpen
         }));
+        // Open the chat via ref
+    
+        setTimeout(() => {
+            rightSidebarContentRef.current?.openChat(chatId);
+        }, 500)
     }, [isMobile]);
 
     const removeTab = (id: string) => {
@@ -1154,7 +1156,7 @@ function VisionDetailPageContent() {
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div className="flex-1 min-h-0">
                                     <RightSidebarContent ref={rightSidebarContentRef} visionId={visionId} />
                                 </div>
@@ -1182,7 +1184,7 @@ function VisionDetailPageContent() {
                                     </Button>
                                 </div>
                             </div>
-                            
+
                             <div className="flex-1 min-h-0">
                                 <RightSidebarContent ref={rightSidebarContentRef} visionId={visionId} />
                             </div>
@@ -1222,10 +1224,10 @@ function VisionDetailPageContent() {
 
 export default function VisionDetailPage() {
     const { isLoaded, isSignedIn } = useUser();
-    
+
     if (!isLoaded || !isSignedIn) {
         return null;
     }
-    
+
     return <VisionDetailPageContent />;
 }
