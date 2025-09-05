@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import { ROUTES } from '@/lib/constants';
 import { timeSinceFromDateString } from '@/utils/date';
 import { useState, useEffect } from 'react';
-import { Map, Scan, Search, Grid3X3, List, Plus, Trash2, MoreHorizontal, Download, Share } from 'lucide-react';
+import { Map, Scan, Search, Grid3X3, List, Plus, Trash2, MoreHorizontal, Download, Share, SlidersHorizontal, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
 import { Id } from '@/../convex/_generated/dataModel';
@@ -34,11 +35,14 @@ export default function SheetsPage() {
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [visionToDelete, setVisionToDelete] = useState<Id<"visions"> | null>(null);
 
-    // Initialize view mode from localStorage
+    // Initialize view mode from localStorage with mobile-first grid default
     useEffect(() => {
         const localViewMode = localStorage.getItem(LOCAL_VIEW_MODE);
         if (localViewMode) {
             setViewMode(localViewMode);
+        } else {
+            // Default to grid view
+            setViewMode("grid");
         }
     }, []);
 
@@ -119,13 +123,14 @@ export default function SheetsPage() {
                     </motion.div>
 
                     <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
-                        <div className="flex w-full gap-2 items-center">
-                            <Skeleton className="h-8 w-40" />
-                            <Skeleton className="h-8 w-32" />
-                        </div>
-
                         <div className="sm:w-auto w-full flex gap-2">
-                            <div className="relative w-full sm:w-[300px]">
+                            <button
+                                disabled
+                                className="flex items-center justify-center h-[40px] sm:h-[32px] w-[40px] sm:w-[32px] border border-border rounded-md hover:bg-accent/50 transition-colors"
+                            >
+                                <Filter size={14} />
+                            </button>
+                            <div className="relative flex-1 sm:w-[300px]">
                                 <Search
                                     className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
                                     size={16}
@@ -192,65 +197,81 @@ export default function SheetsPage() {
                         </Button>
                     </div>
                 </motion.div>
-                <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
-                    <div className="flex w-full gap-2 items-center">
-                        <Select value={selectedOrg} onValueChange={setSelectedOrg}>
-                            <SelectTrigger size='sm' className='sm:w-auto w-full'>
-                                <SelectValue placeholder="All organizations" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All organizations</SelectItem>
-                                <SelectItem value="personal">Personal</SelectItem>
-                                <SelectItem value="company">Company</SelectItem>
-                                <SelectItem value="team">Team</SelectItem>
-                            </SelectContent>
-                        </Select>
 
-                        <Select value={sortBy} onValueChange={setSortBy}>
-                            <SelectTrigger size="sm">
-                                <SelectValue placeholder="Sort by" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="updatedAt">Last updated</SelectItem>
-                                <SelectItem value="createdAt">Date created</SelectItem>
-                                <SelectItem value="title">Name</SelectItem>
-                            </SelectContent>
-                        </Select>
+                <div className="sm:w-auto w-full flex gap-2">
+                    <div className="relative flex-1 sm:w-[300px]">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+                        <Input
+                            type="text"
+                            placeholder="Search visions..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-8 rounded-md"
+                        />
                     </div>
 
-                    <div className="sm:w-auto w-full flex gap-2">
-                        <div className="relative w-full sm:w-[300px]">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
-                            <Input
-                                type="text"
-                                placeholder="Search visions..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-8 h-[40px] sm:h-[32px] placeholder:text-xs text-sm rounded-md"
-                            />
-                        </div>
-                        <div className="flex items-center border border-border h-[40px] sm:h-[32px] rounded-md">
-                            <button
-                                onClick={() => setLocalViewMode("grid")}
-                                className={`h-full w-10 flex items-center justify-center rounded-l-sm transition-colors ${viewMode === "grid"
-                                    ? "bg-accent text-accent-foreground"
-                                    : "hover:bg-accent/50"
-                                    }`}
-                            >
-                                <Grid3X3 size={16} />
-                            </button>
-                            <button
-                                onClick={() => setLocalViewMode("table")}
-                                className={`h-full w-10 flex items-center justify-center rounded-r-sm transition-colors ${viewMode === "table"
-                                    ? "bg-accent text-accent-foreground"
-                                    : "hover:bg-accent/50"
-                                    }`}
-                            >
-                                <List size={16} />
-                            </button>
-                        </div>
+                    <div className="flex items-center border border-border h-[40px] sm:h-[32px] rounded-md">
+                        <button
+                            onClick={() => setLocalViewMode("grid")}
+                            className={`h-full w-10 flex items-center justify-center rounded-l-sm transition-colors ${viewMode === "grid"
+                                ? "bg-accent text-accent-foreground"
+                                : "hover:bg-accent/50"
+                                }`}
+                        >
+                            <Grid3X3 size={16} />
+                        </button>
+                        <button
+                            onClick={() => setLocalViewMode("table")}
+                            className={`h-full w-10 flex items-center justify-center rounded-r-sm transition-colors ${viewMode === "table"
+                                ? "bg-accent text-accent-foreground"
+                                : "hover:bg-accent/50"
+                                }`}
+                        >
+                            <List size={16} />
+                        </button>
                     </div>
+
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <button className="flex items-center justify-center h-[40px] sm:h-[32px] w-[40px] sm:w-[32px] border border-border rounded-md hover:bg-accent/50 transition-colors">
+                                <Filter size={16} />
+                            </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64" align="end">
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-sm font-medium mb-2 block">Organization</label>
+                                    <Select value={selectedOrg} onValueChange={setSelectedOrg}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="All organizations" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All organizations</SelectItem>
+                                            <SelectItem value="personal">Personal</SelectItem>
+                                            <SelectItem value="company">Company</SelectItem>
+                                            <SelectItem value="team">Team</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div>
+                                    <label className="text-sm font-medium mb-2 block">Sort by</label>
+                                    <Select value={sortBy} onValueChange={setSortBy}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Sort by" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="updatedAt">Last updated</SelectItem>
+                                            <SelectItem value="createdAt">Date created</SelectItem>
+                                            <SelectItem value="title">Name</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
                 </div>
+
                 {
                     isLoading ? (
                         viewMode === "grid" ? <VisionGridSkeleton /> : <VisionTableSkeleton />

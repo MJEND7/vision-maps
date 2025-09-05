@@ -70,7 +70,6 @@ function DraggableTab({
                     "relative flex bg-background p-2 rounded-t-lg justify-between items-center",
                     "cursor-grab active:cursor-grabbing select-none",
                     "transition-all duration-200 ease-out",
-                    isMobile ? "px-1.5 py-1.5" : "p-2",
                     isSelected
                         ? 'bg-background z-10 shadow-sm'
                         : 'bg-muted/30 hover:bg-background/80'
@@ -106,12 +105,12 @@ function DraggableTab({
                     onClick={handleRemove}
                     className={cn(
                         "rounded-full hover:bg-muted-foreground/10 transition-colors",
-                        isMobile ? "ml-1 p-0.5" : "ml-2 p-0.5"
+                        "ml-2 p-0.5"
                     )}
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                 >
-                    <X size={isMobile ? 10 : 12} />
+                    <X size={12} />
                 </motion.button>
 
             </motion.div>

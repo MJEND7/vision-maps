@@ -2,7 +2,7 @@
   "name": "Visions",
   "short_name": "Visions",
   "description": "The Essence of Vision. A way of thinking, communicating and building",
-  "start_url": "/",
+  "start_url": "/dashboard/visions",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",

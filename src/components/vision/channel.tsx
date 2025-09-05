@@ -8,7 +8,7 @@ import {
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { useState, useRef, useEffect } from "react";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
@@ -204,113 +204,108 @@ export default function Channel({
                 "flex-shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
                 isMobile ? "px-3 py-3 space-y-3" : "px-8 py-4 space-y-4"
             )}>
-                {/* Title and Description */}
-                <div className="space-y-1">
-                    {isEditingTitle ? (
-                        <input
-                            ref={titleRef}
-                            value={titleValue}
-                            onChange={(e) => setTitleValue(e.target.value)}
-                            onBlur={handleTitleSave}
-                            onKeyDown={handleTitleKeyDown}
-                            className={cn(
-                                "bg-transparent border-none outline-none w-full p-0 m-0 font-semibold",
-                                isMobile ? "text-xl" : "text-3xl"
-                            )}
-                        />
-                    ) : (
-                        <div
-                            className="group cursor-pointer flex items-center gap-2"
-                            onClick={() => setIsEditingTitle(true)}
-                        >
-                            <h1 className={cn(
-                                "font-semibold",
-                                isMobile ? "text-xl" : "text-3xl"
-                            )}>{titleValue}</h1>
-                            <svg
-                                className={cn(
-                                    "opacity-0 group-hover:opacity-50 transition-opacity",
-                                    isMobile ? "w-3 h-3" : "w-4 h-4"
-                                )}
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                {/* Title and Description - Desktop Only */}
+                {!isMobile && (
+                    <div className="space-y-1">
+                        {isEditingTitle ? (
+                            <input
+                                ref={titleRef}
+                                value={titleValue}
+                                onChange={(e) => setTitleValue(e.target.value)}
+                                onBlur={handleTitleSave}
+                                onKeyDown={handleTitleKeyDown}
+                                className="bg-transparent border-none outline-none w-full p-0 m-0 font-semibold text-3xl"
+                            />
+                        ) : (
+                            <div
+                                className="group cursor-pointer flex items-center gap-2"
+                                onClick={() => setIsEditingTitle(true)}
                             >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                                />
-                            </svg>
-                        </div>
-                    )}
+                                <h1 className="font-semibold text-3xl">{titleValue}</h1>
+                                <svg
+                                    className="opacity-0 group-hover:opacity-50 transition-opacity w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                    />
+                                </svg>
+                            </div>
+                        )}
 
-                    {isEditingDescription ? (
-                        <textarea
-                            ref={descriptionRef}
-                            value={descriptionValue}
-                            onChange={(e) => setDescriptionValue(e.target.value)}
-                            onBlur={handleDescriptionSave}
-                            onKeyDown={handleDescriptionKeyDown}
-                            className={cn(
-                                "text-muted-foreground bg-transparent border-none outline-none w-full p-0 m-0 resize-none",
-                                isMobile ? "text-xs h-8" : "text-sm h-12"
-                            )}
-                            rows={isMobile ? 1 : 2}
-                        />
-                    ) : (
-                        <div className="group flex items-start">
-                            <button
-                                className={cn(
-                                    "text-left cursor-pointer flex items-start w-full",
-                                    isMobile ? "h-6" : "h-12"
-                                )}
-                                onClick={() => setIsEditingDescription(true)}
-                            >
-                                <h2 className={cn(
-                                    "text-muted-foreground",
-                                    isMobile ? "text-xs" : "text-sm"
-                                )}>
-                                    {descriptionValue || "Add description..."}
-                                </h2>
-                            </button>
-                            <svg
-                                className={cn(
-                                    "opacity-0 group-hover:opacity-50 transition-opacity ml-2 flex-shrink-0",
-                                    isMobile ? "w-3 h-3" : "w-4 h-4"
-                                )}
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                                />
-                            </svg>
-                        </div>
-                    )}
-                </div>
+                        {isEditingDescription ? (
+                            <textarea
+                                ref={descriptionRef}
+                                value={descriptionValue}
+                                onChange={(e) => setDescriptionValue(e.target.value)}
+                                onBlur={handleDescriptionSave}
+                                onKeyDown={handleDescriptionKeyDown}
+                                className="text-muted-foreground bg-transparent border-none outline-none w-full p-0 m-0 resize-none text-sm h-12"
+                                rows={2}
+                            />
+                        ) : (
+                            <div className="group flex items-start">
+                                <button
+                                    className="text-left cursor-pointer flex items-start w-full h-12"
+                                    onClick={() => setIsEditingDescription(true)}
+                                >
+                                    <h2 className="text-muted-foreground text-sm">
+                                        {descriptionValue || "Add description..."}
+                                    </h2>
+                                </button>
+                                <svg
+                                    className="opacity-0 group-hover:opacity-50 transition-opacity ml-2 flex-shrink-0 w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                    />
+                                </svg>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Search and Filter Controls */}
                 {isMobile ? (
-                    // Mobile: Filter button + Search
+                    // Mobile: Info button + Filter button + Search
                     <div className="flex gap-2 items-center">
+                        {/* Search */}
+                        <div className="relative flex-1">
+                            <Search
+                                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
+                                size={14}
+                            />
+                            <Input
+                                type="text"
+                                placeholder="Search nodes..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-8 h-9 rounded-md"
+                            />
+                        </div>
+
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-8 px-3 text-xs"
+                                    className="h-9 px-3 text-xs"
                                 >
-                                    <Filter size={14} className="mr-2" />
-                                    Filters
+                                    <Filter size={14} />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-80 p-4" align="start">
+                            <PopoverContent className="w-80 p-4" align="end" alignOffset={-45}>
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">Content Type</label>
@@ -364,20 +359,67 @@ export default function Channel({
                             </PopoverContent>
                         </Popover>
 
-                        {/* Search */}
-                        <div className="relative flex-1">
-                            <Search
-                                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
-                                size={14}
-                            />
-                            <Input
-                                type="text"
-                                placeholder="Search nodes..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-8 h-8 text-xs placeholder:text-base md:placeholder:text-xs rounded-md"
-                            />
-                        </div>
+                        {/* Channel Info Button - Mobile Only */}
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 px-3 text-xs"
+                                >
+                                    <Info size={14} />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 p-4" align="end">
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Channel Title</label>
+                                        {isEditingTitle ? (
+                                            <input
+                                                ref={titleRef}
+                                                value={titleValue}
+                                                onChange={(e) => setTitleValue(e.target.value)}
+                                                onBlur={handleTitleSave}
+                                                onKeyDown={handleTitleKeyDown}
+                                                className="w-full px-3 py-2 text-sm border rounded-md bg-background"
+                                                autoFocus
+                                            />
+                                        ) : (
+                                            <div
+                                                className="w-full px-3 py-2 text-sm border rounded-md bg-background cursor-pointer hover:bg-accent"
+                                                onClick={() => setIsEditingTitle(true)}
+                                            >
+                                                {titleValue}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Description</label>
+                                        {isEditingDescription ? (
+                                            <textarea
+                                                ref={descriptionRef}
+                                                value={descriptionValue}
+                                                onChange={(e) => setDescriptionValue(e.target.value)}
+                                                onBlur={handleDescriptionSave}
+                                                onKeyDown={handleDescriptionKeyDown}
+                                                className="w-full px-3 py-2 text-sm border rounded-md bg-background resize-none"
+                                                rows={3}
+                                                autoFocus
+                                            />
+                                        ) : (
+                                            <div
+                                                className="w-full px-3 py-2 text-sm border rounded-md bg-background cursor-pointer hover:bg-accent min-h-[76px]"
+                                                onClick={() => setIsEditingDescription(true)}
+                                            >
+                                                {descriptionValue || "Add description..."}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+
                     </div>
                 ) : (
                     // Desktop: Original layout
@@ -438,7 +480,7 @@ export default function Channel({
                                 placeholder="Search nodes..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-8 h-8 text-sm placeholder:text-base md:placeholder:text-xs rounded-md"
+                                className="pl-8 h-8 rounded-md"
                             />
                         </div>
                     </div>
@@ -478,7 +520,7 @@ export default function Channel({
                             </div>
                         ) : (
                             <>
-                                <div className={`${sortBy === "latest" ? "inline" : "hidden"} ${isMobile ? "h-16" : "h-20"} shrink-0`} />
+                                <div className={`${sortBy === "latest" ? "inline" : "hidden"} ${isMobile ? "h-25" : "h-20"} shrink-0`} />
                                 {storedNodes.map((node, i) => {
                                     const nodeUser = getUserForNode(node.userId);
                                     return (
@@ -487,7 +529,7 @@ export default function Channel({
                                         </div>
                                     );
                                 })}
-                                <div className={`${sortBy === "latest" ? "hidden" : "inline"} ${isMobile ? "h-16" : "h-20"} shrink-0`} />
+                                <div className={`${sortBy === "latest" ? "hidden" : "inline"} ${isMobile ? "h-25" : "h-20"} shrink-0`} />
                             </>
                         )}
                     </InfiniteScroll>
