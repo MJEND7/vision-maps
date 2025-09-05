@@ -50,7 +50,7 @@ export function VideoPlayer({ src, title, poster }: VideoPlayerProps) {
   const handleMouseLeave = () => setShowControls(false);
 
   return (
-    <div className="relative bg-black rounded-lg overflow-hidden w-full max-w-2xl">
+    <div className="relative bg-black rounded-lg overflow-hidden w-full">
       {title && (
         <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/50 to-transparent p-3">
           <p className="text-white text-sm font-medium truncate">{title}</p>

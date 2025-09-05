@@ -752,7 +752,7 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
 
     return (
         <div
-            className={`absolute inset-x-0 bottom-8 w-full max-w-lg mx-auto`}
+            className={`absolute inset-x-0 bottom-8 w-full max-w-xs sm:max-w-lg mx-auto`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -859,11 +859,16 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
                                         exit={{ opacity: 0, y: -10 }}
                                         transition={{ type: "spring", stiffness: 400, damping: 25 }}
                                     >
-                                        <span className="text-[10px] text-muted-foreground font-medium flex items-center justify-center">
+                                        <span className="hidden sm:flex text-[10px] text-muted-foreground font-medium items-center justify-center">
                                             Press{" "}
                                             <kbd className="px-1 py-0.5 mx-1 bg-accent rounded">Ctrl</kbd> +{" "}
                                             <kbd className="px-1 py-0.5 mx-1 bg-accent rounded">V</kbd> to
                                             paste
+                                        </span>
+                                        <span className="sm:hidden flex text-[10px] text-muted-foreground font-medium items-center justify-center">
+                                            Paste your 
+                                            <kbd className="px-1 py-0.5 mx-1 bg-accent rounded">media</kbd>
+                                            here
                                         </span>
                                     </motion.div>
                                 )}
@@ -1061,7 +1066,7 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
                     <motion.div className="relative w-full h-full">
                         <Textarea
                             ref={textareaRef}
-                            className={`w-full dark:bg-background bg-background h-full resize-none transition-all duration-200 ${mode !== PasteBinMode.IDLE
+                            className={`w-full text-sm dark:bg-background bg-background h-full resize-none transition-all duration-200 ${mode !== PasteBinMode.IDLE
                                 ? "pr-24 rounded-xl shadow-sm hover:shadow-lg focus:shadow-lg py-3 px-4"
                                 : "pr-16 rounded-3xl shadow-sm hover:shadow-lg focus:shadow-lg py-0 px-4 overflow-hidden"
                                 }`}
@@ -1072,7 +1077,7 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
                             placeholder={
                                 mode !== PasteBinMode.IDLE
                                     ? mode === PasteBinMode.AI ? "Type you message here..." : `Enter a thought about: ${getDisplayName()}`
-                                    : "Enter content to create a Node"
+                                    : "Enter media..."
                             }
                             value={textContent}
                             onChange={(e) => {

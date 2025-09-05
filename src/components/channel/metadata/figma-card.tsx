@@ -79,7 +79,7 @@ export function FigmaCard({ metadata }: FigmaCardProps) {
     
     return (
         <motion.div
-            className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm"
+            className="bg-white  border border-gray-200 rounded-lg overflow-hidden shadow-sm"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
@@ -122,7 +122,7 @@ export function FigmaCard({ metadata }: FigmaCardProps) {
                 
                 <iframe
                     src={embedUrl}
-                    className="w-full h-full border-0"
+                    className="w-full h-[350px] border-0"
                     allowFullScreen
                     onLoad={() => setIsLoading(false)}
                     onError={() => {

@@ -62,7 +62,7 @@ export function AudioPlayer({ src, title }: AudioPlayerProps) {
   };
 
   return (
-    <div className="bg-background border rounded-lg p-4 w-full max-w-md">
+    <div className="bg-background border rounded-lg p-4 w-full h-32">
       <audio ref={audioRef} src={src} />
       
       {title && (

@@ -8,8 +8,9 @@ import {
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { useState, useRef, useEffect } from "react";
-import { Search } from "lucide-react";
+import { Search, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import {
     Select,
     SelectContent,
@@ -17,6 +18,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 import { MultiUserSelector } from "@/components/ui/multi-user-selector";
 import { useNodeUserCache } from "@/hooks/useUserCache";
 import PasteBin from "../channel/paste-bin";
@@ -42,6 +49,7 @@ export default function Channel({
     const [selectedVariant, setSelectedVariant] = useState("all");
     const [selectedUsers, setSelectedUsers] = useState<string[]>(["all"]);
     const [sortBy, setSortBy] = useState("latest");
+    const [isMobile, setIsMobile] = useState(false);
 
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -51,6 +59,17 @@ export default function Channel({
     const titleRef = useRef<HTMLInputElement>(null);
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    // Mobile detection
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     // Debounce search query
     useEffect(() => {
@@ -179,9 +198,14 @@ export default function Channel({
     };
 
     return (
-        <div className="h-full px-20 py-6 space-y-8">
-            <div className="space-y-2">
-                <div>
+        <div className="h-full flex flex-col">
+            {/* Header Section - Fixed, no scroll */}
+            <div className={cn(
+                "flex-shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+                isMobile ? "px-3 py-3 space-y-3" : "px-8 py-4 space-y-4"
+            )}>
+                {/* Title and Description */}
+                <div className="space-y-1">
                     {isEditingTitle ? (
                         <input
                             ref={titleRef}
@@ -189,16 +213,25 @@ export default function Channel({
                             onChange={(e) => setTitleValue(e.target.value)}
                             onBlur={handleTitleSave}
                             onKeyDown={handleTitleKeyDown}
-                            className="text-3xl bg-transparent border-none outline-none w-full p-0 m-0"
+                            className={cn(
+                                "bg-transparent border-none outline-none w-full p-0 m-0 font-semibold",
+                                isMobile ? "text-xl" : "text-3xl"
+                            )}
                         />
                     ) : (
                         <div
                             className="group cursor-pointer flex items-center gap-2"
                             onClick={() => setIsEditingTitle(true)}
                         >
-                            <h1 className="font-semibold text-3xl">{titleValue}</h1>
+                            <h1 className={cn(
+                                "font-semibold",
+                                isMobile ? "text-xl" : "text-3xl"
+                            )}>{titleValue}</h1>
                             <svg
-                                className="w-4 h-4 opacity-0 group-hover:opacity-50 transition-opacity"
+                                className={cn(
+                                    "opacity-0 group-hover:opacity-50 transition-opacity",
+                                    isMobile ? "w-3 h-3" : "w-4 h-4"
+                                )}
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -220,21 +253,33 @@ export default function Channel({
                             onChange={(e) => setDescriptionValue(e.target.value)}
                             onBlur={handleDescriptionSave}
                             onKeyDown={handleDescriptionKeyDown}
-                            className="text-sm text-muted-foreground bg-transparent border-none outline-none h-[60px] w-[65%] p-0 m-0 resize-none"
-                            rows={2}
+                            className={cn(
+                                "text-muted-foreground bg-transparent border-none outline-none w-full p-0 m-0 resize-none",
+                                isMobile ? "text-xs h-8" : "text-sm h-12"
+                            )}
+                            rows={isMobile ? 1 : 2}
                         />
                     ) : (
-                        <div className="group flex flex-1">
+                        <div className="group flex items-start">
                             <button
-                                className="text-left cursor-pointer flex items-start h-[60px] w-[65%]"
+                                className={cn(
+                                    "text-left cursor-pointer flex items-start w-full",
+                                    isMobile ? "h-6" : "h-12"
+                                )}
                                 onClick={() => setIsEditingDescription(true)}
                             >
-                                <h2 className="text-sm text-muted-foreground">
+                                <h2 className={cn(
+                                    "text-muted-foreground",
+                                    isMobile ? "text-xs" : "text-sm"
+                                )}>
                                     {descriptionValue || "Add description..."}
                                 </h2>
                             </button>
                             <svg
-                                className="w-4 h-4 opacity-0 group-hover:opacity-50 transition-opacity"
+                                className={cn(
+                                    "opacity-0 group-hover:opacity-50 transition-opacity ml-2 flex-shrink-0",
+                                    isMobile ? "w-3 h-3" : "w-4 h-4"
+                                )}
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -249,107 +294,207 @@ export default function Channel({
                         </div>
                     )}
                 </div>
-                <hr />
 
                 {/* Search and Filter Controls */}
-                <div className="relative flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
-                    <div className="flex w-full gap-2 items-center">
-                        <Select
-                            value={selectedVariant}
-                            onValueChange={setSelectedVariant}
-                        >
-                            <SelectTrigger size="sm" className="sm:w-auto w-full">
-                                <SelectValue placeholder="All types" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All types</SelectItem>
-                                {NODE_VARIANTS.map((variant) => (
-                                    <SelectItem
-                                        key={variant.value}
-                                        value={variant.value}
-                                    >
-                                        {variant.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                {isMobile ? (
+                    // Mobile: Filter button + Search
+                    <div className="flex gap-2 items-center">
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 px-3 text-xs"
+                                >
+                                    <Filter size={14} className="mr-2" />
+                                    Filters
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 p-4" align="start">
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Content Type</label>
+                                        <Select
+                                            value={selectedVariant}
+                                            onValueChange={setSelectedVariant}
+                                        >
+                                            <SelectTrigger className="h-8 text-xs">
+                                                <SelectValue placeholder="All types" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">All types</SelectItem>
+                                                {NODE_VARIANTS.map((variant) => (
+                                                    <SelectItem
+                                                        key={variant.value}
+                                                        value={variant.value}
+                                                    >
+                                                        {variant.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
 
-                        <Select value={sortBy} onValueChange={setSortBy}>
-                            <SelectTrigger size="sm">
-                                <SelectValue placeholder="Sort by" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="latest">Latest first</SelectItem>
-                                <SelectItem value="oldest">Oldest first</SelectItem>
-                            </SelectContent>
-                        </Select>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Sort By</label>
+                                        <Select value={sortBy} onValueChange={setSortBy}>
+                                            <SelectTrigger className="h-8 text-xs">
+                                                <SelectValue placeholder="Sort by" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="latest">Latest first</SelectItem>
+                                                <SelectItem value="oldest">Oldest first</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
 
-                        {channel?.vision && (
-                            <MultiUserSelector
-                                visionId={channel.vision}
-                                value={selectedUsers}
-                                onValueChange={setSelectedUsers}
-                                placeholder="All users"
-                                className="sm:w-auto w-full text-xs"
-                            />
-                        )}
-                    </div>
+                                    {channel?.vision && (
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Users</label>
+                                            <MultiUserSelector
+                                                visionId={channel.vision}
+                                                value={selectedUsers}
+                                                onValueChange={setSelectedUsers}
+                                                placeholder="All users"
+                                                className="h-8 text-xs"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
 
-                    <div className="sm:w-auto w-full flex gap-2">
-                        <div className="relative w-full sm:w-[300px]">
+                        {/* Search */}
+                        <div className="relative flex-1">
                             <Search
                                 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
-                                size={16}
+                                size={14}
                             />
                             <Input
                                 type="text"
                                 placeholder="Search nodes..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-8 h-[40px] sm:h-[32px] placeholder:text-xs text-sm rounded-md"
+                                className="pl-8 h-8 text-xs placeholder:text-xs rounded-md"
                             />
                         </div>
                     </div>
+                ) : (
+                    // Desktop: Original layout
+                    <div className="flex gap-2 items-center justify-between">
+                        {/* Filters Row */}
+                        <div className="flex gap-2 items-center">
+                            <div className="flex gap-2">
+                                <Select
+                                    value={selectedVariant}
+                                    onValueChange={setSelectedVariant}
+                                >
+                                    <SelectTrigger className="h-8 w-auto text-xs">
+                                        <SelectValue placeholder="All types" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All types</SelectItem>
+                                        {NODE_VARIANTS.map((variant) => (
+                                            <SelectItem
+                                                key={variant.value}
+                                                value={variant.value}
+                                            >
+                                                {variant.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                <Select value={sortBy} onValueChange={setSortBy}>
+                                    <SelectTrigger className="h-8 w-auto text-xs">
+                                        <SelectValue placeholder="Sort by" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="latest">Latest first</SelectItem>
+                                        <SelectItem value="oldest">Oldest first</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {channel?.vision && (
+                                <MultiUserSelector
+                                    visionId={channel.vision}
+                                    value={selectedUsers}
+                                    onValueChange={setSelectedUsers}
+                                    placeholder="All users"
+                                    className="h-8 w-auto text-xs"
+                                />
+                            )}
+                        </div>
+
+                        {/* Search */}
+                        <div className="relative w-64">
+                            <Search
+                                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
+                                size={14}
+                            />
+                            <Input
+                                type="text"
+                                placeholder="Search nodes..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-8 h-8 text-sm placeholder:text-xs rounded-md"
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Scrollable Nodes Content - This is the ONLY scrolling area */}
+            <div className="overflow-hidden">
+                <div
+                    id="scrollableDiv"
+                    ref={scrollContainerRef}
+                    className={cn(
+                        "flex h-full overflow-y-auto",
+                        sortBy === "latest" ? "flex-col-reverse" : "flex-col",
+                        isMobile ? "px-3" : "px-8"
+                    )}
+                >
+                    <InfiniteScroll
+                        dataLength={storedNodes.length}
+                        next={() => loadMore(10)}
+                        className={cn(
+                            "flex scroll-smooth",
+                            sortBy === "latest" ? "flex-col-reverse" : "flex-col",
+                            isMobile ? "gap-4 py-4" : "gap-6 py-6"
+                        )}
+                        inverse={sortBy === "latest"}
+                        hasMore={!isDone}
+                        loader={<NodeListSkeleton count={1} />}
+                        scrollableTarget="scrollableDiv"
+                    >
+                        {storedNodes.length === 0 && !isLoadingNodes ? (
+                            <div className={cn(
+                                "text-center text-muted-foreground/70",
+                                isMobile ? "text-xs py-8" : "text-sm py-12"
+                            )}>
+                                No nodes found.
+                            </div>
+                        ) : (
+                            <>
+                                <div className={`${sortBy === "latest" ? "inline" : "hidden"} ${isMobile ? "h-16" : "h-20"} shrink-0`} />
+                                {storedNodes.map((node, i) => {
+                                    const nodeUser = getUserForNode(node.userId);
+                                    return (
+                                        <div key={i}>
+                                            <ChannelNode node={node} nodeUser={nodeUser} />
+                                        </div>
+                                    );
+                                })}
+                                <div className={`${sortBy === "latest" ? "hidden" : "inline"} ${isMobile ? "h-16" : "h-20"} shrink-0`} />
+                            </>
+                        )}
+                    </InfiniteScroll>
                 </div>
             </div>
 
-            {/* Nodes List */}
-            <div
-                id="scrollableDiv"
-                ref={scrollContainerRef}
-                className={`max-h-[80%] relative flex ${sortBy === "latest" ? "flex-col-reverse" : "flex-col"} overflow-y-auto`}
-            >
-                <InfiniteScroll
-                    dataLength={storedNodes.length}
-                    next={() => loadMore(10)}
-                    className={`flex scroll-smooth ${sortBy === "latest" ? "flex-col-reverse" : "flex-col"} gap-8`}
-                    inverse={sortBy === "latest"} //
-                    hasMore={!isDone}
-                    loader={<NodeListSkeleton count={1} />}
-                    scrollableTarget="scrollableDiv"
-                >
-                    {storedNodes.length === 0 && !isLoadingNodes ? (
-                        <div className="text-sm text-center text-muted-foreground/70 py-10">
-                            No nodes found.
-                        </div>
-                    ) : (
-                        <>
-                            <div className={`${sortBy === "latest" ? "inline" : "hidden"} h-[65px] shrink-0`} />
-                            {storedNodes.map((node, i) => {
-                                const nodeUser = getUserForNode(node.userId);
-                                return (
-                                    <div key={i}>
-                                        <ChannelNode node={node} nodeUser={nodeUser} />
-                                    </div>
-                                );
-                            })}
-                            <div className={`${sortBy === "latest" ? "hidden" : "inline"} h-[65px] shrink-0`} />
-                        </>
-                    )}
-
-                </InfiniteScroll>
-            </div>
-
+            {/* Fixed Paste Bin at Bottom */}
             <PasteBin onCreateNode={handleNodeCreation} user={user} />
         </div>
     );

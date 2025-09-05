@@ -7,7 +7,7 @@ import { NodeVariants } from "../../../convex/tables/nodes";
 import Image from "next/image";
 import { AudioPlayer } from "./audio-player";
 import { VideoPlayer } from "./video-player";
-import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard, ChatCard } from "./metadata";
+import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard } from "./metadata";
 import { useOGMetadataWithCache } from "@/utils/ogMetadata";
 import { Brain, ExternalLink } from "lucide-react";
 
@@ -117,7 +117,7 @@ function renderNodeContent(node: NodeWithFrame) {
 
         case NodeVariants.AI:
             return (
-                <div className="overflow-hidden min-h-[15rem] min-w-[20rem] border border-accent rounded-lg flex flex-col justify-between">
+                <div className="overflow-hidden w-full h-48 border border-accent rounded-lg flex flex-col justify-between">
                     <div className="flex text-xs items-center justify-between gap-2 font-semibold p-3">
                         <div className="flex items-center gap-2">
                             LLM Node
@@ -139,7 +139,9 @@ function renderNodeContent(node: NodeWithFrame) {
 
         case NodeVariants.Text:
             return (
-                <p className="text-sm whitespace-pre-wrap">{node.value}</p>
+                <div>
+                    <p className="text-sm whitespace-pre-wrap">{node.value}</p>
+                </div>
             );
 
         default:
@@ -148,7 +150,7 @@ function renderNodeContent(node: NodeWithFrame) {
                 return <NodeWithMetadata node={node} variant={NodeVariants.Link} />;
             }
             return (
-                <div className="p-3 bg-gray-50 rounded-lg border">
+                <div className="w-full min-h-[8rem] p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <p className="text-sm text-muted-foreground">
                         {node.variant} content: {node.value.substring(0, 100)}...
                     </p>
@@ -203,7 +205,7 @@ export default function ChannelNode({ node, nodeUser }: { node: NodeWithFrame, n
                         {timeSinceFromDateString(new Date(node._creationTime))}
                     </div>
                 </span>
-                <div className="flex flex-col">
+                <div className="flex flex-col gap-1">
                     <div className="flex-1">
                         {(node.thought && node.variant !== NodeVariants.Text) && (
                             <p className="text-sm text-muted-foreground">
@@ -218,10 +220,8 @@ export default function ChannelNode({ node, nodeUser }: { node: NodeWithFrame, n
                     </div>
 
                     {/* Render content based on node variant */}
-                    <div className="mt-1 w-full max-w-md">
-                        <div className="min-w-[500px]">
+                    <div className="w-[calc(100vw-5rem)] sm:w-auto sm:min-w-[600px]">
                         {renderNodeContent(node)}
-                        </div>
                     </div>
                 </div>
             </div>

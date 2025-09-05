@@ -22,7 +22,7 @@ interface NodeStore {
 }
 
 export const useNodeStore = create<NodeStore>()(
-  subscribeWithSelector((set, get) => ({
+  subscribeWithSelector((set) => ({
     nodesByChannel: {},
     cursors: {},
     loading: {},

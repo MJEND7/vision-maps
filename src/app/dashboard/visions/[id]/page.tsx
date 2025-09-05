@@ -5,10 +5,10 @@ import { DraggableTabs } from '@/components/ui/draggable-tabs';
 import { DraggableSidebar } from '@/components/ui/draggable-sidebar';
 import { PresenceFacePile } from '@/components/ui/face-pile';
 import { Button } from '@/components/ui/button';
-import { ChevronsDownUp, Frame, Settings, TableProperties } from 'lucide-react';
+import { ChevronsDownUp, Frame, Settings, TableProperties, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import FrameComponent from '@/components/vision/frame';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Channel from '@/components/vision/channel';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../../../convex/_generated/api';
@@ -17,6 +17,8 @@ import { Vision } from '../../../../../convex/tables/visions';
 import SettingsComponent from '@/components/vision/settings';
 import { NodeUserCacheProvider } from '@/hooks/useUserCache';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
+import { motion, AnimatePresence } from 'motion/react';
+import { cn } from '@/lib/utils';
 
 enum ViewMode {
     CHANNEL = "channel",
@@ -24,22 +26,47 @@ enum ViewMode {
     SETTINGS = "Settings"
 }
 
-function TitleCard({ isLoading, vision, OpenSettings }: { isLoading: boolean, vision?: Vision, OpenSettings: (id: string) => void }) {
+type SidebarState = {
+    leftWidth: number;
+    rightWidth: number;
+    leftCollapsed: boolean;
+    rightCollapsed: boolean;
+    leftOpen: boolean;
+    rightOpen: boolean;
+};
+
+const DEFAULT_SIDEBAR_STATE: SidebarState = {
+    leftWidth: 280,
+    rightWidth: 400,
+    leftCollapsed: false,
+    rightCollapsed: false,
+    leftOpen: false,
+    rightOpen: false
+};
+
+const MIN_SIDEBAR_WIDTH = 200;
+const MAX_SIDEBAR_WIDTH = 600;
+
+function TitleCard({ isLoading, vision, OpenSettings, className }: {
+    isLoading: boolean,
+    vision?: Vision,
+    OpenSettings: (id: string) => void,
+    className?: string
+}) {
     if (isLoading || !vision) {
         return (
-            <div>
-
+            <div className={className}>
             </div>
         )
     }
 
     return (
-        <div className='w-full flex flex-col gap-1 p-4'>
+        <div className={cn('w-full flex flex-col gap-1 p-4', className)}>
             <div className="w-full flex justify-between items-center">
                 <h1 className="flex gap-1 items-center text-left text-lg font-semibold">
                     {vision?.title}
                 </h1>
-                <button onClick={() => OpenSettings(vision._id.toString())}>
+                <button onClick={() => OpenSettings(vision._id.toString())} className="hover:bg-accent rounded p-1 transition-colors">
                     <Settings size={18} />
                 </button>
             </div>
@@ -65,9 +92,16 @@ export default function VisionDetailPage() {
     const [editingChannelName, setEditingChannelName] = useState<string>('');
     const [editingFrame, setEditingFrame] = useState<string | null>(null);
     const [editingFrameName, setEditingFrameName] = useState<string>('');
+    const [sidebarState, setSidebarState] = useState<SidebarState>(DEFAULT_SIDEBAR_STATE);
+    const [isMobile, setIsMobile] = useState(false);
+    const leftResizeRef = useRef<HTMLDivElement>(null);
+    const rightResizeRef = useRef<HTMLDivElement>(null);
+    const leftSidebarRef = useRef<HTMLDivElement>(null);
+    const rightSidebarRef = useRef<HTMLDivElement>(null);
+    const mobileHeaderRef = useRef<HTMLDivElement>(null);
+    const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null);
+    const sidebarSaveTimeout = useRef<NodeJS.Timeout | null>(null);
 
-
-    // ✅ Always call useQuery, but only pass params if ready
     const vision = useQuery(
         api.visions.get,
         isLoaded && isSignedIn ? { id: visionId } : "skip"
@@ -87,14 +121,12 @@ export default function VisionDetailPage() {
 
     const [channelsToFetchFrames, setChannelsToFetchFrames] = useState<string[]>([]);
 
-    // Fetch frames for channels that are in our fetch list
     const framesToFetch = channelsToFetchFrames.length > 0 ? channelsToFetchFrames[0] : null;
     const frames = useQuery(
         api.frames.listByChannel,
         framesToFetch ? { channelId: framesToFetch as Id<"channels"> } : "skip"
     );
 
-    // Update frames in state when query completes
     useEffect(() => {
         if (frames && framesToFetch) {
             setFramesByChannel(prev => ({
@@ -102,12 +134,10 @@ export default function VisionDetailPage() {
                 [framesToFetch]: frames
             }));
 
-            // Remove the processed channel from the queue
             setChannelsToFetchFrames(prev => prev.slice(1));
         }
     }, [frames, framesToFetch]);
 
-    // Sync optimistic state with server data
     useEffect(() => {
         if (channels) {
             setOptimisticChannels(channels);
@@ -118,10 +148,8 @@ export default function VisionDetailPage() {
         setOptimisticFrames(framesByChannel);
     }, [framesByChannel]);
 
-    // Manage frame fetching priority: open channels first, others after delay
     useEffect(() => {
         if (channels && channels.length > 0) {
-            // Immediately queue open channels for frame fetching
             const openChannelIds = Array.from(openChannels).filter(id =>
                 channels.some(c => c._id === id)
             );
@@ -131,14 +159,13 @@ export default function VisionDetailPage() {
                     const newQueue = [...prev];
                     openChannelIds.forEach(id => {
                         if (!newQueue.includes(id)) {
-                            newQueue.unshift(id); // Add to front of queue
+                            newQueue.unshift(id);
                         }
                     });
                     return newQueue;
                 });
             }
 
-            // After 2 seconds, queue remaining channels
             const timer = setTimeout(() => {
                 const remainingChannelIds = channels
                     .filter(c => !openChannels.has(c._id))
@@ -148,7 +175,7 @@ export default function VisionDetailPage() {
                     const newQueue = [...prev];
                     remainingChannelIds.forEach(id => {
                         if (!newQueue.includes(id)) {
-                            newQueue.push(id); // Add to end of queue
+                            newQueue.push(id);
                         }
                     });
                     return newQueue;
@@ -159,14 +186,11 @@ export default function VisionDetailPage() {
         }
     }, [channels, openChannels]);
 
-    // When a channel is opened, prioritize its frame fetching
     const prioritizeChannelFrames = useCallback((channelId: string) => {
         setChannelsToFetchFrames(prev => {
             if (prev.includes(channelId)) {
-                // Move to front if already in queue
                 return [channelId, ...prev.filter(id => id !== channelId)];
             } else {
-                // Add to front of queue
                 return [channelId, ...prev];
             }
         });
@@ -174,12 +198,35 @@ export default function VisionDetailPage() {
 
     const isLoading = vision === undefined;
 
-    // localStorage key for opened channels
     const storageKey = `vision-${visionId}-opened-channels`;
     const tabsStorageKey = `vision-${visionId}-tabs`;
     const selectedTabStorageKey = `vision-${visionId}-selected-tab`;
+    const sidebarStorageKey = `vision-${visionId}-sidebar-state`;
 
-    // Load opened channels from localStorage on mount
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem(sidebarStorageKey);
+            if (saved) {
+                try {
+                    const savedState = JSON.parse(saved);
+                    setSidebarState(prev => ({ ...prev, ...savedState, leftOpen: false, rightOpen: false }));
+                } catch (error) {
+                    console.error('Failed to parse saved sidebar state:', error);
+                }
+            }
+        }
+    }, [sidebarStorageKey]);
+
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem(storageKey);
@@ -194,17 +241,14 @@ export default function VisionDetailPage() {
         }
     }, [storageKey]);
 
-    // Save opened channels to localStorage when they change
     useEffect(() => {
         if (typeof window !== 'undefined') {
             localStorage.setItem(storageKey, JSON.stringify(Array.from(openChannels)));
         }
     }, [openChannels, storageKey]);
 
-    // Load tabs and selected tab from localStorage on mount
     useEffect(() => {
         if (typeof window !== 'undefined') {
-            // Load tabs
             const savedTabs = localStorage.getItem(tabsStorageKey);
             if (savedTabs) {
                 try {
@@ -217,7 +261,6 @@ export default function VisionDetailPage() {
                 }
             }
 
-            // Load selected tab
             const savedSelectedTab = localStorage.getItem(selectedTabStorageKey);
             if (savedSelectedTab) {
                 try {
@@ -230,29 +273,47 @@ export default function VisionDetailPage() {
         }
     }, [tabsStorageKey, selectedTabStorageKey]);
 
-    // Save tabs to localStorage when they change
     useEffect(() => {
         if (typeof window !== 'undefined' && tabs.size > 0) {
             localStorage.setItem(tabsStorageKey, JSON.stringify(tabOrder));
         } else if (typeof window !== 'undefined' && tabs.size === 0) {
-            // Clear localStorage when no tabs
             localStorage.removeItem(tabsStorageKey);
         }
     }, [tabOrder, tabsStorageKey, tabs.size]);
 
-    // Save selected tab to localStorage when it changes
     useEffect(() => {
         if (typeof window !== 'undefined' && selectedTab) {
             localStorage.setItem(selectedTabStorageKey, JSON.stringify(selectedTab));
         } else if (typeof window !== 'undefined' && !selectedTab) {
-            // Clear localStorage when no tab selected
             localStorage.removeItem(selectedTabStorageKey);
         }
     }, [selectedTab, selectedTabStorageKey]);
 
-    // Tab cleanup callbacks (must be before early return to maintain hook order)
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (!isMobile) return;
+
+            const target = event.target as Node;
+
+            // Check if click is on mobile header (exclude header from closing sidebars)
+            if (mobileHeaderRef.current && mobileHeaderRef.current.contains(target)) {
+                return;
+            }
+
+            if (sidebarState.leftOpen && leftSidebarRef.current && !leftSidebarRef.current.contains(target)) {
+                setSidebarState(prev => ({ ...prev, leftOpen: false }));
+            }
+
+            if (sidebarState.rightOpen && rightSidebarRef.current && !rightSidebarRef.current.contains(target)) {
+                setSidebarState(prev => ({ ...prev, rightOpen: false }));
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isMobile, sidebarState.leftOpen, sidebarState.rightOpen]);
+
     const handleChannelDeleted = useCallback((channelId: string) => {
-        // Close the channel tab if it exists
         setTabs((currentTabs) => {
             const newTabs = new Map(currentTabs);
             newTabs.delete(channelId);
@@ -260,14 +321,10 @@ export default function VisionDetailPage() {
         });
 
         setTabOrder(prev => {
-            // Filter out the channel tab and any frame tabs that belong to this channel
             const updatedOrder = prev.filter(tab => {
-                // Remove if it's the channel being deleted
                 if (tab.id === channelId) return false;
 
-                // Remove if it's a frame that belongs to this channel
                 if (tab.type === ViewMode.FRAME && framesByChannel[channelId]?.some(frame => frame._id === tab.id)) {
-                    // Also remove from tabs Map
                     setTabs(current => {
                         const updated = new Map(current);
                         updated.delete(tab.id);
@@ -279,7 +336,6 @@ export default function VisionDetailPage() {
                 return true;
             });
 
-            // Update selected tab if needed
             if (selectedTab && (selectedTab.id === channelId ||
                 (selectedTab.type === ViewMode.FRAME && framesByChannel[channelId]?.some(frame => frame._id === selectedTab.id)))) {
                 if (updatedOrder.length > 0) {
@@ -292,14 +348,12 @@ export default function VisionDetailPage() {
             return updatedOrder;
         });
 
-        // Remove the entire channel from framesByChannel to update sidebar
         setFramesByChannel(prev => {
             const updated = { ...prev };
             delete updated[channelId];
             return updated;
         });
 
-        // Also remove from openChannels if it was open
         setOpenChannels(prev => {
             const newSet = new Set(prev);
             newSet.delete(channelId);
@@ -308,14 +362,12 @@ export default function VisionDetailPage() {
     }, [selectedTab, framesByChannel]);
 
     const handleFrameDeleted = useCallback((frameId: string) => {
-        // Remove from tabs
         setTabs((currentTabs) => {
             const newTabs = new Map(currentTabs);
             newTabs.delete(frameId);
             return newTabs;
         });
 
-        // Remove from tab order
         setTabOrder(prev => {
             const updatedOrder = prev.filter(tab => tab.id !== frameId);
 
@@ -330,7 +382,6 @@ export default function VisionDetailPage() {
             return updatedOrder;
         });
 
-        // Remove from framesByChannel to update sidebar
         setFramesByChannel(prev => {
             const updated = { ...prev };
             Object.keys(updated).forEach(channelId => {
@@ -341,14 +392,12 @@ export default function VisionDetailPage() {
     }, [selectedTab]);
 
     const handleFramesDeleted = useCallback((frameIds: string[]) => {
-        // Remove from tabs
         setTabs((currentTabs) => {
             const newTabs = new Map(currentTabs);
             frameIds.forEach(frameId => newTabs.delete(frameId));
             return newTabs;
         });
 
-        // Remove from tab order
         setTabOrder(prev => {
             const updatedOrder = prev.filter(tab => !frameIds.includes(tab.id));
 
@@ -363,7 +412,6 @@ export default function VisionDetailPage() {
             return updatedOrder;
         });
 
-        // Remove from framesByChannel to update sidebar
         setFramesByChannel(prev => {
             const updated = { ...prev };
             Object.keys(updated).forEach(channelId => {
@@ -374,17 +422,13 @@ export default function VisionDetailPage() {
     }, [selectedTab]);
 
     const handleChannelReorder = useCallback((channelIds: string[]) => {
-        // Optimistic update - reorder locally first
         setOptimisticChannels(prev => {
             const channelMap = new Map(prev.map(c => [c._id, c]));
             return channelIds.map(id => channelMap.get(id)).filter(Boolean);
         });
-
-        // Debounced server sync will happen on drag end
     }, []);
 
     const handleFrameReorder = useCallback((channelId: string, frameIds: string[]) => {
-        // Optimistic update - reorder locally first
         setOptimisticFrames(prev => {
             const currentFrames = prev[channelId] || [];
             const frameMap = new Map(currentFrames.map(f => [f._id, f]));
@@ -395,11 +439,8 @@ export default function VisionDetailPage() {
                 [channelId]: reorderedFrames
             };
         });
-
-        // Debounced server sync will happen on drag end
     }, []);
 
-    // Server sync functions (called on drag end)
     const syncChannelOrder = useCallback(async (channelIds: string[]) => {
         try {
             await reorderChannels({
@@ -408,7 +449,6 @@ export default function VisionDetailPage() {
             });
         } catch (error) {
             console.error('Failed to reorder channels:', error);
-            // Revert optimistic update on error
             if (channels) {
                 setOptimisticChannels(channels);
             }
@@ -423,15 +463,105 @@ export default function VisionDetailPage() {
             });
         } catch (error) {
             console.error('Failed to reorder frames:', error);
-            // Revert optimistic update on error
             setOptimisticFrames(framesByChannel);
         }
     }, [reorderFrames, framesByChannel]);
 
+    const saveSidebarStateDebounced = useCallback((newState: SidebarState) => {
+        if (sidebarSaveTimeout.current) {
+            clearTimeout(sidebarSaveTimeout.current);
+        }
+
+        sidebarSaveTimeout.current = setTimeout(() => {
+            if (typeof window !== 'undefined') {
+                localStorage.setItem(sidebarStorageKey, JSON.stringify(newState));
+            }
+        }, 2000);
+    }, [sidebarStorageKey]);
+
+    const toggleLeftSidebar = useCallback(() => {
+        setSidebarState(prev => ({
+            ...prev,
+            leftOpen: !prev.leftOpen,
+            rightOpen: false
+        }));
+    }, []);
+
+    const toggleRightSidebar = useCallback(() => {
+        setSidebarState(prev => ({
+            ...prev,
+            rightOpen: !prev.rightOpen,
+            leftOpen: false
+        }));
+    }, []);
+
+    const toggleLeftCollapse = useCallback(() => {
+        setSidebarState(prev => {
+            const newState = {
+                ...prev,
+                leftCollapsed: !prev.leftCollapsed
+            };
+            saveSidebarStateDebounced(newState);
+            return newState;
+        });
+    }, [saveSidebarStateDebounced]);
+
+    const toggleRightCollapse = useCallback(() => {
+        setSidebarState(prev => {
+            const newState = {
+                ...prev,
+                rightCollapsed: !prev.rightCollapsed
+            };
+            saveSidebarStateDebounced(newState);
+            return newState;
+        });
+    }, [saveSidebarStateDebounced]);
+
+    const handleLeftResize = useCallback((e: MouseEvent) => {
+        if (!isResizing) return;
+
+        const newWidth = Math.min(Math.max(e.clientX, MIN_SIDEBAR_WIDTH), MAX_SIDEBAR_WIDTH);
+        setSidebarState(prev => {
+            const newState = {
+                ...prev,
+                leftWidth: newWidth
+            };
+            saveSidebarStateDebounced(newState);
+            return newState;
+        });
+    }, [isResizing, saveSidebarStateDebounced]);
+
+    const handleRightResize = useCallback((e: MouseEvent) => {
+        if (!isResizing) return;
+
+        const newWidth = Math.min(Math.max(window.innerWidth - e.clientX, MIN_SIDEBAR_WIDTH), MAX_SIDEBAR_WIDTH);
+        setSidebarState(prev => {
+            const newState = {
+                ...prev,
+                rightWidth: newWidth
+            };
+            saveSidebarStateDebounced(newState);
+            return newState;
+        });
+    }, [isResizing, saveSidebarStateDebounced]);
+
+    const stopResize = useCallback(() => {
+        setIsResizing(null);
+    }, []);
+
+    useEffect(() => {
+        if (isResizing) {
+            document.addEventListener('mousemove', isResizing === 'left' ? handleLeftResize : handleRightResize);
+            document.addEventListener('mouseup', stopResize);
+            return () => {
+                document.removeEventListener('mousemove', isResizing === 'left' ? handleLeftResize : handleRightResize);
+                document.removeEventListener('mouseup', stopResize);
+            };
+        }
+    }, [isResizing, handleLeftResize, handleRightResize, stopResize]);
+
     if (!isLoaded || !isSignedIn) {
-        return (
-            null
-        );
+        return null;
     }
 
     const renderContent = () => {
@@ -500,9 +630,7 @@ export default function VisionDetailPage() {
                 newSet.delete(channelId);
             } else {
                 newSet.add(channelId);
-                // Prioritize fetching frames for this channel
                 prioritizeChannelFrames(channelId);
-                // Open the channel tab when expanding
             }
             return newSet;
         });
@@ -518,7 +646,6 @@ export default function VisionDetailPage() {
                 description: ""
             });
 
-            // Automatically open the newly created channel
             if (channelId) {
                 openTab(ViewMode.CHANNEL, channelId, "Untitled");
             }
@@ -686,7 +813,6 @@ export default function VisionDetailPage() {
         setSelectedTab(convertedTab);
     }
 
-    // Convert tabs for DraggableTabs component
     const tabsForDraggable = tabOrder.map(tab => ({
         ...tab,
         type: tab.type as string
@@ -703,82 +829,250 @@ export default function VisionDetailPage() {
 
     return (
         <NodeUserCacheProvider visionId={visionId}>
-            <main className="h-screen flex">
-                {/* Left bar */}
-                <div className="h-full flex flex-col gap-2 justify-between">
-                    <div
-                        className="h-full w-[280px] bg-card border border-border space-y-2"
+            <main className="h-screen flex relative">
+                {isMobile && (
+                    <motion.div
+                        ref={mobileHeaderRef}
+                        className="absolute top-0 left-0 right-0 z-50 border-b px-4 py-2 bg-background"
+                        initial={{ y: -50, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ duration: 0.3 }}
                     >
-                        <TitleCard
-                            OpenSettings={(id) => {
-                                openTab(ViewMode.SETTINGS, id, ViewMode.SETTINGS)
-                            }}
-                            isLoading={isLoading}
-                            vision={vision}
-                        />
-                        <hr />
-                        <div className="px-3 w-full space-y-4">
-                            <div className="w-full flex items-center justify-between">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
                                 <Button
-                                    variant={"outline"}
-                                    className="text-xs text-muted-foreground flex items-center gap-1"
-                                    onClick={handleCreateChannel}
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={toggleLeftSidebar}
+                                    className={cn("p-2", sidebarState.leftOpen && "bg-accent")}
                                 >
-                                    <TableProperties size={15} /> New channel
+                                    <ChevronLeft className="w-4 h-4" />
                                 </Button>
+                                <h1 className="text-sm font-medium truncate max-w-[150px]">
+                                    {vision?.title || 'Loading...'}
+                                </h1>
+                            </div>
+
+                            <div className="flex items-center gap-2">
                                 <Button
-                                    variant={"outline"}
-                                    className="text-xs text-muted-foreground flex items-center gap-1"
-                                    onClick={() => setOpenChannels(new Set())}
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={toggleRightSidebar}
+                                    className={cn("p-2", sidebarState.rightOpen && "bg-accent")}
                                 >
-                                    <ChevronsDownUp />
+                                    <ChevronRight className="w-4 h-4" />
                                 </Button>
                             </div>
-                            {optimisticChannels && optimisticChannels.length > 0 ? (
-                                <DraggableSidebar
-                                    channels={optimisticChannels}
-                                    framesByChannel={optimisticFrames}
-                                    openChannels={openChannels}
-                                    selectedTabId={selectedTab?.id}
-                                    editingChannel={editingChannel}
-                                    editingChannelName={editingChannelName}
-                                    editingFrame={editingFrame}
-                                    editingFrameName={editingFrameName}
-                                    onChannelReorder={handleChannelReorder}
-                                    onChannelReorderEnd={syncChannelOrder}
-                                    onFrameReorder={handleFrameReorder}
-                                    onFrameReorderEnd={syncFrameOrder}
-                                    onToggleChannel={toggleChannel}
-                                    onOpenTab={(type, id, title) => {
-                                        if (type === "channel") {
-                                            openTab(ViewMode.CHANNEL, id, title);
-                                        } else {
-                                            openTab(ViewMode.FRAME, id, title);
-                                        }
-                                    }}
-                                    onCreateFrame={handleCreateFrame}
-                                    onEditChannel={startEditingChannel}
-                                    onEditFrame={startEditingFrame}
-                                    onSaveChannel={saveChannelName}
-                                    onSaveFrame={saveFrameName}
-                                    onCancelEditChannel={cancelEditingChannel}
-                                    onCancelEditFrame={cancelEditingFrame}
-                                    onEditChannelNameChange={setEditingChannelName}
-                                    onEditFrameNameChange={setEditingFrameName}
-                                />
-                            ) : (
-                                <div className="text-xs text-muted-foreground/60 px-3">
-                                    {channels === undefined ? 'Loading channels...' : 'No channels yet'}
-                                </div>
-                            )}
                         </div>
-                    </div>
-                </div>
+                    </motion.div>
+                )}
 
-                {/* Middle */}
-                <div className="flex flex-col w-full bg-background">
-                    {/* Tabs stay fixed at the top */}
-                    <div className="shrink-0">
+                {isMobile ? (
+                    <AnimatePresence mode="wait">
+                        {sidebarState.leftOpen && (
+                            <motion.div
+                                ref={leftSidebarRef}
+                                initial={{ x: -280 }}
+                                animate={{ x: 0 }}
+                                exit={{ x: -280 }}
+                                transition={{ duration: 0.3, ease: "easeInOut" }}
+                                className="h-full bg-card border-r border-border flex z-40 absolute top-0 left-0 shadow-lg"
+                                style={{
+                                    width: 280,
+                                    marginTop: 50,
+                                    height: 'calc(100vh - 50px)'
+                                }}
+                            >
+                                <div className="flex-1 space-y-2 overflow-hidden">
+                                    <TitleCard
+                                        OpenSettings={(id) => {
+                                            openTab(ViewMode.SETTINGS, id, ViewMode.SETTINGS);
+                                            setSidebarState(prev => ({ ...prev, leftOpen: false }));
+                                        }}
+                                        isLoading={isLoading}
+                                        vision={vision}
+                                    />
+
+                                    <>
+                                        <hr />
+                                        <div className="px-3 w-full space-y-4">
+                                            <div className="w-full flex items-center justify-between">
+                                                <Button
+                                                    variant={"outline"}
+                                                    className="text-xs text-muted-foreground flex items-center gap-1"
+                                                    onClick={handleCreateChannel}
+                                                >
+                                                    <TableProperties size={15} /> New channel
+                                                </Button>
+                                                <Button
+                                                    variant={"outline"}
+                                                    className="text-xs text-muted-foreground flex items-center gap-1"
+                                                    onClick={() => setOpenChannels(new Set())}
+                                                >
+                                                    <ChevronsDownUp />
+                                                </Button>
+                                            </div>
+                                            {optimisticChannels && optimisticChannels.length > 0 ? (
+                                                <DraggableSidebar
+                                                    channels={optimisticChannels}
+                                                    framesByChannel={optimisticFrames}
+                                                    openChannels={openChannels}
+                                                    selectedTabId={selectedTab?.id}
+                                                    editingChannel={editingChannel}
+                                                    editingChannelName={editingChannelName}
+                                                    editingFrame={editingFrame}
+                                                    editingFrameName={editingFrameName}
+                                                    onChannelReorder={handleChannelReorder}
+                                                    onChannelReorderEnd={syncChannelOrder}
+                                                    onFrameReorder={handleFrameReorder}
+                                                    onFrameReorderEnd={syncFrameOrder}
+                                                    onToggleChannel={toggleChannel}
+                                                    onOpenTab={(type, id, title) => {
+                                                        if (type === "channel") {
+                                                            openTab(ViewMode.CHANNEL, id, title);
+                                                        } else {
+                                                            openTab(ViewMode.FRAME, id, title);
+                                                        }
+                                                        setSidebarState(prev => ({ ...prev, leftOpen: false }));
+                                                    }}
+                                                    onCreateFrame={handleCreateFrame}
+                                                    onEditChannel={startEditingChannel}
+                                                    onEditFrame={startEditingFrame}
+                                                    onSaveChannel={saveChannelName}
+                                                    onSaveFrame={saveFrameName}
+                                                    onCancelEditChannel={cancelEditingChannel}
+                                                    onCancelEditFrame={cancelEditingFrame}
+                                                    onEditChannelNameChange={setEditingChannelName}
+                                                    onEditFrameNameChange={setEditingFrameName}
+                                                />
+                                            ) : (
+                                                <div className="text-xs text-muted-foreground/60 px-3">
+                                                    {channels === undefined ? 'Loading channels...' : 'No channels yet'}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                ) : (
+                    !sidebarState.leftCollapsed && (
+                        <div
+                            className="h-full bg-card border-r border-border flex flex-col relative z-40"
+                            style={{
+                                width: sidebarState.leftWidth,
+                                height: '100vh'
+                            }}
+                        >
+                            <div className="flex-1 space-y-2 overflow-hidden">
+                                <TitleCard
+                                    OpenSettings={(id) => {
+                                        openTab(ViewMode.SETTINGS, id, ViewMode.SETTINGS);
+                                    }}
+                                    isLoading={isLoading}
+                                    vision={vision}
+                                />
+
+                                <>
+                                    <hr />
+                                    <div className="px-3 w-full space-y-4">
+                                        <div className="w-full flex items-center justify-between">
+                                            <Button
+                                                variant={"outline"}
+                                                className="text-xs text-muted-foreground flex items-center gap-1"
+                                                onClick={handleCreateChannel}
+                                            >
+                                                <TableProperties size={15} /> New channel
+                                            </Button>
+                                            <Button
+                                                variant={"outline"}
+                                                className="text-xs text-muted-foreground flex items-center gap-1"
+                                                onClick={() => setOpenChannels(new Set())}
+                                            >
+                                                <ChevronsDownUp />
+                                            </Button>
+                                        </div>
+                                        {optimisticChannels && optimisticChannels.length > 0 ? (
+                                            <DraggableSidebar
+                                                channels={optimisticChannels}
+                                                framesByChannel={optimisticFrames}
+                                                openChannels={openChannels}
+                                                selectedTabId={selectedTab?.id}
+                                                editingChannel={editingChannel}
+                                                editingChannelName={editingChannelName}
+                                                editingFrame={editingFrame}
+                                                editingFrameName={editingFrameName}
+                                                onChannelReorder={handleChannelReorder}
+                                                onChannelReorderEnd={syncChannelOrder}
+                                                onFrameReorder={handleFrameReorder}
+                                                onFrameReorderEnd={syncFrameOrder}
+                                                onToggleChannel={toggleChannel}
+                                                onOpenTab={(type, id, title) => {
+                                                    if (type === "channel") {
+                                                        openTab(ViewMode.CHANNEL, id, title);
+                                                    } else {
+                                                        openTab(ViewMode.FRAME, id, title);
+                                                    }
+                                                }}
+                                                onCreateFrame={handleCreateFrame}
+                                                onEditChannel={startEditingChannel}
+                                                onEditFrame={startEditingFrame}
+                                                onSaveChannel={saveChannelName}
+                                                onSaveFrame={saveFrameName}
+                                                onCancelEditChannel={cancelEditingChannel}
+                                                onCancelEditFrame={cancelEditingFrame}
+                                                onEditChannelNameChange={setEditingChannelName}
+                                                onEditFrameNameChange={setEditingFrameName}
+                                            />
+                                        ) : (
+                                            <div className="text-xs text-muted-foreground/60 px-3">
+                                                {channels === undefined ? 'Loading channels...' : 'No channels yet'}
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            </div>
+
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="absolute -right-3 top-4 w-6 h-6 rounded-full border bg-background z-50"
+                                onClick={toggleLeftCollapse}
+                            >
+                                <ChevronLeft className="w-3 h-3" />
+                            </Button>
+
+                            <div
+                                ref={leftResizeRef}
+                                className="absolute right-0 top-0 w-1 h-full cursor-col-resize hover:bg-accent hover:w-2 transition-all z-50"
+                                onMouseDown={() => setIsResizing('left')}
+                            />
+                        </div>
+                    )
+                )}
+
+                {!isMobile && sidebarState.leftCollapsed && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-6 h-6 rounded-full border bg-background z-50 absolute left-2 top-4"
+                        onClick={toggleLeftCollapse}
+                    >
+                        <ChevronRight className="w-3 h-3" />
+                    </Button>
+                )}
+
+                <div className={cn(
+                    "flex flex-col flex-1 bg-background relative",
+                    isMobile && "pt-[50px]"
+                )}>
+                    <motion.div
+                        className="shrink-0"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                    >
                         <DraggableTabs
                             tabs={tabsForDraggable}
                             selectedTab={selectedTabForDraggable}
@@ -787,29 +1081,100 @@ export default function VisionDetailPage() {
                             TabReorderAction={handleTabReorder}
                             renderTabIconAction={renderTabIconForDraggable}
                         />
-                    </div>
+                    </motion.div>
 
-                    {/* Content fills remaining space and scrolls if needed */}
                     <div className="flex-1 overflow-auto">
-                        {renderContent()}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="h-full"
+                        >
+                            {renderContent()}
+                        </motion.div>
                     </div>
                 </div>
 
-                {/* Right bar */}
-                <div className="h-full w-[400px] bg-card border border-border p-4">
-                    <div className="flex justify-between">
-                        <div className="">
-                            <PresenceFacePile visionId={visionId} />
-                        </div>
+                {isMobile ? (
+                    <AnimatePresence mode="wait">
+                        {sidebarState.rightOpen && (
+                            <motion.div
+                                ref={rightSidebarRef}
+                                initial={{ x: 400 }}
+                                animate={{ x: 0 }}
+                                exit={{ x: 400 }}
+                                transition={{ duration: 0.3, ease: "easeInOut" }}
+                                className="w-full bg-card border-l border-border p-4 z-40 absolute top-0 right-0 shadow-lg"
+                                style={{
+                                    marginTop: 50,
+                                    height: 'calc(100vh - 50px)'
+                                }}
+                            >
+                                <div className="flex justify-between">
+                                    <div className="">
+                                        <PresenceFacePile visionId={visionId} />
+                                    </div>
 
-                        <div className="flex items-center gap-1">
-                            <ThemeSwitcher size="sm" />
-                            <Button className="text-xs" size={"sm"} variant={"outline"}>
-                                Share
+                                    <div className="flex items-center gap-1">
+                                        <ThemeSwitcher size="sm" />
+                                        <Button className="text-xs" size={"sm"} variant={"outline"}>
+                                            Share
+                                        </Button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                ) : (
+                    !sidebarState.rightCollapsed && (
+                        <div
+                            className="h-full bg-card border-l border-border p-4 relative z-40"
+                            style={{
+                                width: sidebarState.rightWidth,
+                                height: '100vh'
+                            }}
+                        >
+                            <div className="flex justify-between">
+                                <div className="">
+                                    <PresenceFacePile visionId={visionId} />
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                    <ThemeSwitcher size="sm" />
+                                    <Button className="text-xs" size={"sm"} variant={"outline"}>
+                                        Share
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="absolute -left-3 top-4 w-6 h-6 rounded-full border bg-background z-50"
+                                onClick={toggleRightCollapse}
+                            >
+                                <ChevronRight className="w-3 h-3" />
                             </Button>
+
+                            <div
+                                ref={rightResizeRef}
+                                className="absolute left-0 top-0 w-1 h-full cursor-col-resize hover:bg-accent hover:w-2 transition-all z-50"
+                                onMouseDown={() => setIsResizing('right')}
+                            />
                         </div>
-                    </div>
-                </div>
+                    )
+                )}
+
+                {!isMobile && sidebarState.rightCollapsed && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-6 h-6 rounded-full border bg-background z-50 absolute right-2 top-4"
+                        onClick={toggleRightCollapse}
+                    >
+                        <ChevronLeft className="w-3 h-3" />
+                    </Button>
+                )}
             </main>
         </NodeUserCacheProvider>
     );
