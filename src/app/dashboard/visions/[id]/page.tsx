@@ -592,7 +592,9 @@ function VisionDetailPageContent() {
                             <Channel key={tab.id} channelId={tab.id} onOpenChat={handleOpenChat} onChannelNavigate={handleChannelNavigate} />
                         )}
                         {tab.type === ViewMode.FRAME && (
-                            <FrameComponent />
+                            <FrameComponent
+                                id={tab.id}
+                            />
                         )}
                         {tab.type === ViewMode.SETTINGS && (
                             <SettingsComponent
@@ -833,9 +835,9 @@ function VisionDetailPageContent() {
         if (isMobile) {
             setSidebarState(prev => ({ ...prev, rightOpen: false }));
         }
-        
+
         const channelTitle = channels?.find(c => c._id === channelId)?.title || "Channel";
-        
+
         // Open the channel tab
         const tabData = { title: channelTitle, id: channelId, type: ViewMode.CHANNEL };
         setTabs((t) => {
@@ -859,7 +861,7 @@ function VisionDetailPageContent() {
             return newOrder;
         });
         setSelectedTab(tabData);
-        
+
         // If we have a nodeId, we could implement scrolling to that specific node
         if (nodeId) {
             // Store the target node for highlighting/scrolling
@@ -1214,9 +1216,9 @@ function VisionDetailPageContent() {
                                 </div>
 
                                 <div className="flex-1 min-h-0">
-                                    <RightSidebarContent 
-                                        ref={rightSidebarContentRef} 
-                                        visionId={visionId} 
+                                    <RightSidebarContent
+                                        ref={rightSidebarContentRef}
+                                        visionId={visionId}
                                         onChannelNavigate={handleChannelNavigate}
                                     />
                                 </div>
@@ -1246,9 +1248,9 @@ function VisionDetailPageContent() {
                             </div>
 
                             <div className="flex-1 min-h-0">
-                                <RightSidebarContent 
-                                    ref={rightSidebarContentRef} 
-                                    visionId={visionId} 
+                                <RightSidebarContent
+                                    ref={rightSidebarContentRef}
+                                    visionId={visionId}
                                     onChannelNavigate={handleChannelNavigate}
                                 />
                             </div>

@@ -8,7 +8,10 @@ import {
   applyNodeChanges
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 const initialNodes = [
     { id: 'n1', position: { x: 0, y: 0 }, data: { label: 'Node 1' } },
@@ -16,11 +19,28 @@ const initialNodes = [
 ];
 const initialEdges = [{ id: 'n1-n2', source: 'n1', target: 'n2' }];
 
-export default function FrameComponent() {
+export default function FrameComponent({ id }: { id: string }) {
     const [nodes, setNodes] = useState(initialNodes);
     const [edges, setEdges] = useState(initialEdges);
+    const [isDark, setIsDark] = useState(false);
     
-    // TODO fetch FRAME
+    const frame = useQuery(api.frames.get, { id: id as Id<"frames"> });
+
+    useEffect(() => {
+        const checkDarkMode = () => {
+            setIsDark(document.documentElement.classList.contains('dark'));
+        };
+        
+        checkDarkMode();
+        
+        const observer = new MutationObserver(checkDarkMode);
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+        
+        return () => observer.disconnect();
+    }, []);
 
     const onNodesChange = useCallback(
         (changes: any) => setNodes((nodesSnapshot) => applyNodeChanges(changes, nodesSnapshot)),
@@ -36,8 +56,8 @@ export default function FrameComponent() {
     );
 
     return (
-        <div className="w-full h-[93%] p-6">
-            <h2 className="text-xl font-semibold mb-4">Frame</h2>
+        <div className="w-full h-[93%] px-4 pt-4">
+            <h2 className="text-xl font-semibold mb-4">{frame?.title || "Loading..."}</h2>
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -45,10 +65,10 @@ export default function FrameComponent() {
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 fitView
-                className='dark:text-white text-black'
+                colorMode={isDark ? 'dark' : 'light'}
             >
                 <Controls />
-                <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+                <Background key={id} variant={BackgroundVariant.Dots} gap={10} size={.9} />
             </ReactFlow>
         </div>
     );
