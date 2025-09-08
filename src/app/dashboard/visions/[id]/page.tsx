@@ -589,7 +589,7 @@ function VisionDetailPageContent() {
                         className={cn("h-full", selectedTab?.id !== tab.id && "hidden")}
                     >
                         {tab.type === ViewMode.CHANNEL && user && (
-                            <Channel channelId={tab.id} onOpenChat={handleOpenChat} />
+                            <Channel key={tab.id} channelId={tab.id} onOpenChat={handleOpenChat} onChannelNavigate={handleChannelNavigate} />
                         )}
                         {tab.type === ViewMode.FRAME && (
                             <FrameComponent />

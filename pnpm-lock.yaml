@@ -134,6 +134,9 @@ dependencies:
   uploadthing:
     specifier: ^7.7.4
     version: 7.7.4(next@15.2.3)(tailwindcss@4.1.12)
+  vaul:
+    specifier: ^1.1.2
+    version: 1.1.2(@types/react-dom@19.1.8)(@types/react@19.1.11)(react-dom@19.1.1)(react@19.1.1)
   zustand:
     specifier: ^5.0.8
     version: 5.0.8(@types/react@19.1.11)(react@19.1.1)
@@ -7125,6 +7128,20 @@ packages:
       spdx-correct: 3.2.0
       spdx-expression-parse: 3.0.1
     dev: true
+
+  /vaul@1.1.2(@types/react-dom@19.1.8)(@types/react@19.1.11)(react-dom@19.1.1)(react@19.1.1):
+    resolution: {integrity: sha512-ZFkClGpWyI2WUQjdLJ/BaGuV6AVQiJ3uELGk3OYtP+B6yCO7Cmn9vPFXVJkRaGkOJu3m8bQMgtyzNHixULceQA==}
+    peerDependencies:
+      react: ^16.8 || ^17.0 || ^18.0 || ^19.0.0 || ^19.0.0-rc
+      react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0.0 || ^19.0.0-rc
+    dependencies:
+      '@radix-ui/react-dialog': 1.1.15(@types/react-dom@19.1.8)(@types/react@19.1.11)(react-dom@19.1.1)(react@19.1.1)
+      react: 19.1.1
+      react-dom: 19.1.1(react@19.1.1)
+    transitivePeerDependencies:
+      - '@types/react'
+      - '@types/react-dom'
+    dev: false
 
   /vfile-message@4.0.3:
     resolution: {integrity: sha512-QTHzsGd1EhbZs4AsQ20JX1rC3cOlt/IWJruk893DfLRr57lcnOeMaWG4K0JrRta4mIJZKth2Au3mM3u03/JWKw==}

@@ -364,3 +364,56 @@ export type ListNodeByFrameArgs = Infer<typeof listByFrameArgs>;
 export type ConnectNodesArgs = Infer<typeof connectNodesArgs>;
 
 export type DisconnectNodesArgs = Infer<typeof disconnectNodesArgs>;
+
+const findDuplicateNodesArgs = v.object({
+    visionId: v.id("visions"),
+    value: v.string(),
+    variant: v.string(),
+    excludeNodeId: v.optional(v.id("nodes")),
+});
+
+export const findDuplicateNodes = query({
+    args: findDuplicateNodesArgs,
+    handler: async (ctx, args) => {
+        await requireVisionAccess(ctx, args.visionId);
+
+        let query = ctx.db
+            .query("nodes")
+            .withIndex("by_vision", (q) => q.eq("vision", args.visionId))
+            .filter((q) => 
+                q.and(
+                    q.eq(q.field("value"), args.value),
+                    q.eq(q.field("variant"), args.variant)
+                )
+            );
+
+        const duplicateNodes = await query.collect();
+
+        // Filter out the excluded node if provided
+        const filteredNodes = args.excludeNodeId 
+            ? duplicateNodes.filter(node => node._id !== args.excludeNodeId)
+            : duplicateNodes;
+
+        // Get channel info and user info for each node
+        const nodesWithChannelInfo = await Promise.all(
+            filteredNodes.map(async (node) => {
+                const channel = await ctx.db.get(node.channel);
+                const user = await ctx.db.get(node.userId);
+                return {
+                    ...node,
+                    channelTitle: channel?.title || "Unknown Channel",
+                    channelId: channel?._id,
+                    userName: user?.name || "Unknown User",
+                    userProfileImage: user?.picture || null,
+                };
+            })
+        );
+
+        // Sort by creation time (oldest first)
+        return nodesWithChannelInfo.sort((a, b) => 
+            new Date(a._creationTime).getTime() - new Date(b._creationTime).getTime()
+        );
+    },
+});
+
+export type FindDuplicateNodesArgs = Infer<typeof findDuplicateNodesArgs>;

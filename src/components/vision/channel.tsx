@@ -23,7 +23,6 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
 import { MultiUserSelector } from "@/components/ui/multi-user-selector";
 import { useNodeUserCache } from "@/hooks/useUserCache";
 import PasteBin from "../channel/paste-bin";
@@ -36,13 +35,34 @@ import {
 } from "../channel/channel-skeleton";
 import InfiniteScroll from 'react-infinite-scroll-component';
 import { Textarea } from "../ui/textarea";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "../ui/dialog";
+import {
+    Drawer,
+    DrawerContent,
+    DrawerDescription,
+    DrawerFooter,
+    DrawerHeader,
+    DrawerTitle,
+} from "../ui/drawer";
+import { Alert, AlertDescription } from "../ui/alert";
+import { AlertTriangle, Edit2, Trash2 } from "lucide-react";
+import { Button } from "../ui/button";
 
 export default function Channel({
     channelId,
     onOpenChat,
+    onChannelNavigate,
 }: {
     channelId: string;
     onOpenChat?: (chatId: string) => void;
+    onChannelNavigate?: (channelId: string, nodeId?: string) => void;
 }) {
     const [searchQuery, setSearchQuery] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -50,6 +70,10 @@ export default function Channel({
     const [selectedUsers, setSelectedUsers] = useState<string[]>(["all"]);
     const [sortBy, setSortBy] = useState("latest");
     const [isMobile, setIsMobile] = useState(false);
+    const [showMobileDrawer, setShowMobileDrawer] = useState(false);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [nodeToDelete, setNodeToDelete] = useState<any>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -81,6 +105,7 @@ export default function Channel({
 
     const createNode = useMutation(api.nodes.create);
     const updateChannel = useMutation(api.channels.update);
+    const deleteNode = useMutation(api.nodes.remove);
     const channel = useQuery(api.channels.get, {
         id: channelId as Id<"channels">,
     });
@@ -126,7 +151,7 @@ export default function Channel({
 
     // Pre-fetch unique users from nodes when data changes
     useEffect(() => {
-        if (storedNodes.length > 0) {
+        if (storedNodes && storedNodes.length > 0) {
             const userMap: Set<Id<"users">> = new Set();
             storedNodes.map((node) => {
                 if (!userMap.has(node.userId)) {
@@ -195,6 +220,44 @@ export default function Channel({
                 });
             }
         });
+    };
+
+    // Delete dialog functions
+    const showDeleteConfirmation = (node: any) => {
+        setNodeToDelete(node);
+        setShowDeleteDialog(true);
+        setShowMobileDrawer(false);
+    };
+
+    const confirmDelete = async () => {
+        if (!nodeToDelete) return;
+        setIsDeleting(true);
+        try {
+            await deleteNode({ id: nodeToDelete._id as Id<"nodes"> });
+            setShowDeleteDialog(false);
+            setNodeToDelete(null);
+        } catch (error) {
+            console.error('Failed to delete node:', error);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const cancelDelete = () => {
+        setShowDeleteDialog(false);
+        setNodeToDelete(null);
+        setIsDeleting(false);
+    };
+
+    // Mobile drawer functions
+    const showMobileDrawerForNode = (node: any) => {
+        setNodeToDelete(node);
+        setShowMobileDrawer(true);
+    };
+
+    const hideMobileDrawer = () => {
+        setShowMobileDrawer(false);
+        setNodeToDelete(null);
     };
 
     return (
@@ -468,7 +531,7 @@ export default function Channel({
             {/* Scrollable Nodes Content - This is the ONLY scrolling area */}
             <div className="overflow-hidden">
                 <div
-                    id="scrollableDiv"
+                    id={channelId}
                     ref={scrollContainerRef}
                     className={cn(
                         "flex h-full overflow-y-auto",
@@ -487,7 +550,7 @@ export default function Channel({
                         inverse={sortBy === "latest"}
                         hasMore={!isDone}
                         loader={<NodeListSkeleton count={1} />}
-                        scrollableTarget="scrollableDiv"
+                        scrollableTarget={channelId}
                     >
                         {storedNodes.length === 0 && !isLoadingNodes ? (
                             <div className={cn(
@@ -503,7 +566,15 @@ export default function Channel({
                                     const nodeUser = getUserForNode(node.userId);
                                     return (
                                         <div key={i}>
-                                            <ChannelNode node={node} nodeUser={nodeUser} onOpenChat={onOpenChat} />
+                                            <ChannelNode
+                                                node={node}
+                                                nodeUser={nodeUser}
+                                                onOpenChat={onOpenChat}
+                                                onChannelNavigate={onChannelNavigate}
+                                                onShowDeleteDialog={() => showDeleteConfirmation(node)}
+                                                onShowMobileDrawer={() => showMobileDrawerForNode(node)}
+                                                isMobile={isMobile}
+                                            />
                                         </div>
                                     );
                                 })}
@@ -515,11 +586,103 @@ export default function Channel({
             </div>
 
             {/* Fixed Paste Bin at Bottom */}
-            <PasteBin 
-                onCreateNode={handleNodeCreation} 
+            <PasteBin
+                onCreateNode={handleNodeCreation}
                 channelId={channelId}
-                visionId={channel?.vision || ""} 
+                visionId={channel?.vision || ""}
             />
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={showDeleteDialog} onOpenChange={(open) => {
+                if (!open) cancelDelete();
+            }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="w-5 h-5 text-red-500" />
+                            Delete Node
+                        </DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete this node?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Alert className="border-red-200 bg-red-50">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <AlertDescription className="text-red-800">
+                            <strong>Warning:</strong> This action cannot be undone. Deleting this node will permanently remove:
+                            <ul className="list-disc list-inside mt-2 space-y-1">
+                                <li>The node content and metadata</li>
+                                <li>All associated data</li>
+                            </ul>
+                        </AlertDescription>
+                    </Alert>
+                    <DialogFooter className="gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={cancelDelete}
+                            disabled={isDeleting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={confirmDelete}
+                            disabled={isDeleting}
+                        >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            {isDeleting ? 'Deleting...' : 'Delete Node'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Mobile Action Drawer */}
+            <Drawer open={showMobileDrawer} onOpenChange={hideMobileDrawer}>
+                <DrawerContent>
+                    <DrawerHeader>
+                        <DrawerTitle>Node Actions</DrawerTitle>
+                        <DrawerDescription className="text-sm truncate">
+                            {nodeToDelete?.value && nodeToDelete.value.length > 50
+                                ? `${nodeToDelete.value.substring(0, 50)}...`
+                                : nodeToDelete?.value || ''}
+                        </DrawerDescription>
+                    </DrawerHeader>
+
+                    <div className="p-4">
+                        <div className="flex gap-3">
+                            {nodeToDelete?.variant === 'text' && (
+                                <Button
+                                    variant="outline"
+                                    className="flex-1 flex items-center gap-2 h-12"
+                                    onClick={() => {
+                                        // TODO: Need to implement edit mode trigger
+                                        hideMobileDrawer();
+                                    }}
+                                    disabled
+                                >
+                                    <Edit2 size={16} />
+                                    Edit (Coming Soon)
+                                </Button>
+                            )}
+
+                            <Button
+                                variant="outline"
+                                className="flex-1 flex items-center gap-2 h-12"
+                                onClick={() => showDeleteConfirmation(nodeToDelete)}
+                            >
+                                <Trash2 size={16} />
+                                Delete
+                            </Button>
+                        </div>
+                    </div>
+
+                    <DrawerFooter>
+                        <Button variant="outline" onClick={hideMobileDrawer}>
+                            Cancel
+                        </Button>
+                    </DrawerFooter>
+                </DrawerContent>
+            </Drawer>
         </div>
     );
 }

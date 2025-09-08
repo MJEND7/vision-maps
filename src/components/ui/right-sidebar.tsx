@@ -5,11 +5,21 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs";
 import { ChatCard } from "../channel/metadata/ai/card";
 import { ChatInput } from "../ai/chat-input";
 import { ChatList } from "../ai/chat-list";
-import { Bot, MessageSquare } from "lucide-react";
+import { Bot, MessageSquare, AlertTriangle, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "./dialog";
+import { Button } from "./button";
+import { Alert, AlertDescription } from "./alert";
 
 interface RightSidebarContentProps {
     visionId: string;
@@ -25,6 +35,13 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
     const [selectedTab, setSelectedTab] = useState("ai");
     const [selectedChatId, setSelectedChatId] = useState<string>();
     const [drivenMessageIds, setDrivenMessageIds] = useState(new Set<string>());
+    
+    // Delete chat dialog state
+    const [deleteChatDialog, setDeleteChatDialog] = useState({
+        isOpen: false,
+        chatId: null as string | null,
+        chatTitle: ""
+    });
 
     // Fetch vision-specific chats from Convex
     const chats = useQuery(api.chats.listVisionChats, { visionId: visionId as Id<"visions"> });
@@ -62,16 +79,39 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
     };
 
     const handleDeleteChat = async (chatId: string) => {
+        const chat = transformedChats.find(c => c.id === chatId);
+        if (!chat) return;
+
+        setDeleteChatDialog({
+            isOpen: true,
+            chatId,
+            chatTitle: chat.title
+        });
+    };
+
+    const confirmChatDelete = async () => {
+        if (!deleteChatDialog.chatId) return;
+
         try {
-            await deleteChat({ chatId: chatId as Id<"chats"> });
+            await deleteChat({ chatId: deleteChatDialog.chatId as Id<"chats"> });
             
             // If we're currently viewing the deleted chat, go back to chat list
-            if (selectedChatId === chatId) {
+            if (selectedChatId === deleteChatDialog.chatId) {
                 setSelectedChatId(undefined);
             }
         } catch (error) {
             console.error("Failed to delete chat:", error);
+        } finally {
+            cancelChatDelete();
         }
+    };
+
+    const cancelChatDelete = () => {
+        setDeleteChatDialog({
+            isOpen: false,
+            chatId: null,
+            chatTitle: ""
+        });
     };
 
     const handleFocusInput = () => {
@@ -173,6 +213,50 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
                     </motion.div>
                 </TabsContent>
             </Tabs>
+
+            {/* Chat Deletion Confirmation Dialog */}
+            <Dialog open={deleteChatDialog.isOpen} onOpenChange={(open) => {
+                if (!open) cancelChatDelete();
+            }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="w-5 h-5 text-red-500" />
+                            Delete Chat
+                        </DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete the chat "{deleteChatDialog.chatTitle}"?
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <Alert className="border-red-200 bg-red-50">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <AlertDescription className="text-red-800">
+                            <strong>Warning:</strong> This action cannot be undone. Deleting this chat will permanently remove:
+                            <ul className="list-disc list-inside mt-2 space-y-1">
+                                <li>All messages in this conversation</li>
+                                <li>All AI responses and context</li>
+                            </ul>
+                        </AlertDescription>
+                    </Alert>
+
+                    <DialogFooter className="gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={cancelChatDelete}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={confirmChatDelete}
+                        >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete Chat
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 });
