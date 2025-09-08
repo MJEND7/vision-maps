@@ -255,7 +255,7 @@ export default function ChannelNode({
         if (!isMobile) return;
 
         longPressTimerRef.current = setTimeout(() => {
-            setShowMobileDrawer(true);
+            onShowMobileDrawer?.();
             // Add haptic feedback if available
             if (navigator.vibrate) {
                 navigator.vibrate(50);
@@ -280,7 +280,7 @@ export default function ChannelNode({
     const handleEdit = () => {
         setIsEditing(true);
         setEditValue(node.value);
-        setShowMobileDrawer(false);
+        // Close mobile drawer if it was open
         setTimeout(() => {
             textareaRef.current?.focus();
         }, 0);
@@ -292,9 +292,7 @@ export default function ChannelNode({
                 await updateNode({
                     id: node._id as Id<"nodes">,
                     value: editValue.trim(),
-                    height: node.height || 0,
-                    width: node.width || 0,
-                    weight: node.weight || 0,
+                    // Remove height, width, weight as they don't exist on NodeWithFrame type
                 });
             } catch (error) {
                 console.error('Failed to update node:', error);

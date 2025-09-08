@@ -9,6 +9,7 @@ import { Notifications } from "./tables/notifications";
 import { Chats } from "./tables/chats";
 import { Messages } from "./tables/messages";
 import { OGMetadata } from "./tables/ogMetadata";
+import { Edges } from "./tables/edges";
 
 // The schema is entirely optional.
 // You can delete this file (schema.ts) and the
@@ -20,6 +21,7 @@ export default defineSchema({
     channels: Channel.Table,
     frames: Frame.Table,
     nodes: Nodes.Table,
+    edges: Edges.Table,
     users: User.Table,
     comments: Comments.Table,
     notifications: Notifications.Table,

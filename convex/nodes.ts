@@ -3,34 +3,29 @@ import { v, Infer } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { getUserByIdenityId, requireAuth, requireVisionAccess } from "./utils/auth";
 import { paginationOptsValidator } from "convex/server";
+import { nodeChangeValidator, nodeValidator } from "./reactflow/types";
 
 // Args schemas
 const createArgs = v.object({
     frameId: v.optional(v.id("frames")),
     channel: v.id("channels"),
     title: v.string(),
-    height: v.optional(v.number()),
-    thought: v.optional(v.string()),
-    width: v.optional(v.number()),
-    weight: v.optional(v.number()),
     variant: v.string(),
     value: v.string(),
-    x: v.optional(v.number()),
-    y: v.optional(v.number()),
-    threads: v.optional(v.array(v.id("nodes"))),
+    thought: v.optional(v.string()),
+    core: nodeValidator(),
+    sourceNode: v.optional(v.object({
+        id: v.string(),
+        handlepos: v.optional(v.string()),
+    })),
 });
 
 const updateArgs = v.object({
     id: v.id("nodes"),
     title: v.optional(v.string()),
     variant: v.optional(v.string()),
-    height: v.number(),
     thought: v.optional(v.string()),
-    width: v.number(),
-    weight: v.number(),
     value: v.optional(v.string()),
-    x: v.optional(v.number()),
-    y: v.optional(v.number()),
     threads: v.optional(v.array(v.id("nodes"))),
 });
 
@@ -82,12 +77,7 @@ export const create = mutation({
             variant: args.variant,
             value: args.value,
             thought: args.thought,
-            threads: args.threads || [],
-            height: args.height,
-            width: args.width,
-            weight: args.weight,
-            x: args.x,
-            y: args.y,
+            core: args.core,
             frame: args.frameId,
             channel: channel._id,
             vision: channel.vision,
@@ -119,11 +109,6 @@ export const update = mutation({
         if (args.thought !== undefined) updates.thought = args.thought;
         if (args.variant !== undefined) updates.variant = args.variant;
         if (args.value !== undefined) updates.value = args.value;
-        if (args.height !== undefined) updates.height = args.height;
-        if (args.width !== undefined) updates.width = args.width;
-        if (args.weight !== undefined) updates.weight = args.weight;
-        if (args.x !== undefined) updates.x = args.x;
-        if (args.y !== undefined) updates.y = args.y;
         if (args.threads !== undefined) updates.threads = args.threads;
 
         await ctx.db.patch(args.id, updates);
@@ -142,21 +127,6 @@ export const remove = mutation({
             await requireVisionAccess(ctx, node.vision);
         }
 
-        const allNodes = await ctx.db
-            .query("nodes")
-            .withIndex("by_frame", (q) => q.eq("frame", node.frame))
-            .collect();
-
-        for (const otherNode of allNodes) {
-            if (otherNode.threads.includes(args.id)) {
-                const updatedThreads = otherNode.threads.filter((threadId) => threadId !== args.id);
-                await ctx.db.patch(otherNode._id, {
-                    threads: updatedThreads,
-                    updatedAt: new Date().toISOString(),
-                });
-            }
-        }
-
         await ctx.db.delete(args.id);
     },
 });
@@ -173,7 +143,8 @@ export const get = query({
             await requireVisionAccess(ctx, node.vision);
         }
 
-        return node;
+        const { core, ...nodeWithoutCore } = node;
+        return nodeWithoutCore;
     },
 });
 
@@ -194,72 +165,42 @@ export const listByFrame = query({
             .withIndex("by_frame", (q) => q.eq("frame", args.frameId))
             .collect();
 
-        return nodes;
+        return nodes.map(({ core, ...node }) => node);
     },
 });
 
-export const connectNodes = mutation({
-    args: connectNodesArgs,
+// New query for React Flow that includes core data
+export const listByFrameWithCore = query({
+    args: listByFrameArgs,
     handler: async (ctx, args) => {
-        const node = await ctx.db.get(args.nodeId);
-        const targetNode = await ctx.db.get(args.targetNodeId);
-
-        if (!node || !targetNode) {
-            throw new Error("Node not found");
+        const frame = await ctx.db.get(args.frameId);
+        if (!frame) {
+            throw new Error("Frame not found");
         }
 
-        if (node.vision) {
-            await requireVisionAccess(ctx, node.vision);
-        }
-        if (targetNode.vision) {
-            await requireVisionAccess(ctx, targetNode.vision);
+        if (frame.vision) {
+            await requireVisionAccess(ctx, frame.vision);
         }
 
-        if (!node.threads.includes(args.targetNodeId)) {
-            await ctx.db.patch(args.nodeId, {
-                threads: [...node.threads, args.targetNodeId],
-                updatedAt: new Date().toISOString(),
+        const nodes = await ctx.db
+            .query("nodes")
+            .withIndex("by_frame", (q) => q.eq("frame", args.frameId))
+            .collect();
+
+        // Return nodes with core data for React Flow
+        return nodes
+            .filter(node => node.core && node.core.id) // Only return nodes with valid core data
+            .map(node => {
+                const core = node.core!; // We know it exists from filter
+                return {
+                    ...core,
+                    id: core.id!, // Ensure id is defined
+                    position: core.position || { x: 0, y: 0 }, // Ensure position is defined
+                    width: core.width ?? undefined, // Convert null to undefined
+                    height: core.height ?? undefined, // Convert null to undefined
+                    data: { nodeId: node._id, title: node.title, variant: node.variant } // Add React Flow data
+                };
             });
-        }
-
-        if (!targetNode.threads.includes(args.nodeId)) {
-            await ctx.db.patch(args.targetNodeId, {
-                threads: [...targetNode.threads, args.nodeId],
-                updatedAt: new Date().toISOString(),
-            });
-        }
-    },
-});
-
-export const disconnectNodes = mutation({
-    args: disconnectNodesArgs,
-    handler: async (ctx, args) => {
-        const node = await ctx.db.get(args.nodeId);
-        const targetNode = await ctx.db.get(args.targetNodeId);
-
-        if (!node || !targetNode) {
-            throw new Error("Node not found");
-        }
-
-        if (node.vision) {
-            await requireVisionAccess(ctx, node.vision);
-        }
-        if (targetNode.vision) {
-            await requireVisionAccess(ctx, targetNode.vision);
-        }
-
-        const updatedNodeThreads = node.threads.filter((id) => id !== args.targetNodeId);
-        const updatedTargetThreads = targetNode.threads.filter((id) => id !== args.nodeId);
-
-        await ctx.db.patch(args.nodeId, {
-            threads: updatedNodeThreads,
-            updatedAt: new Date().toISOString(),
-        });
-
-        await ctx.db.patch(args.targetNodeId, {
-            threads: updatedTargetThreads,
-            updatedAt: new Date().toISOString(),
-        });
     },
 });
 
@@ -335,8 +276,9 @@ export const listByChannel = query({
                     const frame = await ctx.db.get(node.frame as Id<"frames">);
                     frameTitle = frame?.title || null;
                 }
+                const { core, ...nodeWithoutCore } = node;
                 return {
-                    ...node,
+                    ...nodeWithoutCore,
                     frameTitle,
                 };
             })
@@ -399,8 +341,9 @@ export const findDuplicateNodes = query({
             filteredNodes.map(async (node) => {
                 const channel = await ctx.db.get(node.channel);
                 const user = await ctx.db.get(node.userId);
+                const { core, ...nodeWithoutCore } = node;
                 return {
-                    ...node,
+                    ...nodeWithoutCore,
                     channelTitle: channel?.title || "Unknown Channel",
                     channelId: channel?._id,
                     userName: user?.name || "Unknown User",

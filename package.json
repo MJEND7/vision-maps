@@ -9,7 +9,8 @@
     "predev": "convex dev --until-success && convex dashboard",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit --pretty"
   },
   "dependencies": {
     "@clerk/backend": "^2.9.4",
@@ -27,6 +28,7 @@
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@sinm/react-chrome-tabs": "^2.6.1",
+    "@types/lodash.debounce": "^4.0.9",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@uploadthing/react": "^7.3.3",
     "@xyflow/react": "^12.8.4",
@@ -35,6 +37,7 @@
     "cmdk": "^1.1.1",
     "convex": "^1.23.0",
     "gsap": "^3.13.0",
+    "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.539.0",
     "motion": "^12.23.12",
     "next": "15.2.3",

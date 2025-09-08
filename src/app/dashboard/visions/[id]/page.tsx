@@ -593,7 +593,7 @@ function VisionDetailPageContent() {
                         )}
                         {tab.type === ViewMode.FRAME && (
                             <FrameComponent
-                                id={tab.id}
+                                id={tab.id as Id<"frames">}
                             />
                         )}
                         {tab.type === ViewMode.SETTINGS && (

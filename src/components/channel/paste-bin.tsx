@@ -739,25 +739,9 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
         return (isTextMode || isAiMode) && !!textContent.trim();
     }, [media, isLoadingLinkMeta, isTextMode, isAiMode, textContent, isUploading]);
 
-    // const getDisplayName = useCallback(() => {
-    //     if (media) {
-    //         if (media.type === NodeVariants.Text) {
-    //             return media.customName || media.title || "Text note";
-    //         }
-    //         if (media.type === NodeVariants.AI) {
-    //             return "AI Assistant";
-    //         }
-    //         return media.fileName || media.title || "Unnamed item";
-    //     }
-    //     if (isLoadingLinkMeta) {
-    //         return "Loading metadata...";
-    //     }
-    //     return "";
-    // }, [media, isLoadingLinkMeta]);
-
     return (
         <div
-            className={`absolute inset-x-0 bottom-8 w-full max-w-xs sm:max-w-lg mx-auto`}
+            className={`absolute inset-x-0 bottom-10 w-full max-w-xs sm:max-w-lg mx-auto`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}

@@ -10,6 +10,7 @@
 
 import type * as channels from "../channels.js";
 import type * as chats from "../chats.js";
+import type * as edges from "../edges.js";
 import type * as frames from "../frames.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
@@ -17,9 +18,11 @@ import type * as nodes from "../nodes.js";
 import type * as notifications from "../notifications.js";
 import type * as ogMetadata from "../ogMetadata.js";
 import type * as presence from "../presence.js";
+import type * as reactflow_types from "../reactflow/types.js";
 import type * as tables_channel from "../tables/channel.js";
 import type * as tables_chats from "../tables/chats.js";
 import type * as tables_comments from "../tables/comments.js";
+import type * as tables_edges from "../tables/edges.js";
 import type * as tables_frame from "../tables/frame.js";
 import type * as tables_messages from "../tables/messages.js";
 import type * as tables_nodes from "../tables/nodes.js";
@@ -50,6 +53,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   channels: typeof channels;
   chats: typeof chats;
+  edges: typeof edges;
   frames: typeof frames;
   http: typeof http;
   messages: typeof messages;
@@ -57,9 +61,11 @@ declare const fullApi: ApiFromModules<{
   notifications: typeof notifications;
   ogMetadata: typeof ogMetadata;
   presence: typeof presence;
+  "reactflow/types": typeof reactflow_types;
   "tables/channel": typeof tables_channel;
   "tables/chats": typeof tables_chats;
   "tables/comments": typeof tables_comments;
+  "tables/edges": typeof tables_edges;
   "tables/frame": typeof tables_frame;
   "tables/messages": typeof tables_messages;
   "tables/nodes": typeof tables_nodes;
