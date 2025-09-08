@@ -49,7 +49,8 @@ export const listMessagesByChat = query({
         // Verify user owns the chat
         const chat = await ctx.db.get(args.chatId);
         if (!chat) {
-            throw new Error("Chat not found");
+            // Return empty result instead of throwing error for deleted chats
+            return { page: [], isDone: true, continueCursor: "" };
         }
 
         if (chat.userId !== identity.userId.toString()) {

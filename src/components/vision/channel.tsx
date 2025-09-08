@@ -27,7 +27,6 @@ import { Button } from "@/components/ui/button";
 import { MultiUserSelector } from "@/components/ui/multi-user-selector";
 import { useNodeUserCache } from "@/hooks/useUserCache";
 import PasteBin from "../channel/paste-bin";
-import { UserResource } from "@clerk/types";
 import { CreateNodeArgs } from "../../../convex/nodes";
 import { NODE_VARIANTS } from "@/lib/constants";
 import ChannelNode from "../channel/node";
@@ -40,11 +39,9 @@ import { Textarea } from "../ui/textarea";
 
 export default function Channel({
     channelId,
-    user,
     onOpenChat,
 }: {
     channelId: string;
-    user: UserResource;
     onOpenChat?: (chatId: string) => void;
 }) {
     const [searchQuery, setSearchQuery] = useState("");
@@ -518,7 +515,11 @@ export default function Channel({
             </div>
 
             {/* Fixed Paste Bin at Bottom */}
-            <PasteBin onCreateNode={handleNodeCreation} user={user} />
+            <PasteBin 
+                onCreateNode={handleNodeCreation} 
+                channelId={channelId}
+                visionId={channel?.vision || ""} 
+            />
         </div>
     );
 }

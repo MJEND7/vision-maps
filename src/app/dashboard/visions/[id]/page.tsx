@@ -589,7 +589,7 @@ function VisionDetailPageContent() {
                         className={cn("h-full", selectedTab?.id !== tab.id && "hidden")}
                     >
                         {tab.type === ViewMode.CHANNEL && user && (
-                            <Channel user={user} channelId={tab.id} onOpenChat={handleOpenChat} />
+                            <Channel channelId={tab.id} onOpenChat={handleOpenChat} />
                         )}
                         {tab.type === ViewMode.FRAME && (
                             <FrameComponent />
@@ -827,6 +827,46 @@ function VisionDetailPageContent() {
             rightSidebarContentRef.current?.openChat(chatId);
         }, 500)
     }, [isMobile]);
+
+    const handleChannelNavigate = useCallback((channelId: string, nodeId?: string) => {
+        // Close right sidebar on mobile
+        if (isMobile) {
+            setSidebarState(prev => ({ ...prev, rightOpen: false }));
+        }
+        
+        const channelTitle = channels?.find(c => c._id === channelId)?.title || "Channel";
+        
+        // Open the channel tab
+        const tabData = { title: channelTitle, id: channelId, type: ViewMode.CHANNEL };
+        setTabs((t) => {
+            const newMap = new Map(t);
+            newMap.set(channelId, tabData);
+            return newMap;
+        });
+        setTabOrder(prev => {
+            // Remove existing tab if present
+            const filtered = prev.filter(tab => tab.id !== channelId);
+            const newOrder = [...filtered, tabData];
+            if (newOrder.length > 10) {
+                const tabToRemove = newOrder[0];
+                setTabs((currentTabs) => {
+                    const updatedTabs = new Map(currentTabs);
+                    updatedTabs.delete(tabToRemove.id);
+                    return updatedTabs;
+                });
+                return newOrder.slice(1);
+            }
+            return newOrder;
+        });
+        setSelectedTab(tabData);
+        
+        // If we have a nodeId, we could implement scrolling to that specific node
+        if (nodeId) {
+            // Store the target node for highlighting/scrolling
+            // This could be enhanced with a ref callback system
+            console.log(`Navigate to node ${nodeId} in channel ${channelId}`);
+        }
+    }, [isMobile, channels]);
 
     const removeTab = (id: string) => {
         setTabs((currentTabs) => {
@@ -1174,7 +1214,11 @@ function VisionDetailPageContent() {
                                 </div>
 
                                 <div className="flex-1 min-h-0">
-                                    <RightSidebarContent ref={rightSidebarContentRef} visionId={visionId} />
+                                    <RightSidebarContent 
+                                        ref={rightSidebarContentRef} 
+                                        visionId={visionId} 
+                                        onChannelNavigate={handleChannelNavigate}
+                                    />
                                 </div>
                             </motion.div>
                         )}
@@ -1202,7 +1246,11 @@ function VisionDetailPageContent() {
                             </div>
 
                             <div className="flex-1 min-h-0">
-                                <RightSidebarContent ref={rightSidebarContentRef} visionId={visionId} />
+                                <RightSidebarContent 
+                                    ref={rightSidebarContentRef} 
+                                    visionId={visionId} 
+                                    onChannelNavigate={handleChannelNavigate}
+                                />
                             </div>
 
                             <Button

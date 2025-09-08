@@ -21,6 +21,7 @@ import { VisionTableSkeleton, VisionGridSkeleton } from '@/components/vision-ske
 import ProfileNav from '@/components/profile/ProfileNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser } from '@clerk/nextjs';
+import { truncate } from '@/utils/string';
 
 export default function SheetsPage() {
     const router = useRouter();
@@ -177,7 +178,7 @@ export default function SheetsPage() {
                 <ProfileNav />
             </div>
 
-            <main className="max-w-7xl space-y-5 mx-auto p-4">
+            <main className="max-w-7xl space-y-5 mx-auto px-4 pb-8 pt-4">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -198,8 +199,8 @@ export default function SheetsPage() {
                     </div>
                 </motion.div>
 
-                <div className="sm:w-auto w-full flex gap-2">
-                    <div className="relative flex-1 sm:w-[300px]">
+                <div className="sm:w-auto sm:items-center sm:justify-end w-full flex gap-2">
+                    <div className="relative w-full sm:w-[300px]">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
                         <Input
                             type="text"
@@ -210,7 +211,7 @@ export default function SheetsPage() {
                         />
                     </div>
 
-                    <div className="flex items-center border border-border h-[40px] sm:h-[32px] rounded-md">
+                    <div className="flex items-center border border-border h-[40px] rounded-md">
                         <button
                             onClick={() => setLocalViewMode("grid")}
                             className={`h-full w-10 flex items-center justify-center rounded-l-sm transition-colors ${viewMode === "grid"
@@ -233,7 +234,7 @@ export default function SheetsPage() {
 
                     <Popover>
                         <PopoverTrigger asChild>
-                            <button className="flex items-center justify-center h-[40px] sm:h-[32px] w-[40px] sm:w-[32px] border border-border rounded-md hover:bg-accent/50 transition-colors">
+                            <button className="flex items-center justify-center h-[40px] w-[40px] border border-border rounded-md hover:bg-accent/50 transition-colors">
                                 <Filter size={16} />
                             </button>
                         </PopoverTrigger>
@@ -292,7 +293,7 @@ export default function SheetsPage() {
                                         }
                                         style={{ backgroundImage: `url(${vision.banner})` }}
                                         className="group relative flex h-[200px] items-center justify-center 
-             hover:shadow-inner rounded-t-3xl bg-cover bg-center"
+         hover:shadow-inner rounded-t-3xl bg-cover bg-center"
                                     >
                                         <div className="bg-background text-primary p-1 rounded-lg absolute right-5 top-5 transition-all duration-300 ease-in-out opacity-0 invisible group-hover:opacity-100 group-hover:visible">
                                             <Scan size={18} />
@@ -307,15 +308,10 @@ export default function SheetsPage() {
                                             <Map size={15} />
                                         </div>
                                         <div className="w-full">
-                                            <div className="flex justify-between items-start">
-                                                <div className='w-full'>
-                                                    <p className="text-sm sm:text-md text-primary">
-                                                        {vision.title || 'No description provided.'}
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {vision.description || 'No description provided.'}
-                                                    </p>
-                                                </div>
+                                            <div className="flex gap-2 items-start">
+                                                <p className="flex-1 text-sm sm:text-md text-primary truncate min-w-0">
+                                                    {vision.title || 'No description provided.'}
+                                                </p>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
                                                         <button
@@ -348,6 +344,9 @@ export default function SheetsPage() {
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </div>
+                                            <p className="text-xs text-muted-foreground">
+                                                {truncate(vision.description || 'No description provided.', 38)}
+                                            </p>
                                             <div className="flex items-center justify-between">
                                                 <p className="text-xs text-primary/30">
                                                     Updated {timeSinceFromDateString(new Date(vision.updatedAt) || new Date())}

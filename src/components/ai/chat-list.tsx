@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Plus, MessageCircle } from "lucide-react";
+import { Plus, MessageCircle, Hash, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -10,6 +10,15 @@ interface Chat {
   title: string;
   lastMessage?: string;
   updatedAt: Date;
+  channel?: {
+    _id: string;
+    title: string;
+  } | null;
+  node?: {
+    _id: string;
+    title: string;
+    channelId: string;
+  } | null;
 }
 
 interface ChatListProps {
@@ -17,10 +26,26 @@ interface ChatListProps {
   selectedChatId?: string;
   onChatSelect: (chatId: string) => void;
   onNewChat: () => void;
+  onChannelNavigate?: (channelId: string, nodeId?: string) => void;
+  onDeleteChat?: (chatId: string) => void;
   className?: string;
 }
 
-export function ChatList({ chats, selectedChatId, onChatSelect, onNewChat, className }: ChatListProps) {
+export function ChatList({ chats, selectedChatId, onChatSelect, onNewChat, onChannelNavigate, onDeleteChat, className }: ChatListProps) {
+  
+  const handleChannelClick = (e: React.MouseEvent, channelId: string, nodeId?: string) => {
+    e.stopPropagation();
+    if (onChannelNavigate) {
+      onChannelNavigate(channelId, nodeId);
+    }
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, chatId: string) => {
+    e.stopPropagation();
+    if (onDeleteChat && confirm('Are you sure you want to delete this chat?')) {
+      onDeleteChat(chatId);
+    }
+  };
   return (
     <div className={cn("flex flex-col h-full", className)}>
       <div className="flex items-center justify-between p-3 border-b">
@@ -62,7 +87,34 @@ export function ChatList({ chats, selectedChatId, onChatSelect, onNewChat, class
                 )}
               >
                 <div className="flex flex-col gap-1">
-                  <span className="text-sm font-medium truncate">{chat.title}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium truncate flex-1">{chat.title}</span>
+                    <div className="flex items-center gap-1">
+                      {(chat.channel || chat.node) && (
+                        <button
+                          onClick={(e) => handleChannelClick(
+                            e,
+                            chat.channel?._id || chat.node?.channelId || '',
+                            chat.node?._id
+                          )}
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-1 py-0.5 rounded hover:bg-background/50"
+                          title="Go to channel"
+                        >
+                          <Hash className="w-3 h-3" />
+                          <span className="truncate max-w-16">
+                            {chat.channel?.title || 'Channel'}
+                          </span>
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => handleDeleteClick(e, chat.id)}
+                        className="text-muted-foreground hover:text-red-500 transition-colors p-1 rounded hover:bg-red-500/10"
+                        title="Delete chat"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
                   {chat.lastMessage && (
                     <span className="text-xs text-muted-foreground truncate">
                       {chat.lastMessage}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useImperativeHandle, forwardRef } from "react";
+import { useState, useImperativeHandle, forwardRef, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs";
 import { ChatCard } from "../channel/metadata/ai/card";
 import { ChatInput } from "../ai/chat-input";
@@ -12,7 +12,8 @@ import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 
 interface RightSidebarContentProps {
-    visionId?: string;
+    visionId: string;
+    onChannelNavigate?: (channelId: string, nodeId?: string) => void;
 }
 
 export interface RightSidebarContentRef {
@@ -20,20 +21,22 @@ export interface RightSidebarContentRef {
 }
 
 export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSidebarContentProps>(
-    function RightSidebarContent({}, ref) {
+    function RightSidebarContent({ visionId, onChannelNavigate }, ref) {
     const [selectedTab, setSelectedTab] = useState("ai");
     const [selectedChatId, setSelectedChatId] = useState<string>();
     const [drivenMessageIds, setDrivenMessageIds] = useState(new Set<string>());
 
-    // Fetch user chats from Convex
-    const chats = useQuery(api.chats.listUserChats, {});
+    // Fetch vision-specific chats from Convex
+    const chats = useQuery(api.chats.listVisionChats, { visionId: visionId as Id<"visions"> });
     const createChat = useMutation(api.chats.createChat);
+    const deleteChat = useMutation(api.chats.deleteChat);
     const sendMessage = useMutation(api.messages.sendMessage);
 
     const handleNewChat = async () => {
         try {
             const newChatId = await createChat({
-                title: `New Chat ${(chats?.length || 0) + 1}`
+                title: `New Chat ${(chats?.length || 0) + 1}`,
+                visionId: visionId as Id<"visions">
             });
 
             if (newChatId) {
@@ -58,9 +61,30 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
         }
     };
 
+    const handleDeleteChat = async (chatId: string) => {
+        try {
+            await deleteChat({ chatId: chatId as Id<"chats"> });
+            
+            // If we're currently viewing the deleted chat, go back to chat list
+            if (selectedChatId === chatId) {
+                setSelectedChatId(undefined);
+            }
+        } catch (error) {
+            console.error("Failed to delete chat:", error);
+        }
+    };
+
     const handleFocusInput = () => {
         // Handle focus input - could be used for stopping streaming
     };
+
+    // Check if currently selected chat still exists
+    useEffect(() => {
+        if (selectedChatId && chats && !chats.some(chat => chat._id === selectedChatId)) {
+            // Currently selected chat no longer exists, go back to chat list
+            setSelectedChatId(undefined);
+        }
+    }, [chats, selectedChatId]);
 
     // Expose the open chat function via ref
     useImperativeHandle(ref, () => ({
@@ -77,7 +101,9 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
         id: chat._id,
         title: chat.title,
         lastMessage: undefined, // Could be populated with latest message if needed
-        updatedAt: new Date(chat._creationTime)
+        updatedAt: new Date(chat._creationTime),
+        channel: chat.channel,
+        node: chat.node
     }));
 
     return (
@@ -101,6 +127,8 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
                             selectedChatId={selectedChatId}
                             onChatSelect={setSelectedChatId}
                             onNewChat={handleNewChat}
+                            onChannelNavigate={onChannelNavigate}
+                            onDeleteChat={handleDeleteChat}
                             className="flex-1"
                         />
                     ) : (

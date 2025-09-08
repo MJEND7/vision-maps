@@ -16,7 +16,6 @@ import { usePasteBinState, pasteBinStorage, type StoredLinkMeta, type StoredMedi
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
-import { UserResource } from "@clerk/types";
 import { CreateNodeArgs } from "../../../convex/nodes";
 import { NodeVariants } from "../../../convex/tables/nodes";
 import { useOGMetadataWithCache } from "@/utils/ogMetadata";
@@ -113,7 +112,11 @@ interface Media {
     chatId?: string;
 }
 
-export default function PasteBin({ onCreateNode }: { user: UserResource, onCreateNode: (data: Omit<CreateNodeArgs, "channel">) => void }) {
+export default function PasteBin({ onCreateNode, channelId, visionId }: { 
+    onCreateNode: (data: Omit<CreateNodeArgs, "channel">) => void,
+    channelId: string,
+    visionId: string
+}) {
     // State management with reducer
     const { state, actions } = usePasteBinState();
     const { isDragOver, isLoadingLinkMeta, imageLoaded } = state;
@@ -348,13 +351,15 @@ export default function PasteBin({ onCreateNode }: { user: UserResource, onCreat
 
     const newChat = useCallback(async (title: string) => {
         const chatId = await createChat({
-            title
+            title,
+            visionId: visionId as Id<"visions">,
+            channelId: channelId as Id<"channels">
         });
 
         updateChatId(chatId);
 
         return chatId
-    }, [createChat, updateChatId]);
+    }, [createChat, updateChatId, visionId, channelId]);
 
     const updateIsAiMode = useCallback((aiModeValue: boolean) => {
         setIsAiMode(aiModeValue);
