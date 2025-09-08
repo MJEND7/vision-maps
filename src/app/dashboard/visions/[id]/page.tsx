@@ -1,12 +1,12 @@
 "use client";
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { DraggableTabs } from '@/components/ui/draggable-tabs';
 import { DraggableSidebar } from '@/components/ui/draggable-sidebar';
 import { PresenceFacePile } from '@/components/ui/face-pile';
 import { RightSidebarContent, RightSidebarContentRef } from '@/components/ui/right-sidebar';
 import { Button } from '@/components/ui/button';
-import { ChevronsDownUp, Frame, Settings, TableProperties, ChevronLeft, ChevronRight, ListTree, PanelRight, PanelRightClose } from 'lucide-react';
+import { ChevronsDownUp, Frame, Settings, TableProperties, ChevronLeft, ChevronRight, ListTree, PanelRight, PanelRightClose, ArrowLeft } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import FrameComponent from '@/components/vision/frame';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -54,6 +54,8 @@ function TitleCard({ isLoading, vision, OpenSettings, className }: {
     OpenSettings: (id: string) => void,
     className?: string
 }) {
+    const router = useRouter();
+
     if (isLoading || !vision) {
         return (
             <div className={className}>
@@ -61,20 +63,34 @@ function TitleCard({ isLoading, vision, OpenSettings, className }: {
         )
     }
 
+    const handleBackNavigation = () => {
+        router.push('/dashboard/visions');
+    };
+
     return (
-        <div className={cn('w-full flex flex-col gap-1 p-4', className)}>
+        <div className={cn('w-full space-y-2 pb-2 pt-4 px-4', className)}>
             <div className="w-full flex justify-between items-center">
-                <h1 className="flex gap-1 items-center text-left text-lg font-semibold">
-                    {vision?.title}
-                </h1>
-                <button onClick={() => OpenSettings(vision._id.toString())} className="hover:bg-accent rounded p-1 transition-colors">
+                <button
+                    onClick={handleBackNavigation}
+                    className="text-sm flex items-center gap-1"
+                    title="Back to visions"
+                >
+                    <ArrowLeft size={18} className="mb-[1px]" />
+                    Back
+                </button>
+                <button onClick={() => OpenSettings(vision._id.toString())} className="hover:rotate-180  rounded p-1 transition-all ease-in-out duration-500">
                     <Settings size={18} />
                 </button>
             </div>
-            <h2 className="text-left text-xs text-muted-foreground truncate">
-                {vision?.description || "No description provided"}
-            </h2>
-        </div>
+            <div className="space-y-1">
+                <h1 className="flex gap-1 items-center text-left text-lg font-semibold">
+                    {vision?.title}
+                </h1>
+                <h2 className="text-left text-xs text-muted-foreground truncate">
+                    {vision?.description || "No description provided"}
+                </h2>
+            </div>
+        </div >
     )
 }
 
@@ -806,7 +822,7 @@ function VisionDetailPageContent() {
             rightOpen: isMobile ? true : prev.rightOpen
         }));
         // Open the chat via ref
-    
+
         setTimeout(() => {
             rightSidebarContentRef.current?.openChat(chatId);
         }, 500)
@@ -863,8 +879,8 @@ function VisionDetailPageContent() {
     };
 
     return (
-        <NodeUserCacheProvider visionId={visionId}>
-            <main className="h-screen flex relative">
+        <main className="w-screen h-screen flex relative bg-accent">
+            <NodeUserCacheProvider visionId={visionId}>
                 {isMobile && (
                     <motion.div
                         ref={mobileHeaderRef}
@@ -1217,8 +1233,8 @@ function VisionDetailPageContent() {
                         <ChevronLeft className="w-3 h-3" />
                     </Button>
                 )}
-            </main>
-        </NodeUserCacheProvider>
+            </NodeUserCacheProvider >
+        </main>
     );
 }
 

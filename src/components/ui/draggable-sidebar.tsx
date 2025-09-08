@@ -2,7 +2,7 @@
 
 import { motion, Reorder, useDragControls, AnimatePresence } from "motion/react";
 import { ChevronRight, Frame, GripVertical, Plus } from "lucide-react";
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState, useEffect } from "react";
 
 interface Channel {
     _id: string;
@@ -91,6 +91,17 @@ function DraggableChannel({
     const dragControls = useDragControls();
     const currentFrameOrder = useRef<string[]>([]);
     const frameSyncTimeout = useRef<NodeJS.Timeout | null>(null);
+    const [isMobile, setIsMobile] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     const handleFrameReorder = useCallback((reorderedFrames: FrameItem[]) => {
         const frameIds = reorderedFrames.map(f => f._id);
@@ -115,19 +126,35 @@ function DraggableChannel({
             value={channel}
             dragListener={false}
             dragControls={dragControls}
+            onDragStart={() => setIsDragging(true)}
+            onDragEnd={() => setIsDragging(false)}
         >
-            <div>
-                <div className="flex justify-between items-center gap-1 p-1">
+            <motion.div
+                animate={{
+                    scale: isDragging ? 1.02 : 1,
+                    boxShadow: isDragging ? "0 8px 25px rgba(0, 0, 0, 0.15)" : "0 0px 0px rgba(0, 0, 0, 0)"
+                }}
+                transition={{ duration: 0.2 }}
+            >
+                <div className={`flex justify-between items-center gap-1 p-1 ${isDragging ? 'bg-accent/50 rounded-md' : ''}`}>
                     <div
                         className={`${isSelected ? "bg-accent text-primary" : "hover:text-primary text-muted-foreground"} 
                         rounded-md text-xs flex items-center transition-colors group ease-in-out w-full text-left px-1`}
                     >
                         <motion.div
-                            onPointerDown={(e) => dragControls.start(e)}
-                            className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/80"
+                            onPointerDown={(e) => {
+                                e.preventDefault();
+                                dragControls.start(e);
+                            }}
+                            className={`cursor-grab active:cursor-grabbing transition-all text-muted-foreground/80 ${
+                                isMobile 
+                                    ? 'opacity-100 p-2 -m-1 mr-1 hover:bg-accent/50 rounded' 
+                                    : 'opacity-0 group-hover:opacity-100 transition-opacity'
+                            }`}
                             whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.95 }}
                         >
-                            <GripVertical size={15} />
+                            <GripVertical size={isMobile ? 16 : 15} />
                         </motion.div>
 
                         <button onClick={onToggle} className="p-0.5">
@@ -167,9 +194,11 @@ function DraggableChannel({
 
                     <button
                         onClick={onCreateFrame}
-                        className="text-muted-foreground hover:text-primary"
+                        className={`text-muted-foreground hover:text-primary transition-colors ${
+                            isMobile ? 'p-2 -m-1 hover:bg-accent/50 rounded' : ''
+                        }`}
                     >
-                        <Plus size={15} />
+                        <Plus size={isMobile ? 16 : 15} />
                     </button>
                 </div>
 
@@ -207,7 +236,7 @@ function DraggableChannel({
                         </motion.div>
                     )}
                 </AnimatePresence>
-            </div>
+            </motion.div>
         </Reorder.Item>
     );
 }
@@ -234,23 +263,49 @@ function DraggableFrame({
     onNameChange: (name: string) => void;
 }) {
     const dragControls = useDragControls();
+    const [isMobile, setIsMobile] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     return (
         <Reorder.Item
             value={frame}
             dragListener={false}
             dragControls={dragControls}
-            className={`${isSelected ? "bg-accent text-primary" : "text-muted-foreground/80 hover:text-primary"} 
-            p-1 rounded-md flex items-center group`}
+            onDragStart={() => setIsDragging(true)}
+            onDragEnd={() => setIsDragging(false)}
         >
             <motion.div
-                onPointerDown={(e) => dragControls.start(e)}
-                className="cursor-grab active:cursor-grabbing p-0.5 mr-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                whileHover={{ scale: 1.1 }}
+                className={`${isSelected ? "bg-accent text-primary" : "text-muted-foreground/80 hover:text-primary"} 
+                p-1 flex items-center group`}
+                animate={{
+                    scale: isDragging ? 1.02 : 1,
+                }}
+                transition={{ duration: 0.2 }}
             >
-
-                <GripVertical size={15} />
-            </motion.div>
+                <motion.div
+                    onPointerDown={(e) => {
+                        e.preventDefault();
+                        dragControls.start(e);
+                    }}
+                    className={`cursor-grab active:cursor-grabbing mr-1 transition-all ${
+                        isMobile 
+                            ? 'opacity-100 p-1.5 -m-0.5 hover:bg-accent/50 rounded' 
+                            : 'opacity-0 group-hover:opacity-100 transition-opacity p-0.5'
+                    }`}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                >
+                    <GripVertical size={isMobile ? 14 : 15} />
+                </motion.div>
 
             {isEditing ? (
                 <div
@@ -283,6 +338,7 @@ function DraggableFrame({
                     {frame.title}
                 </button>
             )}
+            </motion.div>
         </Reorder.Item>
     );
 }

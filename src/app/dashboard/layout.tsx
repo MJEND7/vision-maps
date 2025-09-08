@@ -22,7 +22,7 @@ export default function ProfileLayout({
 
     return (
         <ProfileUserProvider user={user}>
-            <div className="h-full min-h-screen bg-background">
+            <div className="h-full min-h-screen">
                 {children}
             </div>
         </ProfileUserProvider>

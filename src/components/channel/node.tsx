@@ -250,7 +250,7 @@ export default function ChannelNode({
                     </div>
 
                     {/* Render content based on node variant */}
-                    <div className="w-[calc(100vw-5rem)] sm:w-auto sm:min-w-[600px]">
+                    <div className="w-[calc(100vw-5rem)] max-w-[40rem] sm:w-auto sm:min-w-[40rem]">
                         {renderNodeContent(node, onOpenChat)}
                     </div>
                 </div>

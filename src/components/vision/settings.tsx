@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { useUploadThing } from "@/utils/uploadthing";
 import { Camera, Search, MoreVertical, Crown, Edit2, UserPlus, X, Upload, ImageIcon, Trash2, Save, AlertTriangle, TableProperties, Frame, Filter, ChevronDown, Check } from "lucide-react";
@@ -25,11 +26,11 @@ interface SettingsComponentProps {
     onFramesDeleted?: (frameIds: string[]) => void;
 }
 
-export default function SettingsComponent({ 
-    id, 
-    onChannelDeleted, 
-    onFrameDeleted, 
-    onFramesDeleted 
+export default function SettingsComponent({
+    id,
+    onChannelDeleted,
+    onFrameDeleted,
+    onFramesDeleted
 }: SettingsComponentProps) {
     const [searchTerm, setSearchTerm] = useState("");
     const [isEditing, setIsEditing] = useState(false);
@@ -192,10 +193,10 @@ export default function SettingsComponent({
                 id: deleteChannelDialog.channel._id as Id<"channels">
             });
             toast.success(`Channel "${deleteChannelDialog.channel.title}" deleted successfully!`);
-            
+
             // Close tabs for the deleted channel
             onChannelDeleted?.(deleteChannelDialog.channel._id);
-            
+
             setDeleteChannelDialog({ isOpen: false, channel: null });
         } catch (error) {
             toast.error("Failed to delete channel: " + (error as Error).message);
@@ -234,20 +235,20 @@ export default function SettingsComponent({
     const confirmFramesDelete = async () => {
         try {
             const frameIds = deleteFramesDialog.frames.map(f => f._id);
-            
+
             for (const frame of deleteFramesDialog.frames) {
                 await deleteFrame({ id: frame._id as Id<"frames"> });
             }
-            
+
             toast.success(`${deleteFramesDialog.frames.length} frame(s) deleted successfully!`);
-            
+
             // Close tabs for deleted frames
             if (frameIds.length === 1) {
                 onFrameDeleted?.(frameIds[0]);
             } else {
                 onFramesDeleted?.(frameIds);
             }
-            
+
             setSelectedFrames(new Set());
             setDeleteFramesDialog({ isOpen: false, frames: [] });
         } catch (error) {
@@ -432,7 +433,7 @@ export default function SettingsComponent({
                         <Textarea
                             value={descriptionValue}
                             onChange={(e) => setDescriptionValue(e.target.value)}
-                            className="text-sm w-full p-3 border rounded-lg resize-none"
+                            className="w-full p-3 border rounded-lg resize-none"
                             rows={3}
                             placeholder="Describe your vision..."
                             onKeyDown={(e) => {
@@ -440,7 +441,7 @@ export default function SettingsComponent({
                             }}
                         />
                     ) : (
-                        <div className="px-3 py-2 rounded-lg border min-h-[80px] flex items-start">
+                        <div className="p-3 rounded-lg border min-h-[80px] flex items-start">
                             <span className="text-sm text-primary/80">
                                 {vision.description || "Add a description..."}
                             </span>
@@ -477,8 +478,8 @@ export default function SettingsComponent({
                     <button
                         onClick={() => setActiveTab("frames")}
                         className={`flex items-center gap-1 px-3 py-2 rounded-md text-xs font-medium transition-colors ${activeTab === "frames"
-                                ? "bg-background text-foreground shadow-sm"
-                                : "text-muted-foreground hover:text-foreground"
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
                             }`}
                     >
                         <Frame className="w-3 h-3" />
@@ -486,7 +487,7 @@ export default function SettingsComponent({
                     </button>
                 </div>
                 <div className="space-y-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex gap-3 items-center justify-between">
                         {/* Unified Search Bar */}
                         <div className="w-[300px] relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -494,28 +495,29 @@ export default function SettingsComponent({
                                 placeholder={`Search ${activeTab}...`}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 text-xs placeholder:text-base md:placeholder:text-xs h-9"
+                                className="pl-10 placeholder:text-base md:placeholder:text-xs h-9"
                             />
                         </div>
                         {activeTab === "users" && (
-                            <Button className="text-xs" size="sm" variant="outline">
+                            <Button className="h-9 text-xs" size="sm" variant="outline">
                                 <UserPlus className="w-4 h-4" />
-                                Invite User
+                                <p className="hidden sm:inline">Invite User</p>
                             </Button>
                         )}
                         {activeTab === "frames" && (
                             <div className="flex items-center gap-2">
-                                {/* Channel Filter */}
                                 <div className="relative" data-channel-filter>
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="text-xs flex items-center gap-2"
+                                        className="h-9 text-xs flex items-center gap-2"
                                         onClick={() => setIsChannelFilterOpen(!isChannelFilterOpen)}
                                     >
                                         <Filter className="w-3 h-3" />
-                                        {selectedChannelData ? selectedChannelData.title : "All Channels"}
-                                        <ChevronDown className="w-3 h-3" />
+                                        <p className="sm:flex gap-2 items-center hidden">
+                                            {selectedChannelData ? selectedChannelData.title : "All Channels"}
+                                            <ChevronDown className="w-3 h-3" />
+                                        </p>
                                     </Button>
                                     {isChannelFilterOpen && (
                                         <div className="absolute top-full right-0 mt-1 w-64 bg-background border rounded-lg shadow-lg z-10">
@@ -557,220 +559,427 @@ export default function SettingsComponent({
                                     <Button
                                         variant="destructive"
                                         size="sm"
-                                        className="text-xs"
+                                        className="hidden sm:inline text-xs"
                                         onClick={handleBulkDeleteFrames}
                                     >
                                         <Trash2 className="w-3 h-3 mr-1" />
-                                        Delete {selectedFrames.size} frame{selectedFrames.size > 1 ? "s" : ""}
+                                        Delete {selectedFrames.size}
                                     </Button>
                                 )}
                             </div>
                         )}
                     </div>
 
+
                     {activeTab === "users" && (
-                        <div className="border rounded-lg">
-                            <Table>
-                                <TableHeader className="bg-muted/50">
-                                    <TableRow>
-                                        <TableHead>User</TableHead>
-                                        <TableHead>Role</TableHead>
-                                        <TableHead>Email</TableHead>
-                                        <TableHead className="w-[100px]">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredMembers.map((member, i) => (
-                                        <TableRow key={i}>
-                                            <TableCell>
-                                                <div className="flex items-center gap-3">
-                                                    <Avatar className="w-8 h-8">
-                                                        <AvatarImage src={member.picture} />
-                                                        <AvatarFallback className="text-xs">
-                                                            {member.name.split(' ').map((n: any) => n[0]).join('').toUpperCase()}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                    <div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-medium text-sm">{member.name}</span>
-                                                            {member.role === 'owner' && (
-                                                                <Crown className="w-3 h-3 text-yellow-500" />
-                                                            )}
+                        <>
+                            {/* Mobile Card Layout */}
+                            <div className="block sm:hidden space-y-3">
+                                {filteredMembers.map((member, i) => (
+                                    <div key={i} className="bg-muted/30 rounded-lg p-3 flex items-center justify-between">
+                                        <div className="flex items-center gap-3 flex-1">
+                                            <Avatar className="w-8 h-8">
+                                                <AvatarImage src={member.picture} />
+                                                <AvatarFallback className="text-xs">
+                                                    {member.name.split(' ').map((n: any) => n[0]).join('').toUpperCase()}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium text-sm truncate">{member.name}</span>
+                                                    {member.role === 'owner' && <Crown className="w-3 h-3 text-yellow-500 flex-shrink-0" />}
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${member.role === 'owner'
+                                                        ? 'bg-primary text-primary-foreground'
+                                                        : 'bg-secondary text-secondary-foreground'
+                                                        }`}>
+                                                        {member.role}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground truncate">{member.email || 'No email'}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <Popover>
+                                            <PopoverTrigger className={`${member.role == VisionAccessRole.Owner ? "invisible" : ""}`} asChild>
+                                                <Button variant="ghost" size="sm">
+                                                    <MoreVertical className="w-4 h-4" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-48" align="end">
+                                                <div className="space-y-1">
+                                                    {member.role !== 'owner' && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            className="w-full justify-start text-sm"
+                                                            onClick={() => handleRoleUpdate(member.userId, 'owner')}
+                                                        >
+                                                            <Crown className="w-4 h-4 mr-2" />
+                                                            Promote to Owner
+                                                        </Button>
+                                                    )}
+                                                    {member.role !== 'owner' && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            className="w-full justify-start text-sm text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                            onClick={() => handleMemberRemove(member.userId)}
+                                                        >
+                                                            <X className="w-4 h-4 mr-2" />
+                                                            Remove Member
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                ))}
+                                {filteredMembers.length === 0 && (
+                                    <div className="text-center text-muted-foreground py-8 bg-muted/30 rounded-lg">
+                                        {searchTerm ? 'No users match your search' : 'No users found'}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Desktop Table Layout */}
+                            <div className="hidden sm:block border rounded-lg">
+                                <Table>
+                                    <TableHeader className="bg-muted/50">
+                                        <TableRow>
+                                            <TableHead>User</TableHead>
+                                            <TableHead>Role</TableHead>
+                                            <TableHead>Email</TableHead>
+                                            <TableHead className="w-[100px]">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredMembers.map((member, i) => (
+                                            <TableRow key={i}>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="w-8 h-8">
+                                                            <AvatarImage src={member.picture} />
+                                                            <AvatarFallback className="text-xs">
+                                                                {member.name.split(' ').map((n: any) => n[0]).join('').toUpperCase()}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-medium text-sm">{member.name}</span>
+                                                                {member.role === 'owner' && (
+                                                                    <Crown className="w-3 h-3 text-yellow-500" />
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${member.role === 'owner'
-                                                    ? 'bg-primary text-primary-foreground'
-                                                    : 'bg-secondary text-secondary-foreground'
-                                                    }`}>
-                                                    {member.role}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell className="text-sm text-muted-foreground">
-                                                {member.email || 'No email'}
-                                            </TableCell>
-                                            <TableCell>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger className={`${member.role == VisionAccessRole.Owner ? "hidden" : ""}`} asChild>
-                                                        <Button variant="ghost" size="sm">
-                                                            <MoreVertical className="w-4 h-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        {member.role !== 'owner' && (
-                                                            <DropdownMenuItem onClick={() => handleRoleUpdate(member.userId, 'owner')}>
-                                                                Promote to Owner
-                                                            </DropdownMenuItem>
-                                                        )}
-                                                        {member.role !== 'owner' && (
-                                                            <DropdownMenuItem
-                                                                onClick={() => handleMemberRemove(member.userId)}
-                                                                className="text-red-600"
-                                                            >
-                                                                Remove Member
-                                                            </DropdownMenuItem>
-                                                        )}
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                    {filteredMembers.length === 0 && (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                                                {searchTerm ? 'No users match your search' : 'No users found'}
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${member.role === 'owner'
+                                                        ? 'bg-primary text-primary-foreground'
+                                                        : 'bg-secondary text-secondary-foreground'
+                                                        }`}>
+                                                        {member.role}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-sm text-muted-foreground">
+                                                    {member.email || 'No email'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger className={`${member.role == VisionAccessRole.Owner ? "hidden" : ""}`} asChild>
+                                                            <Button variant="ghost" size="sm">
+                                                                <MoreVertical className="w-4 h-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            {member.role !== 'owner' && (
+                                                                <DropdownMenuItem onClick={() => handleRoleUpdate(member.userId, 'owner')}>
+                                                                    Promote to Owner
+                                                                </DropdownMenuItem>
+                                                            )}
+                                                            {member.role !== 'owner' && (
+                                                                <DropdownMenuItem
+                                                                    onClick={() => handleMemberRemove(member.userId)}
+                                                                    className="text-red-600"
+                                                                >
+                                                                    Remove Member
+                                                                </DropdownMenuItem>
+                                                            )}
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                        {filteredMembers.length === 0 && (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                                                    {searchTerm ? 'No users match your search' : 'No users found'}
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </>
                     )}
 
                     {activeTab === "channels" && (
-                        < div className="border rounded-lg">
-                            <Table>
-                                <TableHeader className="bg-muted/50">
-                                    <TableRow>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead>Description</TableHead>
-                                        <TableHead>Created</TableHead>
-                                        <TableHead className="w-[100px]">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredChannels?.map((channel) => (
-                                        <TableRow key={channel._id}>
-                                            <TableCell>
+                        <>
+                            {/* Mobile Card Layout */}
+                            <div className="block sm:hidden space-y-3">
+                                {filteredChannels?.map((channel) => (
+                                    <div key={channel._id} className="bg-muted/30 rounded-lg p-3 flex items-center justify-between">
+                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                            <TableProperties className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                            <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <TableProperties className="w-4 h-4 text-muted-foreground" />
-                                                    <span className="font-medium text-muted-foreground">{channel.title}</span>
+                                                    <span className="font-medium text-sm truncate">{channel.title}</span>
+                                                    <span className="text-xs text-muted-foreground flex-shrink-0">
+                                                        {new Date(channel.createdAt).toLocaleDateString()}
+                                                    </span>
                                                 </div>
-                                            </TableCell>
-                                            <TableCell className="text-sm text-muted-foreground">
-                                                {channel.description || 'No description'}
-                                            </TableCell>
-                                            <TableCell className="text-sm text-muted-foreground">
-                                                {new Date(channel.createdAt).toLocaleDateString()}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleChannelDelete(channel)}
-                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
+                                                <div className="text-xs text-muted-foreground truncate mt-0.5">
+                                                    {channel.description || 'No description'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="ghost" size="sm">
+                                                    <MoreVertical className="w-4 h-4" />
                                                 </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    )) || null}
-                                    {!filteredChannels || filteredChannels.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                                                {searchTerm ? 'No channels match your search' : 'No channels found'}
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : null}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    )}
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-40" align="end">
+                                                <div className="space-y-1">
+                                                    <Button
+                                                        variant="ghost"
+                                                        className="w-full justify-start text-sm text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                        onClick={() => handleChannelDelete(channel)}
+                                                    >
+                                                        <Trash2 className="w-4 h-4 mr-2" />
+                                                        Delete Channel
+                                                    </Button>
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                )) || null}
+                                {!filteredChannels || filteredChannels.length === 0 ? (
+                                    <div className="text-center text-muted-foreground py-8 bg-muted/30 rounded-lg">
+                                        {searchTerm ? 'No channels match your search' : 'No channels found'}
+                                    </div>
+                                ) : null}
+                            </div>
 
-                    {activeTab === "frames" && (
-                        <div className="border rounded-lg">
-                            <Table>
-                                <TableHeader className="bg-muted/50">
-                                    <TableRow>
-                                        <TableHead className="w-12">
-                                            <input
-                                                type="checkbox"
-                                                checked={filteredFrames.length > 0 && selectedFrames.size === filteredFrames.length}
-                                                onChange={(e) => handleSelectAllFrames(e.target.checked)}
-                                                className="rounded"
-                                            />
-                                        </TableHead>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead>Channel</TableHead>
-                                        <TableHead>Created</TableHead>
-                                        <TableHead className="w-[100px]">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredFrames?.map((frame) => {
-                                        const frameChannel = channels?.find(c => c._id === frame.channel);
-                                        return (
-                                            <TableRow key={frame._id}>
-                                                <TableCell>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedFrames.has(frame._id)}
-                                                        onChange={(e) => handleFrameSelect(frame._id, e.target.checked)}
-                                                        className="rounded"
-                                                    />
-                                                </TableCell>
+                            {/* Desktop Table Layout */}
+                            <div className="hidden sm:block border rounded-lg">
+                                <Table>
+                                    <TableHeader className="bg-muted/50">
+                                        <TableRow>
+                                            <TableHead>Name</TableHead>
+                                            <TableHead>Description</TableHead>
+                                            <TableHead>Created</TableHead>
+                                            <TableHead className="w-[100px]">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredChannels?.map((channel) => (
+                                            <TableRow key={channel._id}>
                                                 <TableCell>
                                                     <div className="flex items-center gap-2">
-                                                        <Frame className="w-4 h-4 text-muted-foreground" />
-                                                        <span className="font-medium text-muted-foreground">{frame.title}</span>
+                                                        <TableProperties className="w-4 h-4 text-muted-foreground" />
+                                                        <span className="font-medium text-muted-foreground">{channel.title}</span>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-1">
-                                                        <TableProperties className="w-4 h-4 text-muted-foreground" />
-                                                        <span className="text-muted-foreground">
-                                                            {frameChannel?.title || 'Unknown Channel'}
-                                                        </span>
-                                                    </div>
+                                                <TableCell className="text-sm max-w-[130px] truncate text-muted-foreground">
+                                                    {channel.description || 'No description'}
                                                 </TableCell>
                                                 <TableCell className="text-sm text-muted-foreground">
-                                                    {new Date(frame.createdAt).toLocaleDateString()}
+                                                    {new Date(channel.createdAt).toLocaleDateString()}
                                                 </TableCell>
                                                 <TableCell>
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        onClick={() => setDeleteFramesDialog({ isOpen: true, frames: [frame] })}
+                                                        onClick={() => handleChannelDelete(channel)}
                                                         className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                     </Button>
                                                 </TableCell>
                                             </TableRow>
-                                        );
-                                    }) || null}
-                                    {!filteredFrames || filteredFrames.length === 0 ? (
+                                        )) || null}
+                                        {!filteredChannels || filteredChannels.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                                                    {searchTerm ? 'No channels match your search' : 'No channels found'}
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : null}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </>
+                    )}
+
+                    {activeTab === "frames" && (
+                        <>
+                            {/* Mobile Card Layout */}
+                            <div className="block sm:hidden space-y-3">
+                                {/* Mobile bulk select */}
+                                {filteredFrames && filteredFrames.length > 0 && (
+                                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={filteredFrames.length > 0 && selectedFrames.size === filteredFrames.length}
+                                                onChange={(e) => handleSelectAllFrames(e.target.checked)}
+                                                className="rounded"
+                                            />
+                                            <span className="text-sm text-muted-foreground">
+                                                {selectedFrames.size > 0 ? `${selectedFrames.size} selected` : 'Select all'}
+                                            </span>
+                                        </div>
+                                        {selectedFrames.size > 0 && (
+                                            <Button
+                                                variant="destructive"
+                                                size="sm"
+                                                className="text-xs h-7"
+                                                onClick={handleBulkDeleteFrames}
+                                            >
+                                                Delete {selectedFrames.size}
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+                                {filteredFrames?.map((frame) => {
+                                    const frameChannel = channels?.find(c => c._id === frame.channel);
+                                    return (
+                                        <div key={frame._id} className="bg-muted/30 rounded-lg p-3 flex items-center justify-between">
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedFrames.has(frame._id)}
+                                                    onChange={(e) => handleFrameSelect(frame._id, e.target.checked)}
+                                                    className="rounded flex-shrink-0"
+                                                />
+                                                <Frame className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-medium text-sm truncate">{frame.title}</span>
+                                                        <span className="text-xs text-muted-foreground flex-shrink-0">
+                                                            {new Date(frame.createdAt).toLocaleDateString()}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 mt-0.5">
+                                                        <TableProperties className="w-3 h-3 text-muted-foreground" />
+                                                        <span className="text-xs text-muted-foreground truncate">
+                                                            {frameChannel?.title || 'Unknown Channel'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button variant="ghost" size="sm">
+                                                        <MoreVertical className="w-4 h-4" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-40" align="end">
+                                                    <div className="space-y-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            className="w-full justify-start text-sm text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                            onClick={() => setDeleteFramesDialog({ isOpen: true, frames: [frame] })}
+                                                        >
+                                                            <Trash2 className="w-4 h-4 mr-2" />
+                                                            Delete Frame
+                                                        </Button>
+                                                    </div>
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
+                                    );
+                                }) || null}
+                                {!filteredFrames || filteredFrames.length === 0 ? (
+                                    <div className="text-center text-muted-foreground py-8 bg-muted/30 rounded-lg">
+                                        {searchTerm || selectedChannelFilter ? 'No frames match your filters' : 'No frames found'}
+                                    </div>
+                                ) : null}
+                            </div>
+
+                            {/* Desktop Table Layout */}
+                            <div className="hidden sm:block border rounded-lg">
+                                <Table>
+                                    <TableHeader className="bg-muted/50">
                                         <TableRow>
-                                            <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                                                {searchTerm || selectedChannelFilter ? 'No frames match your filters' : 'No frames found'}
-                                            </TableCell>
+                                            <TableHead className="w-12">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={filteredFrames.length > 0 && selectedFrames.size === filteredFrames.length}
+                                                    onChange={(e) => handleSelectAllFrames(e.target.checked)}
+                                                    className="rounded"
+                                                />
+                                            </TableHead>
+                                            <TableHead>Name</TableHead>
+                                            <TableHead>Channel</TableHead>
+                                            <TableHead>Created</TableHead>
+                                            <TableHead className="w-[100px]">Actions</TableHead>
                                         </TableRow>
-                                    ) : null}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredFrames?.map((frame) => {
+                                            const frameChannel = channels?.find(c => c._id === frame.channel);
+                                            return (
+                                                <TableRow key={frame._id}>
+                                                    <TableCell>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedFrames.has(frame._id)}
+                                                            onChange={(e) => handleFrameSelect(frame._id, e.target.checked)}
+                                                            className="rounded"
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <Frame className="w-4 h-4 text-muted-foreground" />
+                                                            <span className="font-medium text-muted-foreground">{frame.title}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-1">
+                                                            <TableProperties className="w-4 h-4 text-muted-foreground" />
+                                                            <span className="text-muted-foreground">
+                                                                {frameChannel?.title || 'Unknown Channel'}
+                                                            </span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-sm text-muted-foreground">
+                                                        {new Date(frame.createdAt).toLocaleDateString()}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => setDeleteFramesDialog({ isOpen: true, frames: [frame] })}
+                                                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        }) || null}
+                                        {!filteredFrames || filteredFrames.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                                                    {searchTerm || selectedChannelFilter ? 'No frames match your filters' : 'No frames found'}
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : null}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </>
                     )}
                 </div>
             </div>
