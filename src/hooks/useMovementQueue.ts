@@ -18,9 +18,12 @@ interface MovementQueueState {
 }
 
 
-export function useMovementQueue(frameId: Id<"frames">) {
+export function useMovementQueue(frameId: Id<"frames">, users: any[] | undefined) {
     const [batch, setBatch] = useState<any[]>([]);
     const batchRef = useRef<any[]>([]);
+    const [pendingBatch, setPendingBatch] = useState<any[]>([]);
+    const pendingBatchRef = useRef<any[]>([]);
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const [processedBatches, setProcessedBatches] = useState<Set<string>>(new Set());
     const [isUserMoving, setIsUserMoving] = useState(false);
     const [userMovedNodes, setUserMovedNodes] = useState<Set<string>>(new Set());
@@ -36,6 +39,7 @@ export function useMovementQueue(frameId: Id<"frames">) {
 
 
     const batchMovement = useMutation(api.frames.batchMovment);
+    const updateFramedNodePosition = useMutation(api.frames.updateFramedNodePosition);
     const movement = useQuery(api.frames.listMovments, { frameId });
 
     // Keep refs synced with state
@@ -44,46 +48,100 @@ export function useMovementQueue(frameId: Id<"frames">) {
     }, [batch]);
     
     useEffect(() => {
+        pendingBatchRef.current = pendingBatch;
+    }, [pendingBatch]);
+    
+    useEffect(() => {
         userMovedNodesRef.current = userMovedNodes;
     }, [userMovedNodes]);
 
-    // Interval to flush batch every 1 second
+    // Determine if user is alone (single user mode)
+    const isAlone = !users || users.length === 0;
+    
+    // Function to send batch (multi-user mode)
+    const sendBatch = useCallback(async (batchToSend: any[]) => {
+        if (batchToSend.length === 0) return;
+        
+        console.log("Sending batch:", batchToSend);
+        setIsUserMoving(true);
+        
+        // Track nodes we're about to send
+        const nodeIds = new Set(batchToSend.map(node => node.id));
+        setUserMovedNodes(prev => new Set([...prev, ...nodeIds]));
+        
+        try {
+            let movmentId = await batchMovement({
+                frameId,
+                batch: batchToSend,
+            });
+            setProcessedBatches(prev => new Set([...prev, movmentId]));
+            
+            // Clear user moved nodes after a delay to prevent echo
+            setTimeout(() => {
+                setUserMovedNodes(prev => {
+                    const updated = new Set(prev);
+                    nodeIds.forEach(id => updated.delete(id));
+                    return updated;
+                });
+            }, 2000);
+        } finally {
+            setIsUserMoving(false);
+        }
+    }, [frameId, batchMovement]);
+    
+    // Function to send individual position updates (single-user mode) - NO BATCHING
+    const sendPositionUpdate = useCallback(async (nodeId: string, position: { x: number; y: number }) => {
+        console.log("Sending direct position update:", { nodeId, position });
+        
+        try {
+            await updateFramedNodePosition({
+                frameId,
+                nodeId,
+                position,
+            });
+        } catch (error) {
+            console.error("Failed to update node position:", error);
+        }
+    }, [frameId, updateFramedNodePosition]);
+    
+    // Single user mode: Direct position updates with debounce (NO BATCH PROCESSING)
+    const pendingUpdatesRef = useRef<Map<string, { position: { x: number; y: number }, timer: NodeJS.Timeout }>>(new Map());
+    
+    const schedulePositionUpdate = useCallback((nodeId: string, position: { x: number; y: number }) => {
+        const pendingUpdates = pendingUpdatesRef.current;
+        
+        // Clear existing timer for this node if it exists
+        const existing = pendingUpdates.get(nodeId);
+        if (existing) {
+            clearTimeout(existing.timer);
+        }
+        
+        // Set new timer for this node
+        const timer = setTimeout(() => {
+            sendPositionUpdate(nodeId, position);
+            pendingUpdates.delete(nodeId);
+        }, 2000);
+        
+        pendingUpdates.set(nodeId, { position, timer });
+    }, [sendPositionUpdate]);
+    
+    // Multi-user mode: Interval to flush batch every 5 seconds
     useEffect(() => {
+        if (isAlone) return; // Skip interval when alone
+        
         const interval = setInterval(async () => {
             if (batchRef.current.length > 0) {
-                console.log("Sending batch:", batchRef.current);
                 let curr = batchRef.current;
                 setBatch([]);
                 batchRef.current = [];
-                setIsUserMoving(true);
-                
-                // Track nodes we're about to send
-                const nodeIds = new Set(curr.map(node => node.id));
-                setUserMovedNodes(prev => new Set([...prev, ...nodeIds]));
-                
-                try {
-                    let movmentId = await batchMovement({
-                        frameId,
-                        batch: curr,
-                    });
-                    setProcessedBatches(prev => new Set([...prev, movmentId]));
-                    
-                    // Clear user moved nodes after a delay to prevent echo
-                    setTimeout(() => {
-                        setUserMovedNodes(prev => {
-                            const updated = new Set(prev);
-                            nodeIds.forEach(id => updated.delete(id));
-                            return updated;
-                        });
-                    }, 2000);
-                } finally {
-                    setIsUserMoving(false);
-                }
+                await sendBatch(curr);
             }
-        }, 1000);
+        }, 5000);
 
         return () => clearInterval(interval);
-    }, [frameId, batchMovement]);
+    }, [isAlone, sendBatch]);
+    
+    // No longer need the old batch debounce system for single-user mode
 
     // Process incoming movement queue with smooth animations
     const processMovementQueue = useCallback((nodes: Node[], setNodes: (updater: (nodes: Node[]) => Node[]) => void) => {
@@ -114,7 +172,6 @@ export function useMovementQueue(frameId: Id<"frames">) {
                 
                 // Skip if this node was moved by the local user recently
                 if (userMovedNodesRef.current.has(b.id)) {
-                    console.log(`Skipping echo for user-moved node: ${b.id}`);
                     // Continue to next item immediately
                     setTimeout(() => applyBatchSequentially(batch, index + 1), 10);
                     return;
@@ -159,8 +216,9 @@ export function useMovementQueue(frameId: Id<"frames">) {
         });
     }, [queueState.isProcessing, queueState.queue]);
 
-    // Handle incoming movement updates
+    // Handle incoming movement updates (ONLY FOR MULTI-USER MODE)
     useEffect(() => {
+        if (isAlone) return; // Skip all movement processing when alone
         if (!movement || movement.length === 0 || isUserMoving) return;
         
         let m = movement[movement.length - 1];
@@ -194,7 +252,7 @@ export function useMovementQueue(frameId: Id<"frames">) {
             ...prev,
             queue: [...prev.queue, m.batch]
         }));
-    }, [movement, processedBatches, isUserMoving]);
+    }, [movement, processedBatches, isUserMoving, isAlone]);
 
     // Handle node changes (for user interactions)
     const handleNodesChange = useCallback(
@@ -205,7 +263,7 @@ export function useMovementQueue(frameId: Id<"frames">) {
                 if (!node) return null;
                 return {
                     ...change,
-                    data: node.data?.node?._id || node.data
+                    data: (node.data as any)?.node?._id || node.data
                 };
             }).filter((change) => {
                 if (!change || !("id" in change) || !("position" in change)) return false;
@@ -235,17 +293,27 @@ export function useMovementQueue(frameId: Id<"frames">) {
             // Add valid changes to batch for syncing with other users
             if (avoidPending.length > 0) {
                 // Mark nodes as user-moved immediately
-                const nodeIds = avoidPending.map(change => change.id).filter(id => typeof id === 'string');
+                const nodeIds = avoidPending.filter(change => change !== null).map(change => change!.id).filter(id => typeof id === 'string');
                 setUserMovedNodes(prev => new Set([...prev, ...nodeIds]));
                 
-                setBatch((prev) => {
-                    const updated = [...prev, ...avoidPending];
-                    batchRef.current = updated;
-                    return updated;
-                });
+                if (isAlone) {
+                    // Single user mode: Send direct position updates with debounce
+                    avoidPending.forEach(change => {
+                        if (change && change.type === 'position' && 'position' in change && change.position) {
+                            schedulePositionUpdate(change.id, change.position);
+                        }
+                    });
+                } else {
+                    // Multi-user mode: add to regular batch for periodic sending
+                    setBatch((prev) => {
+                        const updated = [...prev, ...avoidPending];
+                        batchRef.current = updated;
+                        return updated;
+                    });
+                }
             }
         },
-        [nodesMap]
+        [nodesMap, isAlone, schedulePositionUpdate]
     );
 
     return {

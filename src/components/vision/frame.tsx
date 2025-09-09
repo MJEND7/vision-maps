@@ -29,6 +29,10 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
 
     // === Convex data ===
     const frame = useQuery(api.frames.get, { id });
+    const users = useQuery(
+        api.presence.listRoom,
+        { roomToken: `vision:${frame?.vision}` }
+    );
     const createNode = useMutation(api.nodes.create).withOptimisticUpdate(
         (store, args) => {
             if (!args.frameId) return;
@@ -40,12 +44,14 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
             // Create optimistic node
             const optimisticNodeId = `optimistic-${crypto.randomUUID()}`;
             const optimisticNode = {
-                _id: optimisticNodeId,
+                _id: optimisticNodeId as Id<"framed_node">,
                 _creationTime: Date.now(),
+                frameId: args.frameId,
                 node: {
                     ...args.position,
                     id: args.position?.id || crypto.randomUUID(),
                     type: args.variant || "Text",
+                    position: args.position?.position || { x: 0, y: 0 },
                     data: {
                         node: {
                             _id: optimisticNodeId,
@@ -84,7 +90,7 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
         setNodesMap,
         handleNodesChange,
         processMovementQueue,
-    } = useMovementQueue(id);
+    } = useMovementQueue(id, users || undefined);
 
     // Convert framed nodes to React Flow nodes whenever they change
     useEffect(() => {
@@ -148,11 +154,13 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
     }, [framedNodes, setNodesMap, convex]);
 
     // === Process movement queue ===
+    const isAlone = !users || users.length === 0;
     useEffect(() => {
-        if (isInitial) {
+        if (isInitial && !isAlone) {
+            // Only process movement queue in multi-user mode
             processMovementQueue(nodes, setNodes);
         }
-    }, [processMovementQueue, isInitial]);
+    }, [processMovementQueue, isInitial, isAlone]);
 
     // === Node updates (batched) ===
     const onNodesChange = useCallback(

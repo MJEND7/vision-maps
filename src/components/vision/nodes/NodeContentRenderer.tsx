@@ -140,7 +140,7 @@ export function renderNodeContent(
 
         case NodeVariants.AI:
             return (
-                <div className="overflow-hidden w-full h-48 border border-accent rounded-lg flex flex-col justify-between">
+                <div className="overflow-hidden w-full h-48 border border-accent bg-background rounded-lg flex flex-col justify-between">
                     <div className="flex text-xs items-center justify-between gap-2 font-semibold p-3">
                         <div className="flex items-center gap-2">
                             LLM Node

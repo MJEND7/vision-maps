@@ -343,6 +343,85 @@ export const getFrameNodes = query({
     },
 });
 
+const updateFramedNodeArgs = v.object({
+    frameId: v.id("frames"),
+    nodeId: v.string(),
+    node: nodeValidator(v.id("nodes")),
+});
+
+export const updateFramedNode = mutation({
+    args: updateFramedNodeArgs,
+    handler: async (ctx, args) => {
+        const frame = await ctx.db.get(args.frameId);
+        if (!frame) {
+            throw new Error("Frame not found");
+        }
+
+        if (frame.vision) {
+            await requireVisionAccess(ctx, frame.vision);
+        }
+
+        const existingFramedNode = await ctx.db
+            .query("framed_node")
+            .withIndex("id", (q) => q.eq("node.id", args.nodeId))
+            .first();
+
+        if (!existingFramedNode) {
+            throw new Error("Framed node not found");
+        }
+
+        await ctx.db.patch(existingFramedNode._id, {
+            node: args.node,
+        });
+
+        return existingFramedNode._id;
+    },
+});
+
+const updateFramedNodePositionArgs = v.object({
+    frameId: v.id("frames"),
+    nodeId: v.string(),
+    position: v.object({
+        x: v.number(),
+        y: v.number(),
+    }),
+});
+
+export const updateFramedNodePosition = mutation({
+    args: updateFramedNodePositionArgs,
+    handler: async (ctx, args) => {
+        const frame = await ctx.db.get(args.frameId);
+        if (!frame) {
+            throw new Error("Frame not found");
+        }
+
+        if (frame.vision) {
+            await requireVisionAccess(ctx, frame.vision);
+        }
+
+        const existingFramedNode = await ctx.db
+            .query("framed_node")
+            .withIndex("id", (q) => q.eq("node.id", args.nodeId))
+            .first();
+
+        if (!existingFramedNode) {
+            throw new Error("Framed node not found");
+        }
+
+        // Update only the position in the node
+        const updatedNode = {
+            ...existingFramedNode.node,
+            position: args.position,
+        };
+
+        await ctx.db.patch(existingFramedNode._id, {
+            node: updatedNode,
+        });
+
+        return existingFramedNode._id;
+    },
+});
+
 // Type exports
 export type CreateFrameArgs = Infer<typeof createArgs>;
 export type UpdateFrameArgs = Infer<typeof updateArgs>;
@@ -352,3 +431,5 @@ export type ListFramesByChannelArgs = Infer<typeof listByChannelArgs>;
 export type ReorderFramesArgs = Infer<typeof reorderArgs>;
 export type ListFramesByVisionArgs = Infer<typeof listByVisionArgs>;
 export type GetFrameNodesArgs = Infer<typeof getFrameNodesArgs>;
+export type UpdateFramedNodeArgs = Infer<typeof updateFramedNodeArgs>;
+export type UpdateFramedNodePositionArgs = Infer<typeof updateFramedNodePositionArgs>;
