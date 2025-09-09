@@ -8,22 +8,22 @@ export default memo(function ImageNode(props: NodeProps<BaseNodeData>) {
   const node = props.data.node;
   
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-lg shadow-sm min-w-[300px] max-w-[500px]">
+    <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 bg-card border border-blue-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-blue-500/10">
       <Handle 
         type="target" 
         position={Position.Top}
-        className="w-3 h-3 !bg-blue-500"
+        className="w-4 h-4 !bg-blue-500 !border-2 !border-background"
       />
       
       <div className="p-4">
         <div className="flex items-center gap-2 mb-2">
           <Image className="w-3 h-3 text-blue-600" />
-          <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider">Image</span>
+          <span className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Image</span>
         </div>
         <div className="mb-2">
-          <h4 className="font-medium text-sm">{node.title}</h4>
+          <h4 className="font-medium text-sm text-foreground">{node.title}</h4>
           {node.thought && (
-            <p className="text-xs text-gray-600 mt-1">{node.thought}</p>
+            <p className="text-xs text-muted-foreground mt-1">{node.thought}</p>
           )}
         </div>
         {renderNodeContent(node, props.data.onOpenChat)}
@@ -32,7 +32,7 @@ export default memo(function ImageNode(props: NodeProps<BaseNodeData>) {
       <Handle 
         type="source" 
         position={Position.Bottom}
-        className="w-3 h-3 !bg-blue-500"
+        className="w-4 h-4 !bg-blue-500 !border-2 !border-background"
       />
     </div>
   );

@@ -56,7 +56,7 @@ function NodeWithMetadata({ node, variant }: { node: any, variant: NodeVariants 
     if (isLoading) {
         return (
             <div className="animate-pulse">
-                <div className="bg-gray-200 h-32 w-full rounded-lg"></div>
+                <div className="bg-muted h-32 w-full rounded-lg"></div>
             </div>
         );
     }
@@ -171,11 +171,11 @@ export function renderNodeContent(
                             value={editValue}
                             onChange={(e) => setEditValue?.(e.target.value)}
                             onKeyDown={onKeyDown}
-                            className="text-sm min-h-[60px] resize-none w-full border rounded p-2"
+                            className="text-sm min-h-[60px] resize-none w-full border border-border rounded p-2 bg-background text-foreground"
                             placeholder="Enter text..."
                         />
                     ) : (
-                        <p className="text-sm whitespace-pre-wrap">{node.value}</p>
+                        <p className="text-sm whitespace-pre-wrap text-foreground">{node.value}</p>
                     )}
                 </div>
             );
@@ -186,7 +186,7 @@ export function renderNodeContent(
                 return <NodeWithMetadata node={node} variant={NodeVariants.Link} />;
             }
             return (
-                <div className="w-full min-h-[8rem] p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="w-full min-h-[8rem] p-4 bg-muted rounded-lg border border-border">
                     <p className="text-sm text-muted-foreground">
                         {node.variant} content: {node.value?.substring(0, 100)}...
                     </p>

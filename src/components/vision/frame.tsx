@@ -24,6 +24,26 @@ import nodeTypes from "./nodes";
 
 export default function FrameComponent({ id }: { id: Id<"frames"> }) {
     const [isDark, setIsDark] = useState(false);
+
+    // Detect dark mode from Tailwind
+    useEffect(() => {
+        const checkDarkMode = () => {
+            const isDarkMode = document.documentElement.classList.contains('dark');
+            setIsDark(isDarkMode);
+        };
+        
+        // Check initially
+        checkDarkMode();
+        
+        // Set up observer to watch for class changes
+        const observer = new MutationObserver(checkDarkMode);
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+        
+        return () => observer.disconnect();
+    }, []);
     const [nodes, setNodes] = useState<Node[]>([]);
     const [isInitial, setIsInitial] = useState(false);
 

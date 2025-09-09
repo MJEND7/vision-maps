@@ -122,7 +122,7 @@ export function FigmaCard({ metadata }: FigmaCardProps) {
                 
                 <iframe
                     src={embedUrl}
-                    className="w-full h-[350px] border-0"
+                    className="w-full min-w-[500px] h-[350px] border-0"
                     allowFullScreen
                     onLoad={() => setIsLoading(false)}
                     onError={() => {
