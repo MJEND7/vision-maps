@@ -87,9 +87,19 @@ export const create = mutation({
 
         if (args.position && args.frameId) {
             const node = {...args.position, data: nodeId}
+            
+            // Insert into framed_node for current state
             await ctx.db.insert("framed_node", {
                 frameId: args.frameId,
                 node
+            })
+
+            // Insert into frame_positions for batch tracking
+            await ctx.db.insert("frame_positions", {
+                frameId: args.frameId,
+                nodeId: nodeId,
+                batch: [node],
+                batchTimestamp: new Date().toISOString(),
             })
         }
 

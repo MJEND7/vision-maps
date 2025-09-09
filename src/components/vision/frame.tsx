@@ -14,7 +14,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useState, useEffect, useRef } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useConvex, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import PasteBin from "../channel/paste-bin";
@@ -36,25 +36,33 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
     const updateEdges = useMutation(api.edges.update);
 
     // Get initial nodes for this frame - you may need to adjust this query
-    const initialNodes = useQuery(api.frames.getFrameNodes, { frameId: id });
+    const convex = useConvex();
     const movment = useQuery(api.frames.listMovments, { frameId: id });
     const edges = useQuery(api.edges.get, { frameId: id });
 
-    // === Load initial nodes ===
     useEffect(() => {
-        if (!initialNodes || isInitial) return;
+        if (isInitial) return;
 
-        console.log("Loading initial nodes:", initialNodes);
-        const newMap = new Map();
-        setNodes(initialNodes.map((n) => {
-            const node = (n.node as any) as Node
-            newMap.set(node.id, node)
-            return node
-        }));
+        const fetchInitialNodes = async () => {
+            try {
+                const initialNodes = await convex.query(api.frames.getFrameNodes, { frameId: id });
 
-        setNodesMap(newMap);
-        setIsInitial(true)
-    }, [initialNodes]);
+                const newMap = new Map();
+                setNodes(initialNodes.map((n) => {
+                    const node = (n.node as any) as Node;
+                    newMap.set(node.id, node);
+                    return node;
+                }));
+
+                setNodesMap(newMap);
+                setIsInitial(true);
+            } catch (error) {
+                console.error("Failed to fetch initial nodes:", error);
+            }
+        };
+
+        fetchInitialNodes();
+    }, [id, convex, isInitial]);
 
     // 🔑 Keep batchRef synced with batch state
     useEffect(() => {
@@ -73,9 +81,11 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
                     frameId: id,
                     batch: curr,
                 });
-                setLastBatch(batchId);
+                if (batchId) {
+                    setLastBatch(batchId);
+                }
             }
-        }, 3000);
+        }, 1000);
 
         return () => clearInterval(interval);
     }, [id, batchMovment]);
@@ -85,7 +95,6 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
         if (!movment || movment.length === 0) return;
         let m = movment[movment.length - 1];
         if (m._id.toString() === lastBatch) return;
-        console.log("We got movement update:", m);
 
         // Update the nodes map for reference
         m.batch.forEach((b) => {
@@ -142,8 +151,6 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
     // === Node updates (batched) ===
     const onNodesChange = useCallback(
         (changes: NodeChange[]) => {
-            console.log("onNodesChange:", changes);
-
             const avoidPending = changes.map((change) => {
                 if (!("id" in change) || !("position" in change)) return null;
                 const node = nodesMap.get(change.id);
@@ -235,7 +242,6 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
 
     const onConnect = useCallback(
         (connection: Connection) => {
-            console.log("onConnect", { connection });
             if (
                 connection.source?.startsWith("pending-") ||
                 connection.target?.startsWith("pending-")

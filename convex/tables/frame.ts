@@ -21,6 +21,10 @@ export class Frame {
     static POSITIONS_TABLE_NAME = "frame_positions"
     static PositionsTable = defineTable({
         frameId: v.id(Frame.TABLE_NAME),
+        nodeId: v.id("nodes"),
         batch: v.array(nodeValidator(v.id("nodes"))),
-    }).index("by_frame", ["frameId"]);
+        batchTimestamp: v.string(),
+    }).index("by_frame", ["frameId"])
+      .index("by_node_frame", ["nodeId", "frameId"])
+      .index("by_batch_timestamp", ["frameId", "batchTimestamp"]);
 }

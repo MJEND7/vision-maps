@@ -232,13 +232,12 @@ export const batchMovment = mutation({
             throw new Error("Unauthorized");
         }
 
-        const newBatch = await ctx.db.insert("frame_positions", {
-            frameId: args.frameId,
-            batch: args.batch,
-        })
-
-        // Update each framed_node with the newest state from the batch
+        // Create a shared timestamp for this batch
+        const batchTimestamp = new Date().toISOString();
+        let batchId: string | null = null;
+        // Process each node in the batch
         for (const batchNode of args.batch) {
+            // Update framed_node with the newest state
             const existingFramedNode = await ctx.db
                 .query("framed_node")
                 .withIndex("id", (q) => q.eq("node.id", batchNode.id))
@@ -249,10 +248,32 @@ export const batchMovment = mutation({
                     node: batchNode
                 });
             }
+
+            // Create or update frame_positions for this specific node
+            const existingFramePosition = await ctx.db
+                .query("frame_positions")
+                .withIndex("by_node_frame", (q) => q.eq("nodeId", batchNode.data).eq("frameId", args.frameId))
+                .first();
+
+            if (existingFramePosition) {
+                // Patch existing frame_positions with new batch
+                batchId = existingFramePosition._id.toString();
+                await ctx.db.patch(existingFramePosition._id, {
+                    batch: args.batch,
+                    batchTimestamp,
+                });
+            } else {
+                // Create new frame_positions entry for this node
+                batchId = await ctx.db.insert("frame_positions", {
+                    frameId: args.frameId,
+                    nodeId: batchNode.data,
+                    batch: args.batch,
+                    batchTimestamp,
+                });
+            }
         }
 
-
-        return newBatch
+        return batchId
     },
 });
 
@@ -270,9 +291,27 @@ export const listMovments = query({
             throw new Error("Unauthorized");
         }
         
-        const batchs = await ctx.db.query("frame_positions").withIndex("by_frame", (q) => q.eq("frameId", args.frameId)).collect()
+        const framePositions = await ctx.db.query("frame_positions").withIndex("by_frame", (q) => q.eq("frameId", args.frameId)).collect()
 
-        return batchs
+        // Group by batchTimestamp to reconstruct original batches
+        const batchMap = new Map<string, any>();
+        
+        framePositions.forEach(fp => {
+            if (!batchMap.has(fp.batchTimestamp)) {
+                batchMap.set(fp.batchTimestamp, {
+                    _id: fp._id, // Use first entry's ID for compatibility
+                    _creationTime: fp._creationTime,
+                    frameId: fp.frameId,
+                    batch: fp.batch,
+                    batchTimestamp: fp.batchTimestamp,
+                });
+            }
+        });
+
+        // Return batches sorted by timestamp
+        return Array.from(batchMap.values()).sort((a, b) => 
+            new Date(a.batchTimestamp).getTime() - new Date(b.batchTimestamp).getTime()
+        )
     }
 }) 
 

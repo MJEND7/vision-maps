@@ -1,7 +1,7 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 import { edgeValidator } from "../reactflow/types";
-import { Frame } from "./frame";
+import { FramedNode } from "./framed_node";
 
 export const edgeData = v.object({
   name: v.optional(v.string()),
@@ -13,8 +13,8 @@ export class Edges {
   static TABLE_NAME = "edges" as const;
 
   static Table = defineTable({
-    source: v.id(Frame.POSITIONS_TABLE_NAME),
-    target: v.id(Frame.POSITIONS_TABLE_NAME),
+    source: v.id(FramedNode.TABLE_NAME),
+    target: v.id(FramedNode.TABLE_NAME),
     frameId: v.id("frames"),
     edge: rfEdge,
   })
