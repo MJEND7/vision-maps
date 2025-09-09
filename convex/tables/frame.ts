@@ -23,7 +23,7 @@ export class Frame {
         frameId: v.id(Frame.TABLE_NAME),
         nodeId: v.id("nodes"),
         batch: v.array(nodeValidator(v.id("nodes"))),
-        batchTimestamp: v.string(),
+        batchTimestamp: v.number(),
     }).index("by_frame", ["frameId"])
       .index("by_node_frame", ["nodeId", "frameId"])
       .index("by_batch_timestamp", ["frameId", "batchTimestamp"]);

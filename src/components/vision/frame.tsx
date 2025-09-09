@@ -13,190 +13,157 @@ import {
     applyNodeChanges,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useConvex, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import PasteBin from "../channel/paste-bin";
 import { CreateNodeArgs } from "../../../convex/nodes";
+import { useMovementQueue } from "../../hooks/useMovementQueue";
+import nodeTypes from "./nodes";
 
 export default function FrameComponent({ id }: { id: Id<"frames"> }) {
     const [isDark, setIsDark] = useState(false);
-    const [batch, setBatch] = useState<any[]>([]);
-    const batchRef = useRef<any[]>([]);
-    const [lastBatch, setLastBatch] = useState<string | null>(null);
     const [nodes, setNodes] = useState<Node[]>([]);
-    const [nodesMap, setNodesMap] = useState<Map<string, Node>>(new Map());
     const [isInitial, setIsInitial] = useState(false);
 
     // === Convex data ===
     const frame = useQuery(api.frames.get, { id });
-    const createNode = useMutation(api.nodes.create);
-    const batchMovment = useMutation(api.frames.batchMovment);
+    const createNode = useMutation(api.nodes.create).withOptimisticUpdate(
+        (store, args) => {
+            if (!args.frameId) return;
+            
+            // Get current framed nodes and frame data
+            const currentFramedNodes = store.getQuery(api.frames.getFrameNodes, { frameId: args.frameId }) || [];
+            const frameData = store.getQuery(api.frames.get, { id: args.frameId });
+            
+            // Create optimistic node
+            const optimisticNodeId = `optimistic-${crypto.randomUUID()}`;
+            const optimisticNode = {
+                _id: optimisticNodeId,
+                _creationTime: Date.now(),
+                node: {
+                    ...args.position,
+                    id: args.position?.id || crypto.randomUUID(),
+                    type: args.variant || "Text",
+                    data: {
+                        node: {
+                            _id: optimisticNodeId,
+                            _creationTime: Date.now(),
+                            title: args.title,
+                            variant: args.variant,
+                            value: args.value,
+                            thought: args.thought,
+                            frame: args.frameId,
+                            channel: args.channel,
+                            vision: frameData?.vision,
+                            userId: "optimistic",
+                            updatedAt: new Date().toISOString(),
+                        },
+                        nodeUser: null,
+                    }
+                }
+            };
+            
+            // Add to framed nodes
+            store.setQuery(api.frames.getFrameNodes, { frameId: args.frameId }, [
+                ...currentFramedNodes,
+                optimisticNode
+            ]);
+        }
+    );
     const updateEdges = useMutation(api.edges.update);
 
-    // Get initial nodes for this frame - you may need to adjust this query
-    const convex = useConvex();
-    const movment = useQuery(api.frames.listMovments, { frameId: id });
+    // Get nodes and edges for this frame reactively
+    const framedNodes = useQuery(api.frames.getFrameNodes, { frameId: id });
     const edges = useQuery(api.edges.get, { frameId: id });
+    const convex = useConvex();
 
+    // === Movement Queue Hook ===
+    const {
+        setNodesMap,
+        handleNodesChange,
+        processMovementQueue,
+    } = useMovementQueue(id);
+
+    // Convert framed nodes to React Flow nodes whenever they change
     useEffect(() => {
-        if (isInitial) return;
+        if (!framedNodes) return;
 
-        const fetchInitialNodes = async () => {
-            try {
-                const initialNodes = await convex.query(api.frames.getFrameNodes, { frameId: id });
-
-                const newMap = new Map();
-                setNodes(initialNodes.map((n) => {
-                    const node = (n.node as any) as Node;
+        const convertToReactFlowNodes = async () => {
+            const newMap = new Map();
+            const nodesWithData = await Promise.all(framedNodes.map(async (framedNode) => {
+                const node = (framedNode.node as any) as Node;
+                
+                // If the node already has the data structure (from optimistic update)
+                if (node.data?.node) {
                     newMap.set(node.id, node);
                     return node;
-                }));
-
-                setNodesMap(newMap);
-                setIsInitial(true);
-            } catch (error) {
-                console.error("Failed to fetch initial nodes:", error);
-            }
-        };
-
-        fetchInitialNodes();
-    }, [id, convex, isInitial]);
-
-    // 🔑 Keep batchRef synced with batch state
-    useEffect(() => {
-        batchRef.current = batch;
-    }, [batch]);
-
-    // === Interval to flush batch every 3 seconds ===
-    useEffect(() => {
-        const interval = setInterval(async () => {
-            if (batchRef.current.length > 0) {
-                console.log("Sending batch:", batchRef.current);
-                let curr = batchRef.current;
-                setBatch([]); // clear state
-                batchRef.current = []; // clear ref
-                let batchId = await batchMovment({
-                    frameId: id,
-                    batch: curr,
-                });
-                if (batchId) {
-                    setLastBatch(batchId);
                 }
-            }
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [id, batchMovment]);
-
-    // === Handle incoming movement updates ===
-    useEffect(() => {
-        if (!movment || movment.length === 0) return;
-        let m = movment[movment.length - 1];
-        if (m._id.toString() === lastBatch) return;
-
-        // Update the nodes map for reference
-        m.batch.forEach((b) => {
-            setNodesMap((nm) => {
-                const existingNode = nm.get(b.id);
-                if (existingNode) {
-                    const updatedNode = {
-                        ...existingNode,
-                        position: b.position,
-                        type: b.type || existingNode.type,
-                        // Keep existing data, don't overwrite with ID string
-                        data: existingNode.data
-                    };
-                    return new Map(nm.set(b.id, updatedNode));
+                
+                // For existing nodes, fetch the actual node data
+                try {
+                    const nodeData = await convex.query(api.nodes.get, { id: node.data as any });
+                    
+                    if (nodeData) {
+                        const reactFlowNode: Node = {
+                            ...node,
+                            type: nodeData.variant || "Text",
+                            data: {
+                                node: nodeData,
+                                nodeUser: null,
+                            }
+                        };
+                        newMap.set(node.id, reactFlowNode);
+                        return reactFlowNode;
+                    }
+                } catch (error) {
+                    console.error("Failed to fetch node data:", error);
                 }
-                return nm;
-            });
-        });
-
-        // Apply movements in sequence with proper ReactFlow updates
-        const applyBatchSequentially = (batch: any[], index = 0) => {
-            if (index >= batch.length) return;
-
-            const b = batch[index];
-
-            // Apply the movement update
-            setNodes((currentNodes) => {
-                const existingNodeIndex = currentNodes.findIndex(node => node.id === b.id);
-
-                if (existingNodeIndex === -1) {
-                    console.warn(`Node ${b.id} not found in current nodes`);
-                    return currentNodes;
-                }
-
-                // Create the proper NodeChange object
-                const nodeChange: NodeChange = {
-                    id: b.id,
-                    type: 'position',
-                    position: b.position,
+                
+                // Fallback for nodes that failed to load
+                const fallbackNode: Node = {
+                    ...node,
+                    type: node.type || "Text",
+                    data: {
+                        node: {
+                            _id: node.data,
+                            title: "Error loading node",
+                            variant: node.type || "Text",
+                            value: "",
+                        },
+                        nodeUser: null,
+                    }
                 };
+                newMap.set(node.id, fallbackNode);
+                return fallbackNode;
+            }));
 
-                return applyNodeChanges([nodeChange], currentNodes);
-            });
-
-            // Continue with next item after delay
-            setTimeout(() => {
-                applyBatchSequentially(batch, index + 1);
-            }, 20); // 75ms between each movement
+            setNodes(nodesWithData);
+            setNodesMap(newMap);
+            setIsInitial(true);
         };
 
-        applyBatchSequentially(m.batch);
-    }, [movment, lastBatch]);
+        convertToReactFlowNodes();
+    }, [framedNodes, setNodesMap, convex]);
+
+    // === Process movement queue ===
+    useEffect(() => {
+        if (isInitial) {
+            processMovementQueue(nodes, setNodes);
+        }
+    }, [processMovementQueue, isInitial]);
 
     // === Node updates (batched) ===
     const onNodesChange = useCallback(
         (changes: NodeChange[]) => {
-            const avoidPending = changes.map((change) => {
-                if (!("id" in change) || !("position" in change)) return null;
-                const node = nodesMap.get(change.id);
-                if (!node) return null;
-                return {
-                    ...change,
-                    data: node.data
-                };
-            }).filter((change) => {
-                if (!change || !("id" in change) || !("position" in change)) return false;
-                if (change.id.startsWith("pending-") || change.type !== "position") {
-                    console.warn("ignoring pending node change", { change });
-                    return false;
-                }
-                return true;
-            });
-
             // Apply changes to local state immediately for responsiveness
             setNodes((nds) => applyNodeChanges(changes, nds));
-
-            // Update nodes map
-            changes.forEach(change => {
-                if (change.type === 'position' && 'position' in change) {
-                    setNodesMap(prev => {
-                        const existing = prev.get(change.id);
-                        if (existing && change.position) {
-                            return new Map(prev.set(change.id, {
-                                ...existing,
-                                position: change.position
-                            }));
-                        }
-                        return prev;
-                    });
-                }
-            });
-
-            // Add valid changes to batch for syncing with other users
-            if (avoidPending.length > 0) {
-                setBatch((prev) => {
-                    const updated = [...prev, ...avoidPending];
-                    batchRef.current = updated; // keep ref in sync
-                    return updated;
-                });
-            }
+            
+            // Use hook to handle batching and syncing
+            handleNodesChange(changes);
         },
-        [nodesMap]
+        [handleNodesChange]
     );
 
     // === Edge updates ===
@@ -268,14 +235,14 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
                     x: Math.random() * 400,
                     y: Math.random() * 400,
                 },
-                type: "default",
+                type: data.variant || "Text",
                 data: "", // handled on backend
             },
         });
     };
 
     // === Loading state ===
-    if (!nodes || !edges || !frame) {
+    if (!framedNodes || !edges || !frame) {
         return (
             <div className="w-full h-[93%] px-4 pt-4 flex items-center justify-center">
                 <p>Loading frame...</p>
@@ -295,6 +262,7 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
+                nodeTypes={nodeTypes}
                 fitView
                 colorMode={isDark ? "dark" : "light"}
                 className="rounded-xl"

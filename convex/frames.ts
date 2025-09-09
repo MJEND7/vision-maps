@@ -233,7 +233,7 @@ export const batchMovment = mutation({
         }
 
         // Create a shared timestamp for this batch
-        const batchTimestamp = new Date().toISOString();
+        const batchTimestamp = Date.now();
         let batchId: string | null = null;
         // Process each node in the batch
         for (const batchNode of args.batch) {
@@ -273,7 +273,7 @@ export const batchMovment = mutation({
             }
         }
 
-        return batchId
+        return `${batchId}-${batchTimestamp}`
     },
 });
 
@@ -293,23 +293,8 @@ export const listMovments = query({
         
         const framePositions = await ctx.db.query("frame_positions").withIndex("by_frame", (q) => q.eq("frameId", args.frameId)).collect()
 
-        // Group by batchTimestamp to reconstruct original batches
-        const batchMap = new Map<string, any>();
-        
-        framePositions.forEach(fp => {
-            if (!batchMap.has(fp.batchTimestamp)) {
-                batchMap.set(fp.batchTimestamp, {
-                    _id: fp._id, // Use first entry's ID for compatibility
-                    _creationTime: fp._creationTime,
-                    frameId: fp.frameId,
-                    batch: fp.batch,
-                    batchTimestamp: fp.batchTimestamp,
-                });
-            }
-        });
-
         // Return batches sorted by timestamp
-        return Array.from(batchMap.values()).sort((a, b) => 
+        return framePositions.sort((a, b) => 
             new Date(a.batchTimestamp).getTime() - new Date(b.batchTimestamp).getTime()
         )
     }
@@ -336,7 +321,25 @@ export const getFrameNodes = query({
             .withIndex("by_frame", (q) => q.eq("frameId", args.frameId))
             .collect();
 
-        return framedNodes;
+        // Enhance the nodes with proper type based on actual node data
+        const enhancedNodes = await Promise.all(framedNodes.map(async (framedNode) => {
+            // Get the actual node data to access the variant
+            const nodeData = await ctx.db.get(framedNode.node.data as any);
+            if (nodeData && 'variant' in nodeData) {
+                // Update the node type to match the variant
+                const enhancedNode = {
+                    ...framedNode,
+                    node: {
+                        ...framedNode.node,
+                        type: nodeData.variant || "Text"
+                    }
+                };
+                return enhancedNode;
+            }
+            return framedNode;
+        }));
+
+        return enhancedNodes;
     },
 });
 
