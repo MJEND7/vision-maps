@@ -3,12 +3,14 @@ import { v, Infer } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { getUserByIdenityId, requireAuth, requireVisionAccess } from "./utils/auth";
 import { paginationOptsValidator } from "convex/server";
+import { nodeValidator } from "./reactflow/types";
 
 // Args schemas
 const createArgs = v.object({
     frameId: v.optional(v.id("frames")),
     channel: v.id("channels"),
     title: v.string(),
+    position: v.optional(nodeValidator(v.string())),
     variant: v.string(),
     value: v.string(),
     thought: v.optional(v.string()),
@@ -69,8 +71,8 @@ export const create = mutation({
         if (!userId) {
             throw new Error("Failed to get userId from identity")
         }
-
-        const nodeId = await ctx.db.insert("nodes", {
+    
+        const data = {
             title: args.title,
             variant: args.variant,
             value: args.value,
@@ -80,7 +82,16 @@ export const create = mutation({
             vision: channel.vision,
             userId,
             updatedAt: now,
-        });
+        }
+        const nodeId = await ctx.db.insert("nodes", data);
+
+        if (args.position && args.frameId) {
+            const node = {...args.position, data: nodeId}
+            await ctx.db.insert("framed_node", {
+                frameId: args.frameId,
+                node
+            })
+        }
 
         return nodeId;
     },

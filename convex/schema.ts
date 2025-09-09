@@ -10,6 +10,7 @@ import { Chats } from "./tables/chats";
 import { Messages } from "./tables/messages";
 import { OGMetadata } from "./tables/ogMetadata";
 import { Edges } from "./tables/edges";
+import { FramedNode } from "./tables/framed_node";
 
 // The schema is entirely optional.
 // You can delete this file (schema.ts) and the
@@ -21,7 +22,7 @@ export default defineSchema({
     channels: Channel.Table,
     frames: Frame.Table,
     frame_positions: Frame.PositionsTable,
-    frame_batch_movment: Frame.BatchMovmentsTable,
+    framed_node: FramedNode.Table,
     nodes: Nodes.Table,
     edges: Edges.Table,
     users: User.Table,

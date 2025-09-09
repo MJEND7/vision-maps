@@ -6,179 +6,233 @@ import {
     Controls,
     ReactFlow,
     addEdge,
-    applyEdgeChanges,
-    applyNodeChanges,
-    Node,
-    Edge,
     NodeChange,
     EdgeChange,
     Connection,
+    Node,
+    applyNodeChanges,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useState, useEffect, useMemo } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import PasteBin from "../channel/paste-bin";
 import { CreateNodeArgs } from "../../../convex/nodes";
-import debounce from "lodash.debounce";
 
 export default function FrameComponent({ id }: { id: Id<"frames"> }) {
     const [isDark, setIsDark] = useState(false);
+    const [batch, setBatch] = useState<any[]>([]);
+    const batchRef = useRef<any[]>([]);
+    const [lastBatch, setLastBatch] = useState<string | null>(null);
+    const [nodes, setNodes] = useState<Node[]>([]);
+    const [nodesMap, setNodesMap] = useState<Map<string, Node>>(new Map());
+    const [isInitial, setIsInitial] = useState(false);
 
     // === Convex data ===
-    const frame = useQuery(api.frames.get, { id: id as Id<"frames"> });
-    const createNode = useMutation(
-        api.nodes.create,
-    ).withOptimisticUpdate((store, args) => {
-        const nodes = store.getQuery(api.frames.getNodes, { frameId: id }) ?? [];
-        if (!args.core) return
-        const newNode = {
-            id: "pending-" + crypto.randomUUID(),
-            position: args.core.position,
-            data: {},
-            type: "default",
-        };
-        store.setQuery(api.frames.getNodes, { frameId: id }, [...nodes, newNode]);
-        const sourceNode = args.sourceNode;
-        if (sourceNode) {
-            const source = nodes.find((node) => node.id === sourceNode.id);
-            if (source) {
-                const targetHandle =
-                    source.position.y > args.core.position.y ? "top" : "bottom";
-                const newEdges = addEdge(
-                    {
-                        id: "pending-" + crypto.randomUUID(),
-                        source: source.id,
-                        target: newNode.id,
-                        sourceHandle: sourceNode.handlepos,
-                        targetHandle,
-                    },
-                    [],
-                );
-                const edges =
-                    store.getQuery(api.edges.get, { frameId: id }) ?? [];
-                store.setQuery(api.edges.get, { frameId: id }, [
-                    ...edges,
-                    ...newEdges,
-                ]);
+    const frame = useQuery(api.frames.get, { id });
+    const createNode = useMutation(api.nodes.create);
+    const batchMovment = useMutation(api.frames.batchMovment);
+    const updateEdges = useMutation(api.edges.update);
+
+    // Get initial nodes for this frame - you may need to adjust this query
+    const initialNodes = useQuery(api.frames.getFrameNodes, { frameId: id });
+    const movment = useQuery(api.frames.listMovments, { frameId: id });
+    const edges = useQuery(api.edges.get, { frameId: id });
+
+    // === Load initial nodes ===
+    useEffect(() => {
+        if (!initialNodes || isInitial) return;
+
+        console.log("Loading initial nodes:", initialNodes);
+        const newMap = new Map();
+        setNodes(initialNodes.map((n) => {
+            const node = (n.node as any) as Node
+            newMap.set(node.id, node)
+            return node
+        }));
+
+        setNodesMap(newMap);
+        setIsInitial(true)
+    }, [initialNodes]);
+
+    // 🔑 Keep batchRef synced with batch state
+    useEffect(() => {
+        batchRef.current = batch;
+    }, [batch]);
+
+    // === Interval to flush batch every 3 seconds ===
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            if (batchRef.current.length > 0) {
+                console.log("Sending batch:", batchRef.current);
+                let curr = batchRef.current;
+                setBatch([]); // clear state
+                batchRef.current = []; // clear ref
+                let batchId = await batchMovment({
+                    frameId: id,
+                    batch: curr,
+                });
+                setLastBatch(batchId);
             }
-        }
-    });
+        }, 3000);
 
-    // === Local state for smoother drag ===
-    const rawNodes = useQuery(api.frames.getNodes, { frameId: id });
-    const rawEdges = useQuery(api.edges.get, { frameId: id });
-    
-    // Transform nodes to ensure width/height are undefined instead of null
-    const nodes = rawNodes?.map(node => ({
-        ...node,
-        width: node.width === null ? undefined : node.width,
-        height: node.height === null ? undefined : node.height,
-    }));
-    
-    // Transform edges to ensure proper data structure
-    const edges = rawEdges?.map(edge => ({
-        ...edge,
-        data: edge.data || { bar: 0 },
-    }));
+        return () => clearInterval(interval);
+    }, [id, batchMovment]);
 
-    const updateNodes = useMutation(
-        api.frames.updateNodes,
-    ).withOptimisticUpdate((store, args) => {
-        const nodes = store.getQuery(api.frames.getNodes, { frameId: id }) ?? [];
-        const updated = applyNodeChanges(args.changes, nodes);
-        store.setQuery(api.frames.getNodes, { frameId: id }, updated);
-    });
+    // === Handle incoming movement updates ===
+    useEffect(() => {
+        if (!movment || movment.length === 0) return;
+        let m = movment[movment.length - 1];
+        if (m._id.toString() === lastBatch) return;
+        console.log("We got movement update:", m);
 
+        // Update the nodes map for reference
+        m.batch.forEach((b) => {
+            setNodesMap((nm) => {
+                const existingNode = nm.get(b.id);
+                if (existingNode) {
+                    const updatedNode = {
+                        ...existingNode,
+                        position: b.position,
+                        type: b.type || existingNode.type,
+                        // Keep existing data, don't overwrite with ID string
+                        data: existingNode.data
+                    };
+                    return new Map(nm.set(b.id, updatedNode));
+                }
+                return nm;
+            });
+        });
+
+        // Apply movements in sequence with proper ReactFlow updates
+        const applyBatchSequentially = (batch: any[], index = 0) => {
+            if (index >= batch.length) return;
+
+            const b = batch[index];
+
+            // Apply the movement update
+            setNodes((currentNodes) => {
+                const existingNodeIndex = currentNodes.findIndex(node => node.id === b.id);
+
+                if (existingNodeIndex === -1) {
+                    console.warn(`Node ${b.id} not found in current nodes`);
+                    return currentNodes;
+                }
+
+                // Create the proper NodeChange object
+                const nodeChange: NodeChange = {
+                    id: b.id,
+                    type: 'position',
+                    position: b.position,
+                };
+
+                return applyNodeChanges([nodeChange], currentNodes);
+            });
+
+            // Continue with next item after delay
+            setTimeout(() => {
+                applyBatchSequentially(batch, index + 1);
+            }, 20); // 75ms between each movement
+        };
+
+        applyBatchSequentially(m.batch);
+    }, [movment, lastBatch]);
+
+    // === Node updates (batched) ===
     const onNodesChange = useCallback(
         (changes: NodeChange[]) => {
-            // Separate out data to sync here
-            console.log("onNodesChange", { changes });
-            const avoidPending = changes.filter((change) => {
-                if ("id" in change && change.id.startsWith("pending-")) {
+            console.log("onNodesChange:", changes);
+
+            const avoidPending = changes.map((change) => {
+                if (!("id" in change) || !("position" in change)) return null;
+                const node = nodesMap.get(change.id);
+                if (!node) return null;
+                return {
+                    ...change,
+                    data: node.data
+                };
+            }).filter((change) => {
+                if (!change || !("id" in change) || !("position" in change)) return false;
+                if (change.id.startsWith("pending-") || change.type !== "position") {
                     console.warn("ignoring pending node change", { change });
                     return false;
                 }
                 return true;
             });
-            updateNodes({
-                frameId: id,
-                changes: avoidPending as any,
+
+            // Apply changes to local state immediately for responsiveness
+            setNodes((nds) => applyNodeChanges(changes, nds));
+
+            // Update nodes map
+            changes.forEach(change => {
+                if (change.type === 'position' && 'position' in change) {
+                    setNodesMap(prev => {
+                        const existing = prev.get(change.id);
+                        if (existing && change.position) {
+                            return new Map(prev.set(change.id, {
+                                ...existing,
+                                position: change.position
+                            }));
+                        }
+                        return prev;
+                    });
+                }
             });
+
+            // Add valid changes to batch for syncing with other users
+            if (avoidPending.length > 0) {
+                setBatch((prev) => {
+                    const updated = [...prev, ...avoidPending];
+                    batchRef.current = updated; // keep ref in sync
+                    return updated;
+                });
+            }
         },
-        [updateNodes],
+        [nodesMap]
     );
 
-
-    const updateEdges = useMutation(
-        api.edges.update,
-    ).withOptimisticUpdate((store, args) => {
-        const rawEdges = store.getQuery(api.edges.get, { frameId: id }) ?? [];
-        // Transform edges to match ReactFlow EdgeBase type for applyEdgeChanges
-        const reactFlowEdges = rawEdges.map(edge => ({
-            id: edge.id,
-            source: edge.source,
-            target: edge.target,
-            data: { bar: 0 }, // Default EdgeBase data structure
-            type: edge.type,
-            sourceHandle: edge.sourceHandle,
-            targetHandle: edge.targetHandle,
-        }));
-        const updated = applyEdgeChanges(args.changes, reactFlowEdges as any);
-        // Transform back to store format with proper data structure
-        const transformedUpdated = updated.map(edge => ({
-            ...edge,
-            data: { bar: 0 }, // Always use the expected data structure
-        }));
-        store.setQuery(api.edges.get, { frameId: id }, transformedUpdated as any);
-    });
-
+    // === Edge updates ===
     const onEdgesChange = useCallback(
         (changes: EdgeChange[]) => {
-            // Separate out data to sync here
-            const avoidPending = changes.filter((change) => {
-                if ("id" in change && change.id.startsWith("pending-")) {
-                    console.warn("ignoring pending edge change", { change });
-                    return false;
-                }
-                return true;
-            });
-            console.log("onEdgesChange", { changes });
-            // Transform EdgeChange[] to match custom validator expectations
-            const transformedChanges = avoidPending.map(change => {
-                if (change.type === 'add' && 'item' in change) {
+            const avoidPending = changes.filter(
+                (change) => !("id" in change && change.id.startsWith("pending-"))
+            );
+
+            const transformedChanges = avoidPending.map((change) => {
+                if (change.type === "add" && "item" in change) {
                     return {
                         type: change.type,
                         item: {
                             ...change.item,
-                            data: { bar: 0 }, // Ensure proper data structure
+                            data: { bar: 0 }, // ensure valid data structure
                         },
                     };
                 }
                 return change;
             });
+
             updateEdges({ frameId: id, changes: transformedChanges as any });
         },
-        [updateEdges],
+        [updateEdges, id]
     );
 
-
+    // === Connecting edges ===
     const connect = useMutation(api.edges.connect).withOptimisticUpdate(
         (store, args) => {
-            const edges =
+            const currentEdges =
                 store.getQuery(api.edges.get, { frameId: id }) ?? [];
-            // Convert null values to proper types for ReactFlow compatibility
             const connection = {
                 source: args.connection.source || "",
                 target: args.connection.target || "",
                 sourceHandle: args.connection.sourceHandle || null,
                 targetHandle: args.connection.targetHandle || null,
             };
-            const updated = addEdge(connection, edges);
+            const updated = addEdge(connection, currentEdges);
             store.setQuery(api.edges.get, { frameId: id }, updated);
-        },
+        }
     );
+
     const onConnect = useCallback(
         (connection: Connection) => {
             console.log("onConnect", { connection });
@@ -186,47 +240,36 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
                 connection.source?.startsWith("pending-") ||
                 connection.target?.startsWith("pending-")
             ) {
-                console.warn("ignoring pending connection", { connection });
+                console.warn("Ignoring pending connection", { connection });
                 return;
             }
             connect({ frameId: id, connection });
         },
-        [connect],
+        [connect, id]
     );
 
     // === Node creation ===
-    const handleNodeCreation = async (
-        data: Omit<CreateNodeArgs, "channel">
-    ) => {
-        if (!frame) {
-            throw new Error("Failed to get a frame");
-        }
+    const handleNodeCreation = async (data: Omit<CreateNodeArgs, "channel">) => {
+        if (!frame) throw new Error("Failed to get a frame");
 
-        // Local optimistic core data for React Flow
-        const coreData = {
-            id: crypto.randomUUID(),
-            position: {
-                x: Math.random() * 400,
-                y: Math.random() * 400,
-            },
-            data: {},
-        };
-
-        // Persist to Convex
         await createNode({
             ...data,
-            channel: frame?.channel,
-            frameId: frame?._id,
-            core: coreData,
+            channel: frame.channel,
+            frameId: frame._id,
+            position: {
+                id: crypto.randomUUID(),
+                position: {
+                    x: Math.random() * 400,
+                    y: Math.random() * 400,
+                },
+                type: "default",
+                data: "", // handled on backend
+            },
         });
     };
 
     // === Loading state ===
-    if (
-        nodes === undefined ||
-        edges === undefined ||
-        frame === undefined
-    ) {
+    if (!nodes || !edges || !frame) {
         return (
             <div className="w-full h-[93%] px-4 pt-4 flex items-center justify-center">
                 <p>Loading frame...</p>

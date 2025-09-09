@@ -3,7 +3,6 @@ import { v } from "convex/values";
 import { Visions } from "./visions";
 import { Channel } from "./channel";
 import { Frame } from "./frame";
-import { nodeValidator } from "../reactflow/types";
 
 export enum NodeVariants {
     Image = "Image",

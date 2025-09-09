@@ -1,9 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import { v, Infer } from "convex/values";
 import { requireVisionAccess } from "./utils/auth";
-import { nodeChangeValidator } from "./reactflow/types";
-import { applyNodeChanges } from "@xyflow/react";
-import type { Id } from "./_generated/dataModel";
+import { nodeValidator } from "./reactflow/types";
+import { Nodes } from "./tables/nodes";
 
 // Args schemas
 const createArgs = v.object({
@@ -218,32 +217,10 @@ export const listByVision = query({
     },
 });
 
-export const getNodes = query({
-    args: { frameId: v.id("frames") },
-    handler: async (ctx, args) => {
-        const frame = await ctx.db.get(args.frameId);
-        if (!frame) {
-            throw new Error("Invalid frame");
-        }
-
-        if (!requireVisionAccess(ctx, frame.vision)) {
-            throw new Error("Unauthorized");
-        }
-
-        const all = await ctx.db
-            .query("nodes")
-            .withIndex("by_frame", (q) => q.eq("frame", args.frameId))
-            .collect();
-    
-        const nodes = all.map((a) => a.core).filter((a) => a !== undefined)
-        return nodes;
-    },
-});
-
-export const updateNodes = mutation({
+export const batchMovment = mutation({
     args: {
         frameId: v.id("frames"),
-        changes: v.array(nodeChangeValidator()),
+        batch: v.array(nodeValidator(v.id("nodes")))    ,
     },
     handler: async (ctx, args) => {
         const frame = await ctx.db.get(args.frameId);
@@ -255,111 +232,74 @@ export const updateNodes = mutation({
             throw new Error("Unauthorized");
         }
 
-        // Get the ids of the nodes that are being changed
-        const ids = args.changes.flatMap((change) =>
-            change.type === "add" || change.type === "replace"
-                ? change.item ? [change.item.id] : []
-                : [change.id],
-        );
-        // Only fetch the nodes that are being changed
-        const nodes = (
-            await Promise.all(
-                ids.map(async (id) =>
-                    ctx.db
-                        .query("nodes")
-                        .withIndex("id", (q) => q.eq("core.id", id))
-                        .unique(),
-                ),
-            )
-        ).flatMap((n) => (n ? [n] : []));
-        const nodesById = new Map(nodes.map((n) => [n.core?.id, n]));
+        const newBatch = await ctx.db.insert("frame_positions", {
+            frameId: args.frameId,
+            batch: args.batch,
+        })
 
-        // Filter out add/reset changes with undefined items
-        const validChanges = args.changes.filter(change => {
-            if (change.type === 'add' || change.type === 'replace') {
-                return change.item !== undefined;
+        // Update each framed_node with the newest state from the batch
+        for (const batchNode of args.batch) {
+            const existingFramedNode = await ctx.db
+                .query("framed_node")
+                .withIndex("id", (q) => q.eq("node.id", batchNode.id))
+                .first();
+
+            if (existingFramedNode) {
+                await ctx.db.patch(existingFramedNode._id, {
+                    node: batchNode
+                });
             }
-            return true;
-        });
+        }
 
-        const updatedNodes = applyNodeChanges(
-            validChanges as any, // Type assertion needed due to custom validator
-            nodes.map((node) => node.core)
-                .filter((core): core is NonNullable<typeof core> => Boolean(core && core.id))
-                .map(core => ({
-                    ...core,
-                    id: core.id!, // We know id exists due to filter
-                    position: core.position || { x: 0, y: 0 }, // Ensure position is defined
-                    width: core.width ?? undefined, // Convert null to undefined
-                    height: core.height ?? undefined, // Convert null to undefined
-                    data: {} // React Flow requires data property
-                })),
-        );
-        const updatedIds = new Set(updatedNodes.map((n) => n.id));
 
-        await Promise.all(
-            updatedNodes.map(async (node) => {
-                const existing = nodesById.get(node.id);
-                if (existing) {
-                    // Handle extent type before saving to database
-                    const { extent, ...coreNode } = node;
-                    const coreUpdate = {
-                        ...coreNode,
-                        data: node.data || {},
-                        // Handle extent property type conversion
-                        ...(extent && extent !== null && {
-                            extent: extent === "parent" ? "parent" as const : extent as [[number, number], [number, number]]
-                        })
-                    };
-                    await ctx.db.patch(existing._id, { core: coreUpdate });
-                } else {
-                    throw new Error("Failed to find an existing node")
-                }
-            }),
-        );
-        // Handle deletions
-        await Promise.all(
-            nodes.map(async (node) => {
-                if (node.core && !updatedIds.has(node.core.id)) {
-                    await ctx.db.delete(node._id);
-                }
-            }),
-        );
+        return newBatch
     },
 });
 
-// Query for streaming live node positions (for real-time updates)
-export const getLiveNodePositions = query({
+export const listMovments = query({
     args: {
-        frameId: v.id("frames"),
+        frameId: v.id("frames")
     },
+    handler: async (ctx, args) => {
+        const frame = await ctx.db.get(args.frameId);
+        if (!frame) {
+            throw new Error("Invalid frame");
+        }
+
+        if (!requireVisionAccess(ctx, frame.vision)) {
+            throw new Error("Unauthorized");
+        }
+        
+        const batchs = await ctx.db.query("frame_positions").withIndex("by_frame", (q) => q.eq("frameId", args.frameId)).collect()
+
+        return batchs
+    }
+}) 
+
+const getFrameNodesArgs = v.object({
+    frameId: v.id("frames"),
+});
+
+export const getFrameNodes = query({
+    args: getFrameNodesArgs,
     handler: async (ctx, args) => {
         const frame = await ctx.db.get(args.frameId);
         if (!frame) {
             throw new Error("Frame not found");
         }
 
-        // Check if it's a frames document and has vision property
-        if ('vision' in frame && frame.vision && !requireVisionAccess(ctx, frame.vision)) {
-            throw new Error("Unauthorized");
+        if (frame.vision) {
+            await requireVisionAccess(ctx, frame.vision);
         }
 
-        // Get current node positions from database
-        const nodes = await ctx.db
-            .query("nodes")
-            .withIndex("by_frame", (q) => q.eq("frame", args.frameId))
+        const framedNodes = await ctx.db
+            .query("framed_node")
+            .withIndex("by_frame", (q) => q.eq("frameId", args.frameId))
             .collect();
 
-        // Return just the positions for live updates
-        return nodes
-            .filter(node => node.core && node.core.id)
-            .map(node => ({
-                nodeId: node.core!.id,
-                position: node.core!.position || { x: 0, y: 0 }
-            }));
+        return framedNodes;
     },
 });
-
 
 // Type exports
 export type CreateFrameArgs = Infer<typeof createArgs>;
@@ -369,3 +309,4 @@ export type GetFrameArgs = Infer<typeof getArgs>;
 export type ListFramesByChannelArgs = Infer<typeof listByChannelArgs>;
 export type ReorderFramesArgs = Infer<typeof reorderArgs>;
 export type ListFramesByVisionArgs = Infer<typeof listByVisionArgs>;
+export type GetFrameNodesArgs = Infer<typeof getFrameNodesArgs>;

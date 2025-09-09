@@ -24,6 +24,7 @@ import type * as tables_chats from "../tables/chats.js";
 import type * as tables_comments from "../tables/comments.js";
 import type * as tables_edges from "../tables/edges.js";
 import type * as tables_frame from "../tables/frame.js";
+import type * as tables_framed_node from "../tables/framed_node.js";
 import type * as tables_messages from "../tables/messages.js";
 import type * as tables_nodes from "../tables/nodes.js";
 import type * as tables_notifications from "../tables/notifications.js";
@@ -67,6 +68,7 @@ declare const fullApi: ApiFromModules<{
   "tables/comments": typeof tables_comments;
   "tables/edges": typeof tables_edges;
   "tables/frame": typeof tables_frame;
+  "tables/framed_node": typeof tables_framed_node;
   "tables/messages": typeof tables_messages;
   "tables/nodes": typeof tables_nodes;
   "tables/notifications": typeof tables_notifications;
