@@ -3,7 +3,6 @@ import { v, Infer } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { getUserByIdenityId, requireAuth, requireVisionAccess } from "./utils/auth";
 import { paginationOptsValidator } from "convex/server";
-import { nodeChangeValidator, nodeValidator } from "./reactflow/types";
 
 // Args schemas
 const createArgs = v.object({
@@ -13,7 +12,6 @@ const createArgs = v.object({
     variant: v.string(),
     value: v.string(),
     thought: v.optional(v.string()),
-    core: nodeValidator(),
     sourceNode: v.optional(v.object({
         id: v.string(),
         handlepos: v.optional(v.string()),
@@ -77,7 +75,6 @@ export const create = mutation({
             variant: args.variant,
             value: args.value,
             thought: args.thought,
-            core: args.core,
             frame: args.frameId,
             channel: channel._id,
             vision: channel.vision,
@@ -143,8 +140,7 @@ export const get = query({
             await requireVisionAccess(ctx, node.vision);
         }
 
-        const { core, ...nodeWithoutCore } = node;
-        return nodeWithoutCore;
+        return node;
     },
 });
 
@@ -165,42 +161,7 @@ export const listByFrame = query({
             .withIndex("by_frame", (q) => q.eq("frame", args.frameId))
             .collect();
 
-        return nodes.map(({ core, ...node }) => node);
-    },
-});
-
-// New query for React Flow that includes core data
-export const listByFrameWithCore = query({
-    args: listByFrameArgs,
-    handler: async (ctx, args) => {
-        const frame = await ctx.db.get(args.frameId);
-        if (!frame) {
-            throw new Error("Frame not found");
-        }
-
-        if (frame.vision) {
-            await requireVisionAccess(ctx, frame.vision);
-        }
-
-        const nodes = await ctx.db
-            .query("nodes")
-            .withIndex("by_frame", (q) => q.eq("frame", args.frameId))
-            .collect();
-
-        // Return nodes with core data for React Flow
-        return nodes
-            .filter(node => node.core && node.core.id) // Only return nodes with valid core data
-            .map(node => {
-                const core = node.core!; // We know it exists from filter
-                return {
-                    ...core,
-                    id: core.id!, // Ensure id is defined
-                    position: core.position || { x: 0, y: 0 }, // Ensure position is defined
-                    width: core.width ?? undefined, // Convert null to undefined
-                    height: core.height ?? undefined, // Convert null to undefined
-                    data: { nodeId: node._id, title: node.title, variant: node.variant } // Add React Flow data
-                };
-            });
+        return nodes;
     },
 });
 
@@ -276,9 +237,8 @@ export const listByChannel = query({
                     const frame = await ctx.db.get(node.frame as Id<"frames">);
                     frameTitle = frame?.title || null;
                 }
-                const { core, ...nodeWithoutCore } = node;
                 return {
-                    ...nodeWithoutCore,
+                    ...node,
                     frameTitle,
                 };
             })
@@ -341,9 +301,8 @@ export const findDuplicateNodes = query({
             filteredNodes.map(async (node) => {
                 const channel = await ctx.db.get(node.channel);
                 const user = await ctx.db.get(node.userId);
-                const { core, ...nodeWithoutCore } = node;
                 return {
-                    ...nodeWithoutCore,
+                    ...node,
                     channelTitle: channel?.title || "Unknown Channel",
                     channelId: channel?._id,
                     userName: user?.name || "Unknown User",

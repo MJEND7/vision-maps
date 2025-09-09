@@ -1,10 +1,10 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 import { Nodes } from "./nodes";
-import { defaultEdgeValidator, edgeValidator } from "../reactflow/types";
+import { edgeValidator } from "../reactflow/types";
 
 export const edgeData = v.object({
-  bar: v.number(),
+  name: v.number(),
 });
 
 export const rfEdge = edgeValidator(edgeData);

@@ -20,6 +20,8 @@ export default defineSchema({
     vision_users: Visions.TableConnectedUsers,
     channels: Channel.Table,
     frames: Frame.Table,
+    frame_positions: Frame.PositionsTable,
+    frame_batch_movment: Frame.BatchMovmentsTable,
     nodes: Nodes.Table,
     edges: Edges.Table,
     users: User.Table,

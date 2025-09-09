@@ -26,19 +26,19 @@ export enum NodeVariants {
 export class Nodes {
     static TABLE_NAME = "nodes" as const;
 
-    static Table = defineTable({
+    static columns = v.object({
         title: v.string(),
         variant: v.string(),
         value: v.string(),
         userId: v.id("users"),
         thought: v.optional(v.string()),
-        core: nodeValidator(),
         updatedAt: v.optional(v.string()),
         frame: v.optional(v.id(Frame.TABLE_NAME)),
         channel: v.id(Channel.TABLE_NAME),
         vision: v.id(Visions.TABLE_NAME),
     })
-        .index("id", ["core.id"])
+
+    static Table = defineTable(this.columns)
         .index("by_userId", ["userId"])
         .index("by_frame", ["frame"])
         .index("by_channel", ["channel"])
