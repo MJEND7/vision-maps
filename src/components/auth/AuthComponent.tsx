@@ -249,7 +249,7 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
 
                     <div>
                         <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
-                            {isSignIn ? "Password" : "Password *"}
+                            Password *
                         </label>
                         <div className="relative">
                             <Input

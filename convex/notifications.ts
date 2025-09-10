@@ -264,6 +264,7 @@ export const acceptInvite = mutation({
     await ctx.db.insert("vision_users", {
       userId: identity.userId!.toString(),
       role: notification.inviteData.role,
+      status: "approved",
       visionId: notification.inviteData.visionId
     });
 

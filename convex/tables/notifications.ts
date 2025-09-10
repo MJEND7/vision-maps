@@ -9,6 +9,9 @@ export enum NotificationType {
     MENTION = "mention", 
     COMMENT_REPLY = "comment_reply",
     INVITE = "invite",
+    JOIN_REQUEST = "join_request",
+    REQUEST_APPROVED = "request_approved",
+    REQUEST_REJECTED = "request_rejected",
     // Add more types as needed
 }
 

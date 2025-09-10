@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v, Infer } from "convex/values";
 import { requireAuth, requireVisionAccess } from "./utils/auth";
-import { Vision, VisionAccessRole } from "./tables/visions";
+import { Vision, VisionAccessRole, VisionUserStatus } from "./tables/visions";
 import { createDefaultChannel } from "./utils/channel";
 
 // Args schemas
@@ -55,6 +55,24 @@ const updateMemberRoleArgs = v.object({
   newRole: v.string(),
 });
 
+const requestToJoinArgs = v.object({
+  visionId: v.id("visions"),
+});
+
+const approveJoinRequestArgs = v.object({
+  visionId: v.id("visions"),
+  userId: v.string(),
+});
+
+const rejectJoinRequestArgs = v.object({
+  visionId: v.id("visions"),
+  userId: v.string(),
+});
+
+const getPendingRequestsArgs = v.object({
+  visionId: v.id("visions"),
+});
+
 export const create = mutation({
   args: createArgs,
   handler: async (ctx, args) => {
@@ -76,6 +94,7 @@ export const create = mutation({
     await ctx.db.insert("vision_users", {
       userId: identity.userId.toString(),
       role: VisionAccessRole.Owner,
+      status: VisionUserStatus.Approved,
       visionId,
     });
 
@@ -257,6 +276,7 @@ export const getMembers = query({
     const visionUsers = await ctx.db
       .query("vision_users")
       .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
+      .filter((q) => q.eq(q.field("status"), VisionUserStatus.Approved))
       .collect();
 
     const members = [];
@@ -304,6 +324,7 @@ export const addMember = mutation({
     await ctx.db.insert("vision_users", {
       userId: args.userId,
       role: args.role,
+      status: VisionUserStatus.Approved,
       visionId: args.visionId,
     });
   },
@@ -367,6 +388,201 @@ export const updateMemberRole = mutation({
   },
 });
 
+export const requestToJoin = mutation({
+  args: requestToJoinArgs,
+  handler: async (ctx, args) => {
+    const identity = await requireAuth(ctx);
+    
+    if (!identity.userId) {
+      throw new Error("Failed to get userId");
+    }
+
+    // Check if user is already a member or has pending request
+    const existingRequest = await ctx.db
+      .query("vision_users")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
+      .filter((q) => q.eq(q.field("userId"), identity.userId!.toString()))
+      .first();
+
+    if (existingRequest) {
+      if (existingRequest.status === VisionUserStatus.Approved) {
+        throw new Error("You are already a member of this vision");
+      } else {
+        throw new Error("You already have a pending request for this vision");
+      }
+    }
+
+    // Create pending request
+    await ctx.db.insert("vision_users", {
+      userId: identity.userId.toString(),
+      role: VisionAccessRole.Editor, // Default role for requests
+      status: VisionUserStatus.Pending,
+      visionId: args.visionId,
+    });
+
+    // Send notification to vision owners
+    const visionOwners = await ctx.db
+      .query("vision_users")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("role"), VisionAccessRole.Owner),
+          q.eq(q.field("status"), VisionUserStatus.Approved)
+        )
+      )
+      .collect();
+
+    const vision = await ctx.db.get(args.visionId);
+    const requestingUser = await ctx.db
+      .query("users")
+      .withIndex("by_external_id", (q) => q.eq("externalId", identity.userId!.toString()))
+      .first();
+
+    // Create notifications for each owner
+    for (const owner of visionOwners) {
+      await ctx.db.insert("notifications", {
+        recipientId: owner.userId,
+        senderId: identity.userId!.toString(),
+        type: "join_request",
+        title: "Join Request",
+        message: `${requestingUser?.name || 'Someone'} wants to join "${vision?.title || 'your vision'}"`,
+        visionId: args.visionId,
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    return true;
+  },
+});
+
+export const approveJoinRequest = mutation({
+  args: approveJoinRequestArgs,
+  handler: async (ctx, args) => {
+    await requireVisionAccess(ctx, args.visionId, VisionAccessRole.Owner);
+
+    const pendingRequest = await ctx.db
+      .query("vision_users")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("userId"), args.userId),
+          q.eq(q.field("status"), VisionUserStatus.Pending)
+        )
+      )
+      .first();
+
+    if (!pendingRequest) {
+      throw new Error("No pending request found for this user");
+    }
+
+    await ctx.db.patch(pendingRequest._id, {
+      status: VisionUserStatus.Approved,
+    });
+
+    // Send notification to the user that their request was approved
+    const vision = await ctx.db.get(args.visionId);
+    const identity = await requireAuth(ctx);
+    const approver = await ctx.db
+      .query("users")
+      .withIndex("by_external_id", (q) => q.eq("externalId", identity.userId!.toString()))
+      .first();
+
+    await ctx.db.insert("notifications", {
+      recipientId: args.userId,
+      senderId: identity.userId!.toString(),
+      type: "request_approved",
+      title: "Request Approved",
+      message: `${approver?.name || 'Someone'} approved your request to join "${vision?.title || 'the vision'}"`,
+      visionId: args.visionId,
+      isRead: false,
+      createdAt: new Date().toISOString()
+    });
+
+    return true;
+  },
+});
+
+export const rejectJoinRequest = mutation({
+  args: rejectJoinRequestArgs,
+  handler: async (ctx, args) => {
+    await requireVisionAccess(ctx, args.visionId, VisionAccessRole.Owner);
+
+    const pendingRequest = await ctx.db
+      .query("vision_users")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("userId"), args.userId),
+          q.eq(q.field("status"), VisionUserStatus.Pending)
+        )
+      )
+      .first();
+
+    if (!pendingRequest) {
+      throw new Error("No pending request found for this user");
+    }
+
+    await ctx.db.delete(pendingRequest._id);
+
+    // Send notification to the user that their request was rejected
+    const vision = await ctx.db.get(args.visionId);
+    const identity = await requireAuth(ctx);
+    const rejector = await ctx.db
+      .query("users")
+      .withIndex("by_external_id", (q) => q.eq("externalId", identity.userId!.toString()))
+      .first();
+
+    await ctx.db.insert("notifications", {
+      recipientId: args.userId,
+      senderId: identity.userId!.toString(),
+      type: "request_rejected",
+      title: "Request Rejected",
+      message: `${rejector?.name || 'Someone'} rejected your request to join "${vision?.title || 'the vision'}"`,
+      visionId: args.visionId,
+      isRead: false,
+      createdAt: new Date().toISOString()
+    });
+
+    return true;
+  },
+});
+
+export const getPendingRequests = query({
+  args: getPendingRequestsArgs,
+  handler: async (ctx, args) => {
+    await requireVisionAccess(ctx, args.visionId, VisionAccessRole.Owner);
+
+    const pendingRequests = await ctx.db
+      .query("vision_users")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
+      .filter((q) => q.eq(q.field("status"), VisionUserStatus.Pending))
+      .collect();
+
+    const requestsWithUserInfo = [];
+    for (const request of pendingRequests) {
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_external_id", (q) => q.eq("externalId", request.userId))
+        .first();
+
+      if (user) {
+        requestsWithUserInfo.push({
+          id: request._id,
+          userId: request.userId,
+          name: user.name,
+          email: user.email,
+          picture: user.picture,
+          role: request.role,
+          createdAt: request._creationTime,
+        });
+      }
+    }
+
+    return requestsWithUserInfo;
+  },
+});
+
 // TypeScript types
 export type CreateVisionArgs = Infer<typeof createArgs>;
 export type UpdateVisionArgs = Infer<typeof updateArgs>;
@@ -377,3 +593,7 @@ export type GetVisionMembersArgs = Infer<typeof getMembersArgs>;
 export type AddVisionMemberArgs = Infer<typeof addMemberArgs>;
 export type RemoveVisionMemberArgs = Infer<typeof removeMemberArgs>;
 export type UpdateVisionMemberRoleArgs = Infer<typeof updateMemberRoleArgs>;
+export type RequestToJoinArgs = Infer<typeof requestToJoinArgs>;
+export type ApproveJoinRequestArgs = Infer<typeof approveJoinRequestArgs>;
+export type RejectJoinRequestArgs = Infer<typeof rejectJoinRequestArgs>;
+export type GetPendingRequestsArgs = Infer<typeof getPendingRequestsArgs>;

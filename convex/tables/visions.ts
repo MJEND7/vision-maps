@@ -7,6 +7,11 @@ export enum VisionAccessRole {
     Editor = "editor"// Everything else rn
 }
 
+export enum VisionUserStatus {
+    Pending = "pending",
+    Approved = "approved"
+}
+
 export interface Vision {
     _id: Id<"visions">
     _creationTime: number,
@@ -31,7 +36,9 @@ export class Visions {
     static TableConnectedUsers = defineTable({
         userId: v.string(),
         role: v.string(), // owner or editor
+        status: v.string(), // pending or approved
         visionId: v.id(Visions.TABLE_NAME)
     }).index("by_visionId", ["visionId"])
-        .index("by_userId", ["userId"]);
+        .index("by_userId", ["userId"])
+        .index("by_status", ["status"]);
 }

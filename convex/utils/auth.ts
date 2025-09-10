@@ -1,6 +1,6 @@
 import { QueryCtx, MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
-import { VisionAccessRole } from "../tables/visions";
+import { VisionAccessRole, VisionUserStatus } from "../tables/visions";
 
 export async function getUserByIdenityId(ctx: QueryCtx | MutationCtx, userId: string) {
     const user = await ctx.db.query("users").withIndex("by_external_id", (u) => u.eq("externalId", userId)).first();
@@ -32,7 +32,12 @@ export async function requireVisionAccess(
     const visionUser = await ctx.db
         .query("vision_users")
         .withIndex("by_visionId", (q) => q.eq("visionId", visionId))
-        .filter((q) => q.eq(q.field("userId"), identity.userId))
+        .filter((q) => 
+            q.and(
+                q.eq(q.field("userId"), identity.userId),
+                q.eq(q.field("status"), VisionUserStatus.Approved)
+            )
+        )
         .first();
 
     if (!visionUser) {

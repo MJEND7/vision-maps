@@ -5,7 +5,7 @@ import { getUserAvatarFallbackInitials } from "@/utils/user";
 import { useState } from "react";
 import { Search, UserPlus } from "lucide-react";
 import { Input } from "./input";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 
@@ -36,14 +36,26 @@ export function InviteUsersDialogue({
         limit: 10
     });
 
-    const handleInvite = (user: any) => {
-        if (onInviteUser) {
-            onInviteUser(user._id);
+    const createInviteNotification = useMutation(api.notifications.createInviteNotification);
+
+    const handleInvite = async (user: any) => {
+        try {
+            await createInviteNotification({
+                recipientId: user.externalId,
+                visionId: vision,
+                role: "editor" // Default role, you might want to make this configurable
+            });
+            
+            if (onInviteUser) {
+                onInviteUser(user._id);
+            }
+            // Close dialog after inviting (optional)
+            onOpenChange(false);
+            setSearch("")
+            console.log("Invited user:", user.name);
+        } catch (error) {
+            console.error("Failed to invite user:", error);
         }
-        // Close dialog after inviting (optional)
-        onOpenChange(false);
-        setSearch("")
-        console.log("Inviting user:", user.name);
     };
 
     // Don't render if vision is not provided

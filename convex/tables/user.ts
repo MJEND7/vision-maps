@@ -10,7 +10,6 @@ export type ActiveUsers = {
     lastDisconnected: number;
 }[] | undefined
 
-
 export class User {
     static TABLE_NAME = "users"
     static Table = defineTable({
@@ -19,6 +18,10 @@ export class User {
         tokenIdentifier: v.string(),
         externalId: v.string(),
         picture: v.optional(v.string()),
-    }).index("by_token", ["tokenIdentifier"])
-        .index("by_external_id", ["externalId"]);
+    })
+    .index("by_external_id", ["externalId"])
+    .index("by_email", ["email"])
+    .searchIndex("search_name", {
+        searchField: "name",
+    });
 }
