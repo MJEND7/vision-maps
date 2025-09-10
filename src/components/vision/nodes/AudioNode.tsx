@@ -8,7 +8,15 @@ export default memo(function AudioNode(props: NodeProps<BaseNodeData>) {
   const node = props.data.node;
   
   return (
-    <div className="bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-orange-950/20 dark:to-yellow-950/20 bg-card border border-orange-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-orange-500/10">
+    <div 
+      className="bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-orange-950/20 dark:to-yellow-950/20 bg-card border border-orange-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-orange-500/10"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Audio node right-clicked, selecting:', props.id);
+        props.data.onNodeRightClick?.(props.id, e);
+      }}
+    >
       <Handle 
         type="target" 
         position={Position.Top}

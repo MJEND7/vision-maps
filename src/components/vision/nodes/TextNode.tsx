@@ -1,25 +1,91 @@
-import React, { memo, useState, useRef } from 'react';
+import React, { memo, useState, useRef, useEffect } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { BaseNodeData } from './BaseNode';
 import { renderNodeContent } from './NodeContentRenderer';
+import { NodeContextMenu } from '../node-context-menu';
+import { Trash2, Save, X } from 'lucide-react';
+import { useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 
 export default memo(function TextNode(props: NodeProps<BaseNodeData>) {
   const node = props.data.node;
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(node.value);
+  const [isSaving, setIsSaving] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  const updateNode = useMutation(api.nodes.update);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && e.metaKey) {
+  const handleSave = async () => {
+    if (isSaving) return;
+    
+    setIsSaving(true);
+    try {
+      await updateNode({
+        id: node._id,
+        value: editValue,
+      });
       setIsEditing(false);
-    } else if (e.key === 'Escape') {
-      setEditValue(node.value);
-      setIsEditing(false);
+      props.data.onEditComplete?.();
+    } catch (error) {
+      console.error('Failed to update node:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
+
+  const handleCancel = () => {
+    setEditValue(node.value);
+    setIsEditing(false);
+    props.data.onEditComplete?.();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      handleSave();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleCancel();
+    }
+  };
+
+  // Listen for external edit requests from frame component
+  useEffect(() => {
+    console.log('TextNode useEffect:', {
+      editingNodeId: props.data.editingNodeId,
+      nodeId: props.id,
+      isEditing,
+      shouldEdit: props.data.editingNodeId === props.id
+    });
+    
+    if (props.data.editingNodeId === props.id && !isEditing) {
+      console.log('Starting edit mode for node:', props.id);
+      setIsEditing(true);
+      setEditValue(node.value);
+      // Focus the textarea after it renders
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 100);
+    } else if (props.data.editingNodeId !== props.id && isEditing) {
+      // Another node is being edited, stop editing this one
+      console.log('Stopping edit mode for node:', props.id);
+      setIsEditing(false);
+      setEditValue(node.value);
+    }
+  }, [props.data.editingNodeId, props.id, isEditing, node.value]);
   
   return (
-    <div className="bg-card border border-green-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-green-500/10">
+    <div 
+      className="bg-card border border-green-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-green-500/10 group relative"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Select this node on right-click
+        console.log('Node right-clicked, selecting:', props.id);
+        props.data.onNodeRightClick?.(props.id, e);
+      }}
+    >
       <Handle 
         type="target" 
         position={Position.Top}
@@ -31,13 +97,7 @@ export default memo(function TextNode(props: NodeProps<BaseNodeData>) {
           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
           <span className="text-xs font-semibold text-green-600 uppercase tracking-wider">Text</span>
         </div>
-        <div className="mb-2">
-          <h4 className="font-medium text-sm text-foreground">{node.title}</h4>
-          {node.thought && (
-            <p className="text-xs text-muted-foreground mt-1">{node.thought}</p>
-          )}
-        </div>
-        {renderNodeContent(node, props.data.onOpenChat, isEditing, editValue, setEditValue, textareaRef, handleKeyDown)}
+        {renderNodeContent(node, props.data.onOpenChat, isEditing, editValue, setEditValue, textareaRef, handleKeyDown, handleSave, handleCancel, isSaving)}
       </div>
       
       <Handle 

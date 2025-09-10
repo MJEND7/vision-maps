@@ -21,9 +21,14 @@ import PasteBin from "../channel/paste-bin";
 import { CreateNodeArgs } from "../../../convex/nodes";
 import { useMovementQueue } from "../../hooks/useMovementQueue";
 import nodeTypes from "./nodes";
+import { CanvasContextMenu } from "./canvas-context-menu";
+import { AddExistingNodeDialog } from "./add-existing-node-dialog";
 
 export default function FrameComponent({ id }: { id: Id<"frames"> }) {
     const [isDark, setIsDark] = useState(false);
+    const defaultEdgeOptions = {
+        animated: true,
+    };
 
     // Detect dark mode from Tailwind
     useEffect(() => {
@@ -31,21 +36,29 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
             const isDarkMode = document.documentElement.classList.contains('dark');
             setIsDark(isDarkMode);
         };
-        
+
         // Check initially
         checkDarkMode();
-        
+
         // Set up observer to watch for class changes
         const observer = new MutationObserver(checkDarkMode);
         observer.observe(document.documentElement, {
             attributes: true,
             attributeFilter: ['class']
         });
-        
+
         return () => observer.disconnect();
     }, []);
     const [nodes, setNodes] = useState<Node[]>([]);
     const [isInitial, setIsInitial] = useState(false);
+    const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
+    const [contextMenu, setContextMenu] = useState<{
+        show: boolean;
+        x: number;
+        y: number;
+    }>({ show: false, x: 0, y: 0 });
+    const [showAddNodeDialog, setShowAddNodeDialog] = useState(false);
+    const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
 
     // === Convex data ===
     const frame = useQuery(api.frames.get, { id });
@@ -56,11 +69,11 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
     const createNode = useMutation(api.nodes.create).withOptimisticUpdate(
         (store, args) => {
             if (!args.frameId) return;
-            
+
             // Get current framed nodes and frame data
             const currentFramedNodes = store.getQuery(api.frames.getFrameNodes, { frameId: args.frameId }) || [];
             const frameData = store.getQuery(api.frames.get, { id: args.frameId });
-            
+
             // Create optimistic node
             const optimisticNodeId = `optimistic-${crypto.randomUUID()}`;
             const optimisticNode = {
@@ -87,10 +100,33 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
                             updatedAt: new Date().toISOString(),
                         },
                         nodeUser: null,
+                        frameId: args.frameId,
+                        editingNodeId: null, // optimistic nodes can't be edited immediately
+                        onNodeRightClick: (nodeId: string, event: React.MouseEvent) => {
+                            console.log('Node right-clicked:', nodeId);
+
+                            // If the right-clicked node is not already selected, 
+                            // clear selection and select only this node
+                            setSelectedNodes(currentSelection => {
+                                if (!currentSelection.includes(nodeId)) {
+                                    console.log('Node not in selection, selecting only:', nodeId);
+                                    return [nodeId];
+                                } else {
+                                    console.log('Node already selected, keeping current selection:', currentSelection);
+                                    return currentSelection;
+                                }
+                            });
+
+                            setContextMenu({
+                                show: true,
+                                x: event.clientX,
+                                y: event.clientY,
+                            });
+                        },
                     }
                 }
             };
-            
+
             // Add to framed nodes
             store.setQuery(api.frames.getFrameNodes, { frameId: args.frameId }, [
                 ...currentFramedNodes,
@@ -120,17 +156,17 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
             const newMap = new Map();
             const nodesWithData = await Promise.all(framedNodes.map(async (framedNode) => {
                 const node = (framedNode.node as any) as Node;
-                
+
                 // If the node already has the data structure (from optimistic update)
                 if (node.data?.node) {
                     newMap.set(node.id, node);
                     return node;
                 }
-                
+
                 // For existing nodes, fetch the actual node data
                 try {
                     const nodeData = await convex.query(api.nodes.get, { id: node.data as any });
-                    
+
                     if (nodeData) {
                         const reactFlowNode: Node = {
                             ...node,
@@ -138,6 +174,31 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
                             data: {
                                 node: nodeData,
                                 nodeUser: null,
+                                frameId: id,
+                                editingNodeId: editingNodeId,
+                                onEditComplete: () => setEditingNodeId(null),
+                                onNodeRightClick: (nodeId: string, event: React.MouseEvent) => {
+                                    console.log('Node right-clicked:', nodeId);
+
+                                    // If the right-clicked node is not already selected, 
+                                    // clear selection and select only this node
+                                    setSelectedNodes(currentSelection => {
+                                        if (!currentSelection.includes(nodeId)) {
+                                            console.log('Node not in selection, selecting only:', nodeId);
+                                            return [nodeId];
+                                        } else {
+                                            console.log('Node already selected, keeping current selection:', currentSelection);
+                                            return currentSelection;
+                                        }
+                                    });
+
+                                    // Show context menu at mouse position
+                                    setContextMenu({
+                                        show: true,
+                                        x: event.clientX,
+                                        y: event.clientY,
+                                    });
+                                },
                             }
                         };
                         newMap.set(node.id, reactFlowNode);
@@ -146,7 +207,7 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
                 } catch (error) {
                     console.error("Failed to fetch node data:", error);
                 }
-                
+
                 // Fallback for nodes that failed to load
                 const fallbackNode: Node = {
                     ...node,
@@ -159,6 +220,30 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
                             value: "",
                         },
                         nodeUser: null,
+                        frameId: id,
+                        editingNodeId: editingNodeId,
+                        onEditComplete: () => setEditingNodeId(null),
+                        onNodeRightClick: (nodeId: string, event: React.MouseEvent) => {
+                            console.log('Node right-clicked:', nodeId);
+
+                            // If the right-clicked node is not already selected, 
+                            // clear selection and select only this node
+                            setSelectedNodes(currentSelection => {
+                                if (!currentSelection.includes(nodeId)) {
+                                    console.log('Node not in selection, selecting only:', nodeId);
+                                    return [nodeId];
+                                } else {
+                                    console.log('Node already selected, keeping current selection:', currentSelection);
+                                    return currentSelection;
+                                }
+                            });
+
+                            setContextMenu({
+                                show: true,
+                                x: event.clientX,
+                                y: event.clientY,
+                            });
+                        },
                     }
                 };
                 newMap.set(node.id, fallbackNode);
@@ -171,7 +256,7 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
         };
 
         convertToReactFlowNodes();
-    }, [framedNodes, setNodesMap, convex]);
+    }, [framedNodes, setNodesMap, convex, editingNodeId]);
 
     // === Process movement queue ===
     const isAlone = !users || users.length === 0;
@@ -187,12 +272,31 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
         (changes: NodeChange[]) => {
             // Apply changes to local state immediately for responsiveness
             setNodes((nds) => applyNodeChanges(changes, nds));
-            
+
             // Use hook to handle batching and syncing
             handleNodesChange(changes);
         },
         [handleNodesChange]
     );
+
+    // === Selection handling ===
+    const onSelectionChange = useCallback(
+        ({ nodes: selectedNodes }: { nodes: Node[] }) => {
+            setSelectedNodes(selectedNodes.map(node => node.id));
+        },
+        []
+    );
+
+    // === Sync programmatic selection with ReactFlow ===
+    useEffect(() => {
+        // Update node selection state in ReactFlow when selectedNodes changes
+        setNodes(currentNodes =>
+            currentNodes.map(node => ({
+                ...node,
+                selected: selectedNodes.includes(node.id)
+            }))
+        );
+    }, [selectedNodes]);
 
     // === Edge updates ===
     const onEdgesChange = useCallback(
@@ -249,6 +353,64 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
         [connect, id]
     );
 
+    // === Canvas Right Click Handler ===
+    const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
+        console.log('Right click detected!', event);
+        event.preventDefault();
+        setContextMenu({
+            show: true,
+            x: event.clientX,
+            y: event.clientY,
+        });
+    }, []);
+
+    // === Close context menu ===
+    const closeContextMenu = useCallback(() => {
+        setContextMenu({ show: false, x: 0, y: 0 });
+    }, []);
+
+    // === Click outside to close ===
+    useEffect(() => {
+        const handleClick = (event: MouseEvent) => {
+            // Don't close if clicking inside the context menu
+            const target = event.target as Element;
+            if (target?.closest('[data-context-menu]')) {
+                return;
+            }
+            closeContextMenu();
+        };
+        if (contextMenu.show) {
+            document.addEventListener('click', handleClick);
+            return () => document.removeEventListener('click', handleClick);
+        }
+    }, [contextMenu.show, closeContextMenu]);
+
+    // === Selection rectangle right-click handler ===
+    useEffect(() => {
+        const handleSelectionRectContextMenu = (event: MouseEvent) => {
+            const target = event.target as Element;
+
+            // Check if the right-click is on the selection rectangle
+            if (target?.classList.contains('react-flow__nodesselection-rect') && selectedNodes.length > 0) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                setContextMenu({
+                    show: true,
+                    x: event.clientX,
+                    y: event.clientY,
+                });
+            }
+        };
+
+        // Add context menu listener to document
+        document.addEventListener('contextmenu', handleSelectionRectContextMenu, true);
+
+        return () => {
+            document.removeEventListener('contextmenu', handleSelectionRectContextMenu, true);
+        };
+    }, [selectedNodes.length]);
+
     // === Node creation ===
     const handleNodeCreation = async (data: Omit<CreateNodeArgs, "channel">) => {
         if (!frame) throw new Error("Failed to get a frame");
@@ -284,25 +446,72 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
             <h2 className="text-xl font-semibold mb-4">
                 {frame?.title || "Loading..."}
             </h2>
-            <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                nodeTypes={nodeTypes}
-                fitView
-                colorMode={isDark ? "dark" : "light"}
-                className="rounded-xl"
-            >
-                <Controls />
-                <Background
-                    key={id}
-                    variant={BackgroundVariant.Dots}
-                    gap={10}
-                    size={0.9}
+            <div className="relative h-[calc(100%-4rem)]">
+                <ReactFlow
+                    nodes={nodes}
+                    edges={edges}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    onConnect={onConnect}
+                    onSelectionChange={onSelectionChange}
+                    onPaneContextMenu={onPaneContextMenu}
+                    onMove={closeContextMenu}
+                    onMoveStart={closeContextMenu}
+                    nodeTypes={nodeTypes}
+                    defaultEdgeOptions={defaultEdgeOptions}
+                    fitView
+                    colorMode={isDark ? "dark" : "light"}
+                    className="rounded-xl w-full h-full"
+                    multiSelectionKeyCode="Meta"
+                    panOnDrag={true}
+                    selectionOnDrag={true}
+                    selectNodesOnDrag={false}
+                >
+                    <Controls />
+                    <Background
+                        key={id}
+                        variant={BackgroundVariant.Dots}
+                        gap={10}
+                        size={0.9}
+                    />
+                </ReactFlow>
+
+                {/* Context Menu */}
+                <CanvasContextMenu
+                    frameId={id}
+                    selectedNodes={selectedNodes}
+                    selectedNodeData={selectedNodes.map(nodeId => {
+                        const node = nodes.find(n => n.id === nodeId);
+                        return node ? { id: nodeId, type: node.type || 'Text', data: node.data } : null;
+                    }).filter(Boolean) as { id: string; type: string; data: any }[]}
+                    onDeleteSelected={() => {
+                        setSelectedNodes([]);
+                        closeContextMenu();
+                    }}
+                    onAddNodeClick={() => {
+                        setShowAddNodeDialog(true);
+                        closeContextMenu();
+                    }}
+                    onEditNode={(nodeId) => {
+                        setEditingNodeId(nodeId);
+                        closeContextMenu();
+                    }}
+                    isOpen={contextMenu.show}
+                    position={{ x: contextMenu.x, y: contextMenu.y }}
+                    onClose={closeContextMenu}
                 />
-            </ReactFlow>
+
+                {/* Add Existing Node Dialog */}
+                <AddExistingNodeDialog
+                    isOpen={showAddNodeDialog}
+                    onClose={() => setShowAddNodeDialog(false)}
+                    frameId={id}
+                    channelId={frame.channel}
+                    onNodeAdded={() => {
+                        setShowAddNodeDialog(false);
+                    }}
+                />
+            </div>
             <PasteBin
                 onCreateNode={handleNodeCreation}
                 channelId={frame?.channel as string}

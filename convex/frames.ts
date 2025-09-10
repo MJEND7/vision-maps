@@ -422,6 +422,156 @@ export const updateFramedNodePosition = mutation({
     },
 });
 
+const removeNodeFromFrameArgs = v.object({
+    frameId: v.id("frames"),
+    nodeId: v.string(), // The node.id (React Flow node ID)
+});
+
+const removeMultipleNodesFromFrameArgs = v.object({
+    frameId: v.id("frames"),
+    nodeIds: v.array(v.string()), // Array of React Flow node IDs
+});
+
+export const removeNodeFromFrame = mutation({
+    args: removeNodeFromFrameArgs,
+    handler: async (ctx, args) => {
+        const frame = await ctx.db.get(args.frameId);
+        if (!frame) {
+            throw new Error("Frame not found");
+        }
+
+        if (frame.vision) {
+            await requireVisionAccess(ctx, frame.vision);
+        }
+
+        // 1. Find and remove the framed_node entry
+        const framedNode = await ctx.db
+            .query("framed_node")
+            .withIndex("id", (q) => q.eq("node.id", args.nodeId))
+            .first();
+
+        if (framedNode) {
+            await ctx.db.delete(framedNode._id);
+        }
+
+        // 2. Clean up frame_positions entries for this node in this frame
+        const framePositions = await ctx.db
+            .query("frame_positions")
+            .withIndex("by_node_frame", (q) => 
+                q.eq("nodeId", framedNode?.node.data as any).eq("frameId", args.frameId)
+            )
+            .collect();
+
+        for (const position of framePositions) {
+            await ctx.db.delete(position._id);
+        }
+
+        // 3. Remove connected edges
+        const edges = await ctx.db
+            .query("edges")
+            .withIndex("frame", (q) => q.eq("frameId", args.frameId))
+            .collect();
+
+        const edgesToDelete = edges.filter(edge => 
+            edge.source === args.nodeId || edge.target === args.nodeId
+        );
+
+        for (const edge of edgesToDelete) {
+            await ctx.db.delete(edge._id);
+        }
+
+        // 4. Remove frameId from the actual node (don't delete the node itself)
+        if (framedNode && framedNode.node.data) {
+            const actualNode = await ctx.db.get(framedNode.node.data as any);
+            if (actualNode && 'frame' in actualNode && actualNode.frame === args.frameId) {
+                await ctx.db.patch(framedNode.node.data as any, {
+                    frame: undefined,
+                });
+            }
+        }
+
+        return args.nodeId;
+    },
+});
+
+export const removeMultipleNodesFromFrame = mutation({
+    args: removeMultipleNodesFromFrameArgs,
+    handler: async (ctx, args) => {
+        const frame = await ctx.db.get(args.frameId);
+        if (!frame) {
+            throw new Error("Frame not found");
+        }
+
+        if (frame.vision) {
+            await requireVisionAccess(ctx, frame.vision);
+        }
+
+        const deletedNodeIds: string[] = [];
+
+        // Process each node for deletion
+        for (const nodeId of args.nodeIds) {
+            try {
+                // 1. Find and remove the framed_node entry
+                const framedNode = await ctx.db
+                    .query("framed_node")
+                    .withIndex("id", (q) => q.eq("node.id", nodeId))
+                    .first();
+
+                if (framedNode) {
+                    await ctx.db.delete(framedNode._id);
+
+                    // 2. Clean up frame_positions entries for this node in this frame
+                    const framePositions = await ctx.db
+                        .query("frame_positions")
+                        .withIndex("by_node_frame", (q) => 
+                            q.eq("nodeId", framedNode.node.data as any).eq("frameId", args.frameId)
+                        )
+                        .collect();
+
+                    for (const position of framePositions) {
+                        await ctx.db.delete(position._id);
+                    }
+
+                    // 3. Remove frameId from the actual node (don't delete the node itself)
+                    if (framedNode.node.data) {
+                        const actualNode = await ctx.db.get(framedNode.node.data as any);
+                        if (actualNode && 'frame' in actualNode && actualNode.frame === args.frameId) {
+                            await ctx.db.patch(framedNode.node.data as any, {
+                                frame: undefined,
+                            });
+                        }
+                    }
+
+                    deletedNodeIds.push(nodeId);
+                }
+            } catch (error) {
+                console.error(`Failed to delete node ${nodeId}:`, error);
+                // Continue with other nodes even if one fails
+            }
+        }
+
+        // 4. Remove connected edges for all deleted nodes in one go
+        const edges = await ctx.db
+            .query("edges")
+            .withIndex("frame", (q) => q.eq("frameId", args.frameId))
+            .collect();
+
+        const edgesToDelete = edges.filter(edge => 
+            deletedNodeIds.includes(edge.source) || deletedNodeIds.includes(edge.target)
+        );
+
+        for (const edge of edgesToDelete) {
+            await ctx.db.delete(edge._id);
+        }
+
+        return {
+            deletedCount: deletedNodeIds.length,
+            deletedNodeIds,
+            deletedEdgeCount: edgesToDelete.length
+        };
+    },
+});
+
 // Type exports
 export type CreateFrameArgs = Infer<typeof createArgs>;
 export type UpdateFrameArgs = Infer<typeof updateArgs>;
@@ -433,3 +583,5 @@ export type ListFramesByVisionArgs = Infer<typeof listByVisionArgs>;
 export type GetFrameNodesArgs = Infer<typeof getFrameNodesArgs>;
 export type UpdateFramedNodeArgs = Infer<typeof updateFramedNodeArgs>;
 export type UpdateFramedNodePositionArgs = Infer<typeof updateFramedNodePositionArgs>;
+export type RemoveNodeFromFrameArgs = Infer<typeof removeNodeFromFrameArgs>;
+export type RemoveMultipleNodesFromFrameArgs = Infer<typeof removeMultipleNodesFromFrameArgs>;

@@ -340,3 +340,68 @@ export const findDuplicateNodes = query({
 });
 
 export type FindDuplicateNodesArgs = Infer<typeof findDuplicateNodesArgs>;
+
+const addToFrameArgs = v.object({
+    nodeId: v.id("nodes"),
+    frameId: v.id("frames"),
+    position: v.object({
+        x: v.number(),
+        y: v.number(),
+    }),
+});
+
+export const addToFrame = mutation({
+    args: addToFrameArgs,
+    handler: async (ctx, args) => {
+        const frame = await ctx.db.get(args.frameId);
+        if (!frame) {
+            throw new Error("Frame not found");
+        }
+
+        const node = await ctx.db.get(args.nodeId);
+        if (!node) {
+            throw new Error("Node not found");
+        }
+
+        if (frame.vision) {
+            await requireVisionAccess(ctx, frame.vision);
+        }
+
+        // Check if node is already in this frame
+        const existingFramedNode = await ctx.db
+            .query("framed_node")
+            .withIndex("by_frame", (q) => q.eq("frameId", args.frameId))
+            .filter((q) => q.eq(q.field("node.data"), args.nodeId))
+            .first();
+
+        if (existingFramedNode) {
+            throw new Error("Node is already in this frame");
+        }
+
+        // Create the React Flow node structure
+        const reactFlowNode = {
+            id: crypto.randomUUID(),
+            position: args.position,
+            type: node.variant || "Text",
+            data: args.nodeId,
+        };
+
+        // Insert into framed_node for current state
+        await ctx.db.insert("framed_node", {
+            frameId: args.frameId,
+            node: reactFlowNode,
+        });
+
+        // Insert into frame_positions for batch tracking
+        await ctx.db.insert("frame_positions", {
+            frameId: args.frameId,
+            nodeId: args.nodeId,
+            batch: [reactFlowNode],
+            batchTimestamp: Date.now(),
+        });
+
+        return reactFlowNode.id;
+    },
+});
+
+export type AddToFrameArgs = Infer<typeof addToFrameArgs>;

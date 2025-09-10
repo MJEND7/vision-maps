@@ -8,6 +8,8 @@ import ChannelNode from "../../channel/node";
 export interface BaseNodeData {
   node: any; // The actual node data from the database
   nodeUser: NodeUser | null;
+  frameId?: string; // Frame ID for context actions
+  onNodeRightClick?: (nodeId: string, event: React.MouseEvent) => void; // Right-click handler for selection
   onOpenChat?: (chatId: string) => void;
   onChannelNavigate?: (channelId: string, nodeId?: string) => void;
   onShowDeleteDialog?: () => void;

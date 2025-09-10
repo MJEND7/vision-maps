@@ -1,11 +1,12 @@
 import React from 'react';
 import { NodeVariants } from "../../../../convex/tables/nodes";
 import Image from "next/image";
-import { Brain, ExternalLink } from 'lucide-react';
+import { Brain, Check, ExternalLink, X } from 'lucide-react';
 import { AudioPlayer } from "../../channel/audio-player";
 import { VideoPlayer } from "../../channel/video-player";
 import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard } from "../../channel/metadata";
 import { useOGMetadataWithCache } from "@/utils/ogMetadata";
+import { Button } from '@/components/ui/button';
 
 // Component for nodes that need metadata fetching
 function NodeWithMetadata({ node, variant }: { node: any, variant: NodeVariants }) {
@@ -93,7 +94,10 @@ export function renderNodeContent(
     editValue?: string,
     setEditValue?: (value: string) => void,
     textareaRef?: React.RefObject<HTMLTextAreaElement | null>,
-    onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
+    onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void,
+    onSave?: () => void,
+    onCancel?: () => void,
+    isSaving?: boolean
 ) {
     const variant = node.variant as NodeVariants;
 
@@ -166,14 +170,49 @@ export function renderNodeContent(
             return (
                 <div>
                     {isEditing ? (
-                        <textarea
-                            ref={textareaRef}
-                            value={editValue}
-                            onChange={(e) => setEditValue?.(e.target.value)}
-                            onKeyDown={onKeyDown}
-                            className="text-sm min-h-[60px] resize-none w-full border border-border rounded p-2 bg-background text-foreground"
-                            placeholder="Enter text..."
-                        />
+                        <div className="space-y-2">
+                            <textarea
+                                ref={textareaRef}
+                                value={editValue}
+                                onChange={(e) => setEditValue?.(e.target.value)}
+                                onKeyDown={onKeyDown}
+                                className="text-sm min-h-[60px] resize-none w-full border border-border rounded p-2 bg-background text-foreground"
+                                placeholder="Enter text..."
+                            />
+                            <div className="flex gap-2 justify-end">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={onCancel}
+                                    disabled={isSaving}
+                                    className="px-3 py-1 text-xs bg-muted hover:bg-muted/80 rounded flex items-center gap-1 disabled:opacity-50"
+                                >
+                                    <X className="w-3 h-3"/>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    onClick={onSave}
+                                    disabled={isSaving}
+                                    className="px-3 py-1 text-xs bg-primary text-primary-foreground hover:bg-primary/90 rounded flex items-center gap-1 disabled:opacity-50"
+                                >
+                                    {isSaving ? (
+                                        <>
+                                            <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Check className="w-3 h-3"/>
+                                            Save
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Press Ctrl+Enter to save, Escape to cancel
+                            </p>
+                        </div>
                     ) : (
                         <p className="text-sm whitespace-pre-wrap text-foreground">{node.value}</p>
                     )}

@@ -8,7 +8,15 @@ export default memo(function LinkNode(props: NodeProps<BaseNodeData>) {
     const node = props.data.node;
 
     return (
-        <div className="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20 bg-card border border-gray-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-gray-500/10">
+        <div 
+            className="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20 bg-card border border-gray-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-gray-500/10"
+            onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Link node right-clicked, selecting:', props.id);
+                props.data.onNodeRightClick?.(props.id, e);
+            }}
+        >
             <Handle
                 type="target"
                 position={Position.Top}

@@ -8,7 +8,15 @@ export default memo(function ImageNode(props: NodeProps<BaseNodeData>) {
   const node = props.data.node;
   
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 bg-card border border-blue-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-blue-500/10">
+    <div 
+      className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 bg-card border border-blue-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-blue-500/10"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Image node right-clicked, selecting:', props.id);
+        props.data.onNodeRightClick?.(props.id, e);
+      }}
+    >
       <Handle 
         type="target" 
         position={Position.Top}

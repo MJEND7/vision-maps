@@ -8,7 +8,15 @@ export default memo(function AINode(props: NodeProps<BaseNodeData>) {
   const node = props.data.node;
   
   return (
-    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20 bg-card border border-purple-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-purple-500/10">
+    <div 
+      className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20 bg-card border border-purple-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-purple-500/10"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('AI node right-clicked, selecting:', props.id);
+        props.data.onNodeRightClick?.(props.id, e);
+      }}
+    >
       <Handle 
         type="target" 
         position={Position.Top}
