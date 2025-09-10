@@ -26,8 +26,14 @@ import { AddExistingNodeDialog } from "./add-existing-node-dialog";
 
 export default function FrameComponent({ id }: { id: Id<"frames"> }) {
     const [isDark, setIsDark] = useState(false);
+    
+    // Dynamic edge options based on dark mode
     const defaultEdgeOptions = {
         animated: true,
+        style: {
+            stroke: isDark ? '#e5e5e5' : '#b1b1b7',
+            strokeWidth: 2,
+        },
     };
 
     // Detect dark mode from Tailwind
