@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { ROUTES } from '@/lib/constants';
 import { ProfileUserProvider } from '@/contexts/ProfileUserContext';
+import { OrgSwitchProvider } from '@/contexts/OrgSwitchContext';
 
 export default function ProfileLayout({
     children,
@@ -22,9 +23,11 @@ export default function ProfileLayout({
 
     return (
         <ProfileUserProvider user={user}>
-            <div className="h-full min-h-screen">
-                {children}
-            </div>
+            <OrgSwitchProvider>
+                <div className="h-full min-h-screen">
+                    {children}
+                </div>
+            </OrgSwitchProvider>
         </ProfileUserProvider>
     );
 }

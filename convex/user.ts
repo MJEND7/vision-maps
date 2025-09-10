@@ -63,6 +63,11 @@ const searchUsersArgs = v.object({
     limit: v.optional(v.number()),
 });
 
+const searchUsersByEmailArgs = v.object({
+    searchTerm: v.string(),
+    limit: v.optional(v.number()),
+});
+
 // Add this query function using search index
 export const searchUsers = query({
     args: searchUsersArgs,
@@ -133,6 +138,39 @@ export const searchUsers = query({
     },
 });
 
+export const searchUsersByEmail = query({
+    args: searchUsersByEmailArgs,
+    handler: async (ctx, { searchTerm, limit = 10 }) => {
+        if (!searchTerm || searchTerm.length < 2) {
+            return [];
+        }
+
+        // Search by email or name
+        let users;
+        if (searchTerm.includes("@")) {
+            // Email search
+            users = await ctx.db
+                .query("users")
+                .withIndex("by_email", (q) => q.eq("email", searchTerm))
+                .take(limit);
+        } else {
+            // Name search
+            users = await ctx.db
+                .query("users")
+                .withSearchIndex("search_name", (q) => q.search("name", searchTerm))
+                .take(limit);
+        }
+
+        return users.map(user => ({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            picture: user.picture,
+            externalId: user.externalId,
+        }));
+    },
+});
+
 export async function getCurrentUserOrThrow(ctx: QueryCtx) {
     const userRecord = await getCurrentUser(ctx);
     if (!userRecord) throw new Error("Can't get current user");
@@ -159,3 +197,4 @@ export type GetCurrentUserArgs = Infer<typeof currentArgs>;
 export type UpsertUserFromClerkArgs = Infer<typeof upsertFromClerkArgs>;
 export type DeleteUserFromClerkArgs = Infer<typeof deleteFromClerkArgs>;
 export type SearchUsersArgs = Infer<typeof searchUsersArgs>;
+export type SearchUsersByEmailArgs = Infer<typeof searchUsersByEmailArgs>;

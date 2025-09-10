@@ -51,7 +51,7 @@ function CoreFacePile({ visionId, users, maxVisible = 3, currentUser, isLoading 
 
     return (
         <TooltipProvider>
-            <InviteUsersDialogue vision={visionId}>
+            <InviteUsersDialogue vision={visionId as any}>
                 <div className={cn("flex -space-x-2", "cursor-pointer")}>
                     {visibleUsers.map((user, index) => (
                         <Tooltip key={user.userId || index}>
@@ -100,7 +100,7 @@ export function StaticFacePile({ visionId, maxVisible }: StaticFacePileProps) {
         { roomToken: `vision:${visionId}` }
     );
 
-    return <CoreFacePile users={users || []} maxVisible={maxVisible} currentUser={currentUser} isLoading={users === undefined} />;
+    return <CoreFacePile visionId={visionId} users={users || []} maxVisible={maxVisible} currentUser={currentUser} isLoading={users === undefined} />;
 }
 
 interface PresenceFacePileProps {

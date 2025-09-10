@@ -36,7 +36,7 @@ export class Visions {
     static TableConnectedUsers = defineTable({
         userId: v.string(),
         role: v.string(), // owner or editor
-        status: v.string(), // pending or approved
+        status: v.optional(v.string()), // pending or approved - optional for backward compatibility
         visionId: v.id(Visions.TABLE_NAME)
     }).index("by_visionId", ["visionId"])
         .index("by_userId", ["userId"])

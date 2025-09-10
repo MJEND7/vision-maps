@@ -6,7 +6,7 @@ import { createDefaultChannel } from "./utils/channel";
 
 // Args schemas
 const createArgs = v.object({
-  organization: v.optional(v.string()),
+  organizationId: v.optional(v.string()),
 });
 
 const updateArgs = v.object({
@@ -14,7 +14,7 @@ const updateArgs = v.object({
   title: v.optional(v.string()),
   banner: v.optional(v.string()),
   description: v.optional(v.string()),
-  organization: v.optional(v.string()),
+  organizationId: v.optional(v.string()),
 });
 
 const removeArgs = v.object({
@@ -26,7 +26,7 @@ const getArgs = v.object({
 });
 
 const listArgs = v.object({
-  organization: v.optional(v.string()),
+  organizationId: v.optional(v.union(v.string(), v.null())),
   search: v.optional(v.string()),
   sortBy: v.optional(v.union(v.literal("updatedAt"), v.literal("createdAt"), v.literal("title"))),
   sortOrder: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
@@ -87,10 +87,11 @@ export const create = mutation({
       title: "Untitled",
       banner: "",
       description: "",
-      organization: args.organization || "",
+      organization: args.organizationId || "",
       updatedAt: now,
     });
 
+    // Add the creator as owner
     await ctx.db.insert("vision_users", {
       userId: identity.userId.toString(),
       role: VisionAccessRole.Owner,
@@ -116,7 +117,7 @@ export const update = mutation({
     if (args.title !== undefined) updates.title = args.title;
     if (args.banner !== undefined) updates.banner = args.banner;
     if (args.description !== undefined) updates.description = args.description;
-    if (args.organization !== undefined) updates.organization = args.organization;
+    if (args.organizationId !== undefined) updates.organization = args.organizationId;
 
     await ctx.db.patch(args.id, updates);
   },
@@ -189,40 +190,62 @@ export const list = query({
     const sortBy = args.sortBy ?? "updatedAt";
     const sortOrder = args.sortOrder ?? "desc";
 
+    // Get visions where user has explicit access
     const userVisions = await ctx.db
       .query("vision_users")
       .withIndex("by_userId", (q) => q.eq("userId", identity.userId?.toString() || ""))
+      .filter((q) => 
+        q.or(
+          q.eq(q.field("status"), VisionUserStatus.Approved),
+          q.eq(q.field("status"), undefined) // For backward compatibility with existing data
+        )
+      )
       .collect();
 
-    const visionIds = userVisions.map((uv) => uv.visionId);
+    const explicitVisionIds = userVisions.map((uv) => uv.visionId);
 
-    if (visionIds.length === 0) {
-      return {
-        visions: [],
-        nextCursor: null,
-        hasMore: false,
-      };
+    // Get all visions and filter by organization
+    let allVisions = await ctx.db.query("visions").collect();
+
+    // Filter by organization - if organizationId is provided, only show that org's visions
+    // If organizationId is null, show personal visions (empty organization field)
+    if (args.organizationId !== undefined) {
+      if (args.organizationId === null) {
+        // Personal visions (no organization)
+        allVisions = allVisions.filter((vision) => !vision.organization || vision.organization === "");
+      } else {
+        // Organization visions
+        allVisions = allVisions.filter((vision) => vision.organization === args.organizationId);
+      }
     }
 
-    let query = ctx.db.query("visions");
-    let visions = await query.collect();
-
-    visions = visions.filter((vision) => visionIds.includes(vision._id));
-
-    if (args.organization) {
-      visions = visions.filter((vision) => vision.organization === args.organization);
+    // For organization visions, all organization members have access
+    // For personal visions, only explicitly granted users have access
+    let accessibleVisions: any[] = [];
+    
+    if (args.organizationId && args.organizationId !== null) {
+      // Organization visions - all org members have access
+      // Check if user is member of this organization through Clerk
+      // For now, we'll assume organization membership is verified by Clerk on the frontend
+      // and trust that the organizationId passed matches the user's current org
+      accessibleVisions = allVisions;
+    } else {
+      // Personal visions - only explicitly granted access
+      accessibleVisions = allVisions.filter((vision) => explicitVisionIds.includes(vision._id));
     }
 
+    // Apply search filter
     if (args.search) {
       const searchLower = args.search.toLowerCase();
-      visions = visions.filter(
+      accessibleVisions = accessibleVisions.filter(
         (vision) =>
           vision.title.toLowerCase().includes(searchLower) ||
           (vision.description && vision.description.toLowerCase().includes(searchLower))
       );
     }
 
-    visions.sort((a, b) => {
+    // Sort visions
+    accessibleVisions.sort((a, b) => {
       let aValue: any, bValue: any;
       
       switch (sortBy) {
@@ -248,16 +271,17 @@ export const list = query({
       }
     });
 
+    // Apply pagination
     let startIndex = 0;
     if (args.cursor) {
-      const cursorIndex = visions.findIndex((v) => v._id === args.cursor);
+      const cursorIndex = accessibleVisions.findIndex((v) => v._id === args.cursor);
       if (cursorIndex !== -1) {
         startIndex = cursorIndex + 1;
       }
     }
 
-    const paginatedVisions = visions.slice(startIndex, startIndex + limit);
-    const hasMore = startIndex + limit < visions.length;
+    const paginatedVisions = accessibleVisions.slice(startIndex, startIndex + limit);
+    const hasMore = startIndex + limit < accessibleVisions.length;
     const nextCursor = hasMore ? paginatedVisions[paginatedVisions.length - 1]._id : null;
 
     return {
@@ -276,7 +300,12 @@ export const getMembers = query({
     const visionUsers = await ctx.db
       .query("vision_users")
       .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
-      .filter((q) => q.eq(q.field("status"), VisionUserStatus.Approved))
+      .filter((q) => 
+        q.or(
+          q.eq(q.field("status"), VisionUserStatus.Approved),
+          q.eq(q.field("status"), undefined) // For backward compatibility with existing data
+        )
+      )
       .collect();
 
     const members = [];
@@ -405,7 +434,7 @@ export const requestToJoin = mutation({
       .first();
 
     if (existingRequest) {
-      if (existingRequest.status === VisionUserStatus.Approved) {
+      if (existingRequest.status === VisionUserStatus.Approved || existingRequest.status === undefined) {
         throw new Error("You are already a member of this vision");
       } else {
         throw new Error("You already have a pending request for this vision");
@@ -427,7 +456,10 @@ export const requestToJoin = mutation({
       .filter((q) => 
         q.and(
           q.eq(q.field("role"), VisionAccessRole.Owner),
-          q.eq(q.field("status"), VisionUserStatus.Approved)
+          q.or(
+            q.eq(q.field("status"), VisionUserStatus.Approved),
+            q.eq(q.field("status"), undefined) // For backward compatibility with existing data
+          )
         )
       )
       .collect();

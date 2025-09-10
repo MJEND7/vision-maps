@@ -31,10 +31,17 @@ export class Notifications {
         commentId: v.optional(v.id("comments")),
         // Invite-specific data
         inviteStatus: v.optional(v.string()), // "pending", "accepted", "rejected"
-        inviteData: v.optional(v.object({
-            visionId: v.id(Visions.TABLE_NAME),
-            role: v.string() // "owner" or "editor"
-        })),
+        inviteData: v.optional(v.union(
+            v.object({
+                visionId: v.id(Visions.TABLE_NAME),
+                role: v.string() // "owner" or "editor"
+            }),
+            v.object({
+                organizationId: v.string(),
+                organizationName: v.string(),
+                role: v.string() // "admin" or "basic_member"
+            })
+        )),
         // Notification state
         isRead: v.boolean(),
         isDeleted: v.optional(v.boolean()),

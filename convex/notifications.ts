@@ -44,6 +44,21 @@ const createInviteNotificationArgs = v.object({
   role: v.string(),
 });
 
+const createOrgInviteNotificationArgs = v.object({
+  recipientEmail: v.string(),
+  organizationId: v.string(),
+  organizationName: v.string(),
+  role: v.string(),
+});
+
+const acceptOrgInviteArgs = v.object({
+  notificationId: v.id("notifications"),
+});
+
+const rejectOrgInviteArgs = v.object({
+  notificationId: v.id("notifications"),
+});
+
 export const getUserNotifications = query({
   args: getUserNotificationsArgs,
   handler: async (ctx, args) => {
@@ -250,23 +265,30 @@ export const acceptInvite = mutation({
       throw new Error("This invitation has already been processed");
     }
 
-    // Add user to vision
-    const existingVisionUser = await ctx.db
-      .query("vision_users")
-      .withIndex("by_visionId", (q) => q.eq("visionId", notification.inviteData!.visionId))
-      .filter((q) => q.eq(q.field("userId"), identity.userId!.toString()))
-      .first();
+    // Check if this is a vision invite (has visionId)
+    if ("visionId" in notification.inviteData) {
+      const visionInviteData = notification.inviteData as { visionId: Id<"visions">, role: string };
+      
+      // Add user to vision
+      const existingVisionUser = await ctx.db
+        .query("vision_users")
+        .withIndex("by_visionId", (q) => q.eq("visionId", visionInviteData.visionId))
+        .filter((q) => q.eq(q.field("userId"), identity.userId!.toString()))
+        .first();
 
-    if (existingVisionUser) {
-      throw new Error("You are already a member of this vision");
+      if (existingVisionUser) {
+        throw new Error("You are already a member of this vision");
+      }
+
+      await ctx.db.insert("vision_users", {
+        userId: identity.userId!.toString(),
+        role: visionInviteData.role,
+        status: "approved",
+        visionId: visionInviteData.visionId
+      });
+    } else {
+      throw new Error("This function only handles vision invites");
     }
-
-    await ctx.db.insert("vision_users", {
-      userId: identity.userId!.toString(),
-      role: notification.inviteData.role,
-      status: "approved",
-      visionId: notification.inviteData.visionId
-    });
 
     // Update notification status
     await ctx.db.patch(args.notificationId, {
@@ -360,6 +382,134 @@ export const createInviteNotification = mutation({
   }
 });
 
+export const createOrgInviteNotification = mutation({
+  args: createOrgInviteNotificationArgs,
+  handler: async (ctx, args) => {
+    const identity = await requireAuth(ctx);
+    
+    if (!identity.userId) {
+      throw new Error("Failed to get userId");
+    }
+
+    // Find user by email
+    const recipient = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), args.recipientEmail))
+      .first();
+
+    if (!recipient) {
+      throw new Error("User not found with this email address");
+    }
+
+    // Get sender info
+    const sender = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("externalId"), identity.userId!.toString()))
+      .first();
+
+    const notificationId = await ctx.db.insert("notifications", {
+      recipientId: recipient.externalId,
+      senderId: identity.userId!.toString(),
+      type: "org_invite",
+      title: "Organization Invitation",
+      message: `${sender?.name || 'Someone'} invited you to join "${args.organizationName}" as ${args.role}`,
+      inviteStatus: "pending",
+      inviteData: {
+        organizationId: args.organizationId,
+        organizationName: args.organizationName,
+        role: args.role
+      },
+      isRead: false,
+      createdAt: new Date().toISOString()
+    });
+
+    return notificationId;
+  }
+});
+
+export const acceptOrgInvite = mutation({
+  args: acceptOrgInviteArgs,
+  handler: async (ctx, args) => {
+    const identity = await requireAuth(ctx);
+    
+    if (!identity.userId) {
+      throw new Error("Failed to get userId");
+    }
+
+    const notification = await ctx.db.get(args.notificationId);
+    if (!notification) {
+      throw new Error("Notification not found");
+    }
+
+    if (identity.userId!.toString() !== notification.recipientId) {
+      throw new Error("You can only accept your own invitations");
+    }
+
+    if (notification.type !== "org_invite" || !notification.inviteData) {
+      throw new Error("This is not an organization invitation notification");
+    }
+
+    if (notification.inviteStatus !== "pending") {
+      throw new Error("This invitation has already been processed");
+    }
+
+    // Update notification status - the actual Clerk org join will be handled on frontend
+    await ctx.db.patch(args.notificationId, {
+      inviteStatus: "accepted",
+      isRead: true,
+      readAt: new Date().toISOString()
+    });
+
+    // Check if this is an org invite (has organizationId)
+    if ("organizationId" in notification.inviteData) {
+      return {
+        notificationId: args.notificationId,
+        organizationId: notification.inviteData.organizationId,
+        role: notification.inviteData.role
+      };
+    } else {
+      throw new Error("This function only handles organization invites");
+    }
+  }
+});
+
+export const rejectOrgInvite = mutation({
+  args: rejectOrgInviteArgs,
+  handler: async (ctx, args) => {
+    const identity = await requireAuth(ctx);
+    
+    if (!identity.userId) {
+      throw new Error("Failed to get userId");
+    }
+
+    const notification = await ctx.db.get(args.notificationId);
+    if (!notification) {
+      throw new Error("Notification not found");
+    }
+
+    if (identity.userId!.toString() !== notification.recipientId) {
+      throw new Error("You can only reject your own invitations");
+    }
+
+    if (notification.type !== "org_invite" || !notification.inviteData) {
+      throw new Error("This is not an organization invitation notification");
+    }
+
+    if (notification.inviteStatus !== "pending") {
+      throw new Error("This invitation has already been processed");
+    }
+
+    // Update notification status
+    await ctx.db.patch(args.notificationId, {
+      inviteStatus: "rejected",
+      isRead: true,
+      readAt: new Date().toISOString()
+    });
+
+    return args.notificationId;
+  }
+});
+
 // Type exports
 export type GetUserNotificationsArgs = Infer<typeof getUserNotificationsArgs>;
 export type GetUnreadNotificationCountArgs = Infer<typeof getUnreadCountArgs>;
@@ -370,3 +520,6 @@ export type CreateNotificationArgs = Infer<typeof createNotificationArgs>;
 export type AcceptInviteNotificationArgs = Infer<typeof acceptInviteArgs>;
 export type RejectInviteNotificationArgs = Infer<typeof rejectInviteArgs>;
 export type CreateInviteNotificationArgs = Infer<typeof createInviteNotificationArgs>;
+export type CreateOrgInviteNotificationArgs = Infer<typeof createOrgInviteNotificationArgs>;
+export type AcceptOrgInviteNotificationArgs = Infer<typeof acceptOrgInviteArgs>;
+export type RejectOrgInviteNotificationArgs = Infer<typeof rejectOrgInviteArgs>;

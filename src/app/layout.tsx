@@ -9,6 +9,7 @@ import { shadcn } from "@clerk/themes";
 import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
 import { extractRouterConfig } from "uploadthing/server";
 import { uploadThingFileRouter } from "./api/uploadthing/core";
+import { OrgSwitchProvider } from "../contexts/OrgSwitchContext";
 
 export const metadata: Metadata = {
     title: "Vision",
@@ -88,7 +89,9 @@ export default function RootLayout({
                 <ClerkProvider dynamic appearance={{
                     theme: shadcn
                 }}>
-                    <ConvexClientProvider>{children}</ConvexClientProvider>
+                    <OrgSwitchProvider>
+                        <ConvexClientProvider>{children}</ConvexClientProvider>
+                    </OrgSwitchProvider>
                 </ClerkProvider>
                 <Toaster />
             </body>
