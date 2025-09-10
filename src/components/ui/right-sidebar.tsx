@@ -225,7 +225,7 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
                             Delete Chat
                         </DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete the chat "{deleteChatDialog.chatTitle}"?
+                            Are you sure you want to delete the chat &quot;{deleteChatDialog.chatTitle}&quot;?
                         </DialogDescription>
                     </DialogHeader>
 

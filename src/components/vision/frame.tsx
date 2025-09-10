@@ -78,7 +78,6 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
 
             // Get current framed nodes and frame data
             const currentFramedNodes = store.getQuery(api.frames.getFrameNodes, { frameId: args.frameId }) || [];
-            const frameData = store.getQuery(api.frames.get, { id: args.frameId });
 
             // Create optimistic node
             const optimisticNodeId = `optimistic-${crypto.randomUUID()}`;
@@ -91,45 +90,7 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
                     id: args.position?.id || crypto.randomUUID(),
                     type: args.variant || "Text",
                     position: args.position?.position || { x: 0, y: 0 },
-                    data: {
-                        node: {
-                            _id: optimisticNodeId,
-                            _creationTime: Date.now(),
-                            title: args.title,
-                            variant: args.variant,
-                            value: args.value,
-                            thought: args.thought,
-                            frame: args.frameId,
-                            channel: args.channel,
-                            vision: frameData?.vision,
-                            userId: "optimistic",
-                            updatedAt: new Date().toISOString(),
-                        },
-                        nodeUser: null,
-                        frameId: args.frameId,
-                        editingNodeId: null, // optimistic nodes can't be edited immediately
-                        onNodeRightClick: (nodeId: string, event: React.MouseEvent) => {
-                            console.log('Node right-clicked:', nodeId);
-
-                            // If the right-clicked node is not already selected, 
-                            // clear selection and select only this node
-                            setSelectedNodes(currentSelection => {
-                                if (!currentSelection.includes(nodeId)) {
-                                    console.log('Node not in selection, selecting only:', nodeId);
-                                    return [nodeId];
-                                } else {
-                                    console.log('Node already selected, keeping current selection:', currentSelection);
-                                    return currentSelection;
-                                }
-                            });
-
-                            setContextMenu({
-                                show: true,
-                                x: event.clientX,
-                                y: event.clientY,
-                            });
-                        },
-                    }
+                    data: optimisticNodeId as Id<"nodes">
                 }
             };
 
@@ -262,7 +223,7 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
         };
 
         convertToReactFlowNodes();
-    }, [framedNodes, setNodesMap, convex, editingNodeId]);
+    }, [framedNodes, setNodesMap, convex, editingNodeId, id]);
 
     // === Process movement queue ===
     const isAlone = !users || users.length === 0;
@@ -271,7 +232,7 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
             // Only process movement queue in multi-user mode
             processMovementQueue(nodes, setNodes);
         }
-    }, [processMovementQueue, isInitial, isAlone]);
+    }, [processMovementQueue, isInitial, isAlone, nodes, setNodes]);
 
     // === Node updates (batched) ===
     const onNodesChange = useCallback(
@@ -360,7 +321,7 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
     );
 
     // === Canvas Right Click Handler ===
-    const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
+    const onPaneContextMenu = useCallback((event: React.MouseEvent | MouseEvent) => {
         console.log('Right click detected!', event);
         event.preventDefault();
         setContextMenu({
@@ -463,7 +424,7 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
                     onPaneContextMenu={onPaneContextMenu}
                     onMove={closeContextMenu}
                     onMoveStart={closeContextMenu}
-                    nodeTypes={nodeTypes}
+                    nodeTypes={nodeTypes as any}
                     defaultEdgeOptions={defaultEdgeOptions}
                     fitView
                     colorMode={isDark ? "dark" : "light"}

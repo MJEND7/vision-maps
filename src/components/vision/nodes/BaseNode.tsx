@@ -1,9 +1,6 @@
 import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { NodeUser } from "@/hooks/useUserCache";
-import { NodeWithFrame } from "../../../../convex/channels";
-import { NodeVariants } from "../../../../convex/tables/nodes";
-import ChannelNode from "../../channel/node";
 
 export interface BaseNodeData {
   node: any; // The actual node data from the database
@@ -17,7 +14,7 @@ export interface BaseNodeData {
   isMobile?: boolean;
 }
 
-export default memo(function BaseNode({ data }: NodeProps<BaseNodeData>) {
+export default memo(function BaseNode({ data }: NodeProps<any>) {
   const node = data.node;
   
   return (

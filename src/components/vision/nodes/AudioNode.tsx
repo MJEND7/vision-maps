@@ -1,10 +1,9 @@
 import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Volume2 } from 'lucide-react';
-import { BaseNodeData } from './BaseNode';
 import { renderNodeContent } from './NodeContentRenderer';
 
-export default memo(function AudioNode(props: NodeProps<BaseNodeData>) {
+export default memo(function AudioNode(props: NodeProps<any>) {
   const node = props.data.node;
   
   return (

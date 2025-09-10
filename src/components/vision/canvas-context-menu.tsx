@@ -74,7 +74,7 @@ export function CanvasContextMenu({ frameId, selectedNodes, selectedNodeData, on
     } finally {
       setIsDeleting(false);
     }
-  }, [removeMultipleNodesFromFrame, frameId, selectedNodes, onDeleteSelected, isDeleting]);
+  }, [removeMultipleNodesFromFrame, frameId, selectedNodes, onDeleteSelected, isDeleting, onClose]);
 
   const hasSelectedNodes = selectedNodes.length > 0;
   const hasTextNode = selectedNodeData?.some(node => node.type === 'Text') || false;

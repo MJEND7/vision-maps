@@ -21,9 +21,8 @@ interface MovementQueueState {
 export function useMovementQueue(frameId: Id<"frames">, users: any[] | undefined) {
     const [batch, setBatch] = useState<any[]>([]);
     const batchRef = useRef<any[]>([]);
-    const [pendingBatch, setPendingBatch] = useState<any[]>([]);
+    const [pendingBatch] = useState<any[]>([]);
     const pendingBatchRef = useRef<any[]>([]);
-    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const [processedBatches, setProcessedBatches] = useState<Set<string>>(new Set());
     const [isUserMoving, setIsUserMoving] = useState(false);
     const [userMovedNodes, setUserMovedNodes] = useState<Set<string>>(new Set());
@@ -70,7 +69,7 @@ export function useMovementQueue(frameId: Id<"frames">, users: any[] | undefined
         setUserMovedNodes(prev => new Set([...prev, ...nodeIds]));
         
         try {
-            let movmentId = await batchMovement({
+            const movmentId = await batchMovement({
                 frameId,
                 batch: batchToSend,
             });
@@ -131,7 +130,7 @@ export function useMovementQueue(frameId: Id<"frames">, users: any[] | undefined
         
         const interval = setInterval(async () => {
             if (batchRef.current.length > 0) {
-                let curr = batchRef.current;
+                const curr = batchRef.current;
                 setBatch([]);
                 batchRef.current = [];
                 await sendBatch(curr);
@@ -221,9 +220,9 @@ export function useMovementQueue(frameId: Id<"frames">, users: any[] | undefined
         if (isAlone) return; // Skip all movement processing when alone
         if (!movement || movement.length === 0 || isUserMoving) return;
         
-        let m = movement[movement.length - 1];
-        let movmentTime = m.batchTimestamp;
-        let movmentId = `${m._id.toString()}-${movmentTime}`;
+        const m = movement[movement.length - 1];
+        const movmentTime = m.batchTimestamp;
+        const movmentId = `${m._id.toString()}-${movmentTime}`;
         
         if (processedBatches.has(movmentId)) return;
         

@@ -1,13 +1,10 @@
 import React, { memo, useState, useRef, useEffect } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { BaseNodeData } from './BaseNode';
 import { renderNodeContent } from './NodeContentRenderer';
-import { NodeContextMenu } from '../node-context-menu';
-import { Trash2, Save, X } from 'lucide-react';
 import { useMutation } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
 
-export default memo(function TextNode(props: NodeProps<BaseNodeData>) {
+export default memo(function TextNode(props: NodeProps<any>) {
   const node = props.data.node;
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(node.value);

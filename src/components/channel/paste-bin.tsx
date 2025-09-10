@@ -683,7 +683,7 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
                 // Handle links/embeds
                 if (media.url) {
                     onCreateNode({
-                        title: media.title,
+                        title: media.title || 'Untitled',
                         variant: media.type,
                         value: media.url,
                         thought: textContent,

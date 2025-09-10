@@ -47,14 +47,6 @@ function useIsMobile() {
   return isMobile;
 }
 
-interface NodeItem {
-  _id: Id<"nodes">;
-  title: string;
-  variant: string;
-  value: string;
-  thought?: string;
-  frameTitle: string | null;
-}
 
 export function AddExistingNodeDialog({ 
   isOpen, 

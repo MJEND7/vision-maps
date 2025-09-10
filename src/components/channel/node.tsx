@@ -231,7 +231,6 @@ export default function ChannelNode({
     const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const updateNode = useMutation(api.nodes.update);
-    const deleteNode = useMutation(api.nodes.remove);
 
     // Find duplicate nodes for reference detection
     const duplicateNodes = useQuery(
