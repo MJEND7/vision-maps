@@ -18,6 +18,7 @@ import Image from "next/image";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { InviteUsersDialogue } from "../ui/invite-users-dialogue";
 
 interface SettingsComponentProps {
     id?: string;
@@ -499,10 +500,12 @@ export default function SettingsComponent({
                             />
                         </div>
                         {activeTab === "users" && (
-                            <Button className="h-9 text-xs" size="sm" variant="outline">
-                                <UserPlus className="w-4 h-4" />
-                                <p className="hidden sm:inline">Invite User</p>
-                            </Button>
+                            <InviteUsersDialogue vision={id as Id<"visions">}>
+                                <Button className="h-9 text-xs" size="sm" variant="outline">
+                                    <UserPlus className="w-4 h-4" />
+                                    <p className="hidden sm:inline">Invite User</p>
+                                </Button>
+                            </InviteUsersDialogue>
                         )}
                         {activeTab === "frames" && (
                             <div className="flex items-center gap-2">
