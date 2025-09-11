@@ -304,4 +304,6 @@ export const connectionValidator = v.object({
   targetHandle: stringOrNull,
   animated: v.optional(v.boolean()),
   style: v.optional(v.any()), // CSSProperties
+  markerEnd: v.optional(edgeMarker),
+  markerStart: v.optional(edgeMarker),
 });
