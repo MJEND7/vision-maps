@@ -150,7 +150,7 @@ function ExpandableTextContent({ textExpand, content }: { textExpand: boolean, c
                     duration: 0.4
                 }}
                 className={`${isExpanded ? '' : 'overflow-hidden'}`}
-                style={isExpanded ? { position: 'relative', zIndex: 1000 } : {}}
+                style={isExpanded ? { position: 'relative' } : {}}
             >
                 <div
                     ref={containerRef}

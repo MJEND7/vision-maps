@@ -205,9 +205,17 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
 
         setTextContent(savedData.textContent);
 
-        // Restore mode
+        // Restore mode only if we have corresponding data
+        // Don't restore EMBED mode unless we have linkMeta data
         if (savedData.mode && savedData.mode !== 'idle') {
-            setMode(savedData.mode as PasteBinMode);
+            if (savedData.mode === 'embed' && !savedData.linkMeta) {
+                // Reset to idle if EMBED mode has no data (interrupted loading)
+                setMode(PasteBinMode.IDLE);
+                // Clear all localStorage data when we detect a broken state
+                pasteBinStorage.clear();
+            } else {
+                setMode(savedData.mode as PasteBinMode);
+            }
         }
 
         // Restore chat state
@@ -465,14 +473,12 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
 
     const handleLinkPaste = useCallback(async (url: string) => {
         setMode(PasteBinMode.EMBED);
-        updateMedia(null);
         pasteBinStorage.save.mode(PasteBinMode.EMBED);
         actions.setLoadingLinkMeta(true);
 
         try {
             const meta = await fetchLinkMetadata(url);
-            // Convert LinkMetadata to unified Media format
-
+            // Convert LinkMetadata to unified Media format and save to localStorage only when complete
             updateMedia({
                 type: meta.type as NodeVariants,
                 title: meta.title,

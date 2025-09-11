@@ -57,6 +57,7 @@ export interface OGMetadata {
 export interface OGFetchResult {
     metadata: OGMetadata;
     platformType: string;
+    isFallback?: boolean;
 }
 
 // Reusable hook for cache-first OG metadata fetching
@@ -101,16 +102,27 @@ export function useOGMetadataWithCache() {
             console.log('Not in cache, fetching from API for URL:', url);
             const result = await fetchOGMetadata(url);
 
-            // Store in convex for caching
-            try {
-                await storeMutation({
-                    url,
-                    metadata: result.metadata,
-                    platformType: result.platformType,
-                });
-                console.log('Cached metadata for URL:', url);
-            } catch (storeError) {
-                console.warn('Failed to cache metadata:', storeError);
+            // Only cache in Convex if metadata fetch was successful (not fallback)
+            // Check if the result indicates a fallback or incomplete metadata
+            const isValidForCaching = result.metadata && 
+                                    result.metadata.title && 
+                                    result.metadata.title !== new URL(url).hostname &&
+                                    !result.metadata.description?.includes('Unable to fetch metadata') &&
+                                    !result.isFallback;
+            
+            if (isValidForCaching) {
+                try {
+                    await storeMutation({
+                        url,
+                        metadata: result.metadata,
+                        platformType: result.platformType,
+                    });
+                    console.log('Cached metadata for URL:', url);
+                } catch (storeError) {
+                    console.warn('Failed to cache metadata:', storeError);
+                }
+            } else {
+                console.log('Skipping cache for incomplete/fallback metadata:', url);
             }
 
             // Map backend platform types to NodeVariants
@@ -188,7 +200,8 @@ export async function fetchOGMetadata(url: string): Promise<OGFetchResult> {
 
         return {
             metadata: data.metadata,
-            platformType: data.platformType || 'website'
+            platformType: data.platformType || 'website',
+            isFallback: data.fallback || false
         };
     } catch (error) {
         console.error('Error fetching OG metadata:', error);
@@ -202,7 +215,8 @@ export async function fetchOGMetadata(url: string): Promise<OGFetchResult> {
                     description: "",
                     url
                 },
-                platformType: 'website'
+                platformType: 'website',
+                isFallback: true
             };
         } catch (urlError) {
             console.error('Invalid URL in fetchOGMetadata fallback:', urlError);
@@ -212,7 +226,8 @@ export async function fetchOGMetadata(url: string): Promise<OGFetchResult> {
                     description: "",
                     url: ""
                 },
-                platformType: 'website'
+                platformType: 'website',
+                isFallback: true
             };
         }
     }

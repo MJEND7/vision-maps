@@ -6,6 +6,7 @@ import { components, internal } from "./_generated/api";
 import { PaginationOptions, paginationOptsValidator } from "convex/server";
 import OpenAI from "openai";
 import { Id } from "./_generated/dataModel";
+import { YoutubeTranscript } from "youtube-transcript";
 
 // Args schemas
 const listMessagesByChatArgs = v.object({
@@ -40,6 +41,10 @@ const generateChatNameActionArgs = v.object({
 
 const getConnectedNodeContextArgs = v.object({
     chatId: v.id("chats"),
+});
+
+const fetchYoutubeTranscriptArgs = v.object({
+    url: v.string(),
 });
 
 export const persistentTextStreaming = new PersistentTextStreaming(
@@ -210,23 +215,48 @@ export const streamChat = httpAction(async (ctx, request) => {
             // Get connected node context for additional AI context
             const nodeContext = await ctx.runQuery(internal.messages.getConnectedNodeContext, { chatId: chatId as Id<"chats"> });
 
+            // Fetch YouTube transcripts for connected YouTube nodes
+            const youtubeNodes = nodeContext.connectedNodes.filter(node => node.type === "YouTube");
+            const youtubeTranscripts = await Promise.all(
+                youtubeNodes.map(async (node) => {
+                    const transcriptResult = await ctx.runAction(internal.messages.fetchYoutubeTranscript, { url: node.value });
+                    return {
+                        ...node,
+                        transcript: transcriptResult.success ? transcriptResult.transcript : "Unable to fetch transcript"
+                    };
+                })
+            );
+
             const openai = new OpenAI()
 
             // Build system message with connected node context
             let systemContent = `You are a helpful assistant that can answer questions and help with tasks.
-Please provide your response in markdown format.
+            Please provide your response in markdown format. You are continuing a conversation.
+            The conversation so far is found in the following JSON-formatted value:`;
 
-You are continuing a conversation. The conversation so far is found in the following JSON-formatted value:`;
-
-            // Add connected node context if available
-            if (nodeContext.contextText) {
-                systemContent += `
-
-IMPORTANT: Additional context from connected nodes in the visual workspace:
-
-${nodeContext.contextText}
-
-Use this connected node context to inform your responses when relevant. The connected nodes represent information that has been "piped" into your AI node through visual connections.`;
+            // Add connected node context with YouTube transcripts
+            if (nodeContext.contextText || youtubeTranscripts.length > 0) {
+                systemContent += `IMPORTANT: Additional context from connected nodes in the visual workspace:
+                -----`;
+                
+                // Add regular node context
+                if (nodeContext.contextText) {
+                    systemContent += `\n${nodeContext.contextText}`;
+                }
+                
+                // Add YouTube transcripts
+                if (youtubeTranscripts.length > 0) {
+                    youtubeTranscripts.forEach(node => {
+                        systemContent += `\n--- ${node.title} (YouTube) ---\n`;
+                        systemContent += `YouTube URL: ${node.value}\n\n`;
+                        systemContent += `Transcript:\n${node.transcript}\n\n`;
+                    });
+                    systemContent += "END CONNECTED NODE CONTEXT\n\n";
+                }
+                
+                systemContent += `-----
+                Use this connected node context to inform your responses when relevant.
+                Please make sure you state the title of the node when you use it.`;
             }
 
             // Lets kickoff a stream request to OpenAI
@@ -335,11 +365,11 @@ export const getConnectedNodeContext = internalQuery({
             })
         );
 
-        // Filter for Text and Link nodes only, and ensure they have valid data
+        // Filter for Text, Link, and YouTube nodes, and ensure they have valid data
         const relevantNodes = connectedNodeData
             .filter(({ nodeData }) =>
                 nodeData &&
-                (nodeData.variant === "Text" || nodeData.variant === "Link") &&
+                (nodeData.variant === "Text" || nodeData.variant === "Link" || nodeData.variant === "YouTube") &&
                 nodeData.value &&
                 nodeData.value.trim().length > 0
             )
@@ -413,6 +443,26 @@ export const generateChatNameAction = internalAction({
     },
 });
 
+export const fetchYoutubeTranscript = internalAction({
+    args: fetchYoutubeTranscriptArgs,
+    handler: async (ctx, args) => {
+        try {
+            const transcript = await YoutubeTranscript.fetchTranscript(args.url);
+            const transcriptText = transcript.map(item => item.text).join(' ');
+            return {
+                success: true,
+                transcript: transcriptText
+            };
+        } catch (error) {
+            console.error(`Failed to fetch YouTube transcript for ${args.url}:`, error);
+            return {
+                success: false,
+                error: String(error)
+            };
+        }
+    },
+});
+
 // Type exports
 export type ListMessagesByChatArgs = Infer<typeof listMessagesByChatArgs>;
 export type ClearMessagesArgs = Infer<typeof clearMessagesArgs>;
@@ -421,5 +471,6 @@ export type GetChatHistoryArgs = Infer<typeof getChatHistoryArgs>;
 export type GetStreamBodyArgs = Infer<typeof getStreamBodyArgs>;
 export type GenerateChatNameActionArgs = Infer<typeof generateChatNameActionArgs>;
 export type GetConnectedNodeContextArgs = Infer<typeof getConnectedNodeContextArgs>;
+export type FetchYoutubeTranscriptArgs = Infer<typeof fetchYoutubeTranscriptArgs>;
 
 // Note: streamChat is an httpAction, not a mutation/query, so we don't export types for it

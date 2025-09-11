@@ -14,21 +14,23 @@ function formatTimeAgo(dateString: string): string {
     const now = new Date().getTime();
     const date = new Date(dateString).getTime();
     const diffInSeconds = Math.floor((now - date) / 1000);
-    
+
     if (diffInSeconds < 60) return 'just now';
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
     return `${Math.floor(diffInSeconds / 86400)}d ago`;
 }
 import { Id } from "../../../convex/_generated/dataModel";
+import { useOrgSwitch } from "@/contexts/OrgSwitchContext";
 
 export default function NotificationsDropdown() {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
+    const { isOrgSwitching } = useOrgSwitch();
 
     const notifications = useQuery(api.notifications.getUserNotifications, { limit: 20 });
-    const unreadCount = useQuery(api.notifications.getUnreadCount);
+    const unreadCount = useQuery(api.notifications.getUnreadCount, (isOrgSwitching) ? "skip" : {});
     const markAsRead = useMutation(api.notifications.markAsRead);
     const markAllAsRead = useMutation(api.notifications.markAllAsRead);
     const deleteNotification = useMutation(api.notifications.deleteNotification);
@@ -153,9 +155,8 @@ export default function NotificationsDropdown() {
                                 notifications.map((notification) => (
                                     <div
                                         key={notification._id}
-                                        className={`p-3 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group ${
-                                            !notification.isRead ? "bg-blue-50/50 dark:bg-blue-900/10" : ""
-                                        }`}
+                                        className={`p-3 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group ${!notification.isRead ? "bg-blue-50/50 dark:bg-blue-900/10" : ""
+                                            }`}
                                         onClick={() => handleNotificationClick(notification._id, notification.isRead)}
                                     >
                                         <div className="flex items-start gap-3">
@@ -177,7 +178,7 @@ export default function NotificationsDropdown() {
                                                     </div>
                                                 )}
                                             </div>
-                                            
+
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-start justify-between">
                                                     <div className="flex-1">
@@ -192,7 +193,7 @@ export default function NotificationsDropdown() {
                                                         <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
                                                             {notification.message}
                                                         </p>
-                                                        
+
                                                         {/* Invite-specific UI */}
                                                         {notification.type === "invite" && notification.inviteStatus === "pending" && (
                                                             <div className="flex items-center gap-2 mt-3">
@@ -219,20 +220,19 @@ export default function NotificationsDropdown() {
                                                                 </Button>
                                                             </div>
                                                         )}
-                                                        
+
                                                         {/* Status badge for processed invites */}
                                                         {notification.type === "invite" && notification.inviteStatus !== "pending" && (
                                                             <div className="mt-2">
-                                                                <span className={`text-xs px-2 py-1 rounded ${
-                                                                    notification.inviteStatus === "accepted" 
-                                                                        ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200" 
+                                                                <span className={`text-xs px-2 py-1 rounded ${notification.inviteStatus === "accepted"
+                                                                        ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200"
                                                                         : "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200"
-                                                                }`}>
+                                                                    }`}>
                                                                     {notification.inviteStatus === "accepted" ? "Accepted" : "Rejected"}
                                                                 </span>
                                                             </div>
                                                         )}
-                                                        
+
                                                         <div className="flex items-center gap-2 mt-2">
                                                             <span className="text-xs text-gray-500 dark:text-gray-500">
                                                                 {formatTimeAgo(notification.createdAt)}
@@ -244,7 +244,7 @@ export default function NotificationsDropdown() {
                                                             )}
                                                         </div>
                                                     </div>
-                                                    
+
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
@@ -257,7 +257,7 @@ export default function NotificationsDropdown() {
                                                         <Trash2 size={12} />
                                                     </Button>
                                                 </div>
-                                                
+
                                                 {!notification.isRead && (
                                                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-1"></div>
                                                 )}

@@ -171,24 +171,24 @@ export function AddExistingNodeDialog({
               key={node._id}
               className="flex items-start justify-between p-3 border rounded-lg hover:bg-accent"
             >
-              <div className="flex-1 min-w-0">
+              <div className="">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded">
                     {node.variant}
                   </span>
                   {node.frameTitle && (
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground truncate">
                       in {node.frameTitle}
                     </span>
                   )}
                 </div>
-                <h4 className="font-medium text-sm truncate">{node.title}</h4>
+                <h4 className="max-w-[300px] font-medium text-sm truncate">{node.title}</h4>
                 {node.thought && (
                   <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                     {node.thought}
                   </p>
                 )}
-                <p className="text-xs text-muted-foreground mt-1 truncate">
+                <p className="max-w-[300px] text-xs text-muted-foreground mt-1 truncate">
                   {node.value}
                 </p>
               </div>
