@@ -380,7 +380,16 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
             if (res && res[0]) {
                 setMedia(currentMedia => {
                     if (currentMedia) {
-                        const updatedMedia = { ...currentMedia, uploadedUrl: res[0].ufsUrl };
+                        // Clear the preview URL and use the uploaded URL
+                        if (currentMedia.url && currentMedia.url.startsWith('blob:')) {
+                            URL.revokeObjectURL(currentMedia.url);
+                        }
+                        const updatedMedia = { 
+                            ...currentMedia, 
+                            uploadedUrl: res[0].ufsUrl,
+                            url: res[0].ufsUrl, // Update the url to the uploaded version
+                            isUploading: false 
+                        };
                         pasteBinStorage.save.mediaItem(updatedMedia);
                         return updatedMedia;
                     }
@@ -904,6 +913,14 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
                                                     </div>
                                                 </div>
                                             )}
+                                            
+                                            {!isUploading && media.uploadedUrl && (
+                                                <div className="text-center">
+                                                    <div className="text-xs text-green-600 dark:text-green-400">
+                                                        ✓ Upload complete - High quality version ready
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             <div className="flex justify-center items-center">
                                                 {media.type === NodeVariants.Image && (
@@ -911,11 +928,14 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
                                                         <Image
                                                             src={media.uploadedUrl || media.url!}
                                                             alt={media.fileName || "Pasted image"}
-                                                            width={0}
-                                                            height={0}
-                                                            className="w-full h-full object-cover rounded-lg"
+                                                            width={400}
+                                                            height={300}
+                                                            className="w-full h-auto object-cover rounded-lg"
                                                             onLoad={() => actions.setImageLoaded(true)}
                                                             onError={() => actions.setImageLoaded(true)}
+                                                            priority={!!media.uploadedUrl}
+                                                            quality={95}
+                                                            unoptimized={media.url?.startsWith('blob:') || false}
                                                         />
                                                     </div>
                                                 )}

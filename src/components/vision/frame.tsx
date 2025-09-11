@@ -27,6 +27,69 @@ import { CanvasContextMenu } from "./canvas-context-menu";
 import { AddExistingNodeDialog } from "./add-existing-node-dialog";
 import usePresence from "@convex-dev/presence/react";
 import { useSidebar } from "../../contexts/sidebar-context";
+import { useViewportCenter } from "../../hooks/useViewportCenter";
+
+// Component that has access to ReactFlow context for viewport positioning
+function ViewportAwareNodeManager({
+    showAddNodeDialog,
+    setShowAddNodeDialog,
+    id,
+    frame,
+    addExistingNodeToFrame,
+    onViewportCenterChange,
+    onScreenToFlowPositionChange,
+    rightClickPosition,
+}: {
+    showAddNodeDialog: boolean;
+    setShowAddNodeDialog: (show: boolean) => void;
+    id: Id<"frames">;
+    frame: any;
+    addExistingNodeToFrame: any;
+    onViewportCenterChange: (getCenter: () => { x: number; y: number }) => void;
+    onScreenToFlowPositionChange: (convert: (x: number, y: number) => { x: number; y: number }) => void;
+    rightClickPosition: { x: number; y: number } | null;
+}) {
+    const { getViewportCenter, convertScreenToFlowPosition } = useViewportCenter();
+
+    // Pass the viewport functions up to the parent
+    useEffect(() => {
+        onViewportCenterChange(getViewportCenter);
+        onScreenToFlowPositionChange(convertScreenToFlowPosition);
+    }, [getViewportCenter, convertScreenToFlowPosition, onViewportCenterChange, onScreenToFlowPositionChange]);
+
+    const handleAddExistingNode = useCallback(async (nodeId: Id<"nodes">) => {
+        let position: { x: number; y: number };
+        
+        if (rightClickPosition) {
+            // Use the right-click position if available
+            position = rightClickPosition;
+        } else {
+            // Fallback to viewport center with randomness
+            const center = getViewportCenter();
+            position = {
+                x: center.x + (Math.random() - 0.5) * 200,
+                y: center.y + (Math.random() - 0.5) * 200,
+            };
+        }
+        
+        await addExistingNodeToFrame({
+            nodeId,
+            frameId: id,
+            position,
+        });
+    }, [getViewportCenter, addExistingNodeToFrame, id, rightClickPosition]);
+
+    return (
+        <AddExistingNodeDialog
+            isOpen={showAddNodeDialog}
+            onClose={() => setShowAddNodeDialog(false)}
+            frameId={id}
+            channelId={frame.channel}
+            onNodeAdded={() => setShowAddNodeDialog(false)}
+            onAddNode={handleAddExistingNode}
+        />
+    );
+}
 
 export default function FrameComponent({
     id,
@@ -37,6 +100,9 @@ export default function FrameComponent({
 }) {
     const { openChat } = useSidebar();
     const [isDark, setIsDark] = useState(false);
+    const [getViewportCenter, setGetViewportCenter] = useState<(() => { x: number; y: number }) | null>(null);
+    const [convertScreenToFlowPosition, setConvertScreenToFlowPosition] = useState<((x: number, y: number) => { x: number; y: number }) | null>(null);
+    const [rightClickPosition, setRightClickPosition] = useState<{ x: number; y: number } | null>(null);
 
     // Dynamic edge styling
     const defaultEdgeOptions: DefaultEdgeOptions = {
@@ -88,6 +154,7 @@ export default function FrameComponent({
 
     const createNode = useMutation(api.nodes.create);
     const updateEdges = useMutation(api.edges.update);
+    const addExistingNodeToFrame = useMutation(api.nodes.addToFrame);
 
     const framedNodes = useQuery(api.frames.getFrameNodes, { frameId: id });
     const edges = useQuery(api.edges.get, { frameId: id });
@@ -101,7 +168,6 @@ export default function FrameComponent({
 
     // === Node data transformation ===
     useEffect(() => {
-        console.log("framed NODES", framedNodes)
         if (!framedNodes) return;
 
         setNodes((current) => {
@@ -118,8 +184,12 @@ export default function FrameComponent({
                 }
             });
 
+
             // Add/update nodes from framedNodes
             framedNodes.forEach((framedNode) => {
+                if (currentNodeIds.includes(framedNode.node.id)) {
+                    return
+                }
                 const reactNode: Node = {
                     ...(framedNode.node as any),
                     type: framedNode.node.type || "Text",
@@ -177,15 +247,6 @@ export default function FrameComponent({
         []
     );
 
-    useEffect(() => {
-        setNodes((current) =>
-            current.map((node) => ({
-                ...node,
-                selected: selectedNodes.includes(node.id),
-            }))
-        );
-    }, [selectedNodes]);
-
     const onEdgesChange = useCallback(
         (changes: EdgeChange[]) => {
             const avoidPending = changes.filter(
@@ -230,6 +291,20 @@ export default function FrameComponent({
             event.preventDefault();
             setSelectedNodes([]);
             setSelectedEdges([]);
+            
+            // Convert screen coordinates to world coordinates for node positioning
+            if (convertScreenToFlowPosition) {
+                try {
+                    const flowPosition = convertScreenToFlowPosition(event.clientX, event.clientY);
+                    setRightClickPosition(flowPosition);
+                } catch (error) {
+                    console.warn('Failed to calculate right-click position:', error);
+                    setRightClickPosition(null);
+                }
+            } else {
+                setRightClickPosition(null);
+            }
+            
             setContextMenu({
                 show: true,
                 x: event.clientX,
@@ -237,7 +312,7 @@ export default function FrameComponent({
                 type: 'pane',
             });
         },
-        []
+        [convertScreenToFlowPosition]
     );
 
     const onEdgeContextMenu = useCallback(
@@ -306,13 +381,28 @@ export default function FrameComponent({
 
     const handleNodeCreation = async (data: Omit<CreateNodeArgs, "channel">) => {
         if (!frame) throw new Error("Failed to get a frame");
+        
+        // Use viewport center if available, otherwise fallback to reasonable center
+        let centerX, centerY;
+        if (getViewportCenter) {
+            const center = getViewportCenter();
+            centerX = center.x + (Math.random() - 0.5) * 200;
+            centerY = center.y + (Math.random() - 0.5) * 200;
+        } else {
+            centerX = 300 + (Math.random() - 0.5) * 400;
+            centerY = 300 + (Math.random() - 0.5) * 400;
+        }
+        
         await createNode({
             ...data,
             channel: frame.channel,
             frameId: frame._id,
             position: {
                 id: crypto.randomUUID(),
-                position: { x: Math.random() * 400, y: Math.random() * 400 },
+                position: { 
+                    x: centerX, 
+                    y: centerY 
+                },
                 type: data.variant || "Text",
                 data: "",
             },
@@ -358,6 +448,17 @@ export default function FrameComponent({
                         gap={10}
                         size={0.9}
                     />
+                    
+                    <ViewportAwareNodeManager
+                        showAddNodeDialog={showAddNodeDialog}
+                        setShowAddNodeDialog={setShowAddNodeDialog}
+                        id={id}
+                        frame={frame}
+                        addExistingNodeToFrame={addExistingNodeToFrame}
+                        onViewportCenterChange={(getCenter) => setGetViewportCenter(() => getCenter)}
+                        onScreenToFlowPositionChange={(convert) => setConvertScreenToFlowPosition(() => convert)}
+                        rightClickPosition={rightClickPosition}
+                    />
                 </ReactFlow>
 
                 <CanvasContextMenu
@@ -394,14 +495,6 @@ export default function FrameComponent({
                     isOpen={contextMenu.show}
                     position={{ x: contextMenu.x, y: contextMenu.y }}
                     onClose={closeContextMenu}
-                />
-
-                <AddExistingNodeDialog
-                    isOpen={showAddNodeDialog}
-                    onClose={() => setShowAddNodeDialog(false)}
-                    frameId={id}
-                    channelId={frame.channel}
-                    onNodeAdded={() => setShowAddNodeDialog(false)}
                 />
             </div>
             <PasteBin

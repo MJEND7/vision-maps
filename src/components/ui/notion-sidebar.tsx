@@ -53,7 +53,10 @@ export function NotionSidebar() {
     const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
     const [orgSettingsOpen, setOrgSettingsOpen] = useState(false);
 
-    const notificationCount = 0;
+    const notificationCount = useQuery(
+        api.notifications.getUnreadCount,
+        (isOrgSwitching) ? "skip" : {}
+    ) ?? 0;
 
     // Add error handling for the component
 

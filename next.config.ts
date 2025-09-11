@@ -25,8 +25,6 @@ const nextConfig: NextConfig = {
           {
             key: "Content-Security-Policy",
             value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://hcaptcha.com https://*.hcaptcha.com https://*.stripe.com https://*.clerk.accounts.dev https://*.clerk.dev https://challenges.cloudflare.com https://*.cloudflare.com https://js.stripe.com",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https: blob: t.co",
               "font-src 'self' data:",

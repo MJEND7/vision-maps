@@ -26,6 +26,7 @@ interface AddExistingNodeDialogProps {
   frameId: Id<"frames">;
   channelId: Id<"channels">;
   onNodeAdded?: () => void;
+  onAddNode?: (nodeId: Id<"nodes">) => Promise<void>;
 }
 
 // Hook to detect if device is mobile
@@ -53,7 +54,8 @@ export function AddExistingNodeDialog({
   onClose, 
   frameId, 
   channelId, 
-  onNodeAdded 
+  onNodeAdded,
+  onAddNode
 }: AddExistingNodeDialogProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVariant, setSelectedVariant] = useState<string>("");
@@ -103,21 +105,27 @@ export function AddExistingNodeDialog({
 
   const handleAddNode = useCallback(async (nodeId: Id<"nodes">) => {
     try {
-      await addExistingNodeToFrame({
-        nodeId,
-        frameId,
-        position: {
-          x: Math.random() * 400,
-          y: Math.random() * 400,
-        },
-      });
+      if (onAddNode) {
+        // Use the custom handler passed from parent (with viewport positioning)
+        await onAddNode(nodeId);
+      } else {
+        // Fallback to basic positioning
+        await addExistingNodeToFrame({
+          nodeId,
+          frameId,
+          position: {
+            x: Math.random() * 400,
+            y: Math.random() * 400,
+          },
+        });
+      }
       
       onNodeAdded?.();
       onClose();
     } catch (error) {
       console.error("Failed to add node to frame:", error);
     }
-  }, [addExistingNodeToFrame, frameId, onNodeAdded, onClose]);
+  }, [addExistingNodeToFrame, frameId, onNodeAdded, onClose, onAddNode]);
 
   const dialogContent = (
     <div className="space-y-4">
