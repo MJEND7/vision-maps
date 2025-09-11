@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, MessageCircle, Hash, Trash2, Edit2, Check, X, MoreVertical, Calendar, MessageSquare, Brain } from "lucide-react";
+import { Plus, Hash, Trash2, Edit2, Check, X, MoreVertical, Calendar, MessageSquare, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 import { usePaginatedQuery, useMutation } from "convex/react";
@@ -133,7 +133,7 @@ function ChatWidget({ chat, isSelected, onSelect, onChannelNavigate, onDelete, o
                             <h4 className="font-medium text-sm truncate flex-1 flex items-center gap-1.5">
                                 {chat.title}
                                 {chat.nodeId && (
-                                    <Brain className="w-3 h-3 text-blue-500" title="Linked to AI node in channel" />
+                                    <Brain className="w-3 h-3 text-blue-500" aria-label="Linked to AI node in channel" />
                                 )}
                             </h4>
                             <Button

@@ -591,9 +591,9 @@ function VisionDetailPageContent() {
                         {tab.type === ViewMode.CHANNEL && user && (
                             <Channel key={tab.id} channelId={tab.id} onOpenChat={handleOpenChat} onChannelNavigate={handleChannelNavigate} />
                         )}
-                        {tab.type === ViewMode.FRAME && (
+                        {tab.type === ViewMode.FRAME && user?.id && (
                             <FrameComponent
-                                userId={user?.id}
+                                userId={user.id}
                                 id={tab.id as Id<"frames">}
                             />
                         )}

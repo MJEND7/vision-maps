@@ -107,7 +107,7 @@ export function renderNodeContent(
                 <div className="rounded-lg overflow-hidden border">
                     <Image
                         src={node.value}
-                        alt={node.title || 'Image'}
+                        alt={node.title || ''}
                         width={300}
                         height={200}
                         className="w-full h-auto object-cover"

@@ -155,7 +155,7 @@ export default function FrameComponent({
             setNodesMap(newMap);
             return nextNodes;
         });
-    }, [nodeDataList, setNodesMap, editingNodeId, id]);
+    }, [framedNodes, nodeDataList, setNodesMap, editingNodeId, id]);
 
     // === Node updates (local + sync) ===
     const onNodesChange = useCallback(

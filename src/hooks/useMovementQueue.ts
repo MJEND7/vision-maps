@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, useRef } from "react";
-import { Node, NodeChange, applyNodeChanges } from "@xyflow/react";
+import { Node, NodeChange } from "@xyflow/react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -173,7 +173,7 @@ export function useMovementQueue(
         queue: prev.queue.slice(1),
       }));
     });
-  }, [queueState.isProcessing, queueState.queue, setNodes]);
+  }, [isAlone, queueState.isProcessing, queueState.queue, setNodes]);
 
   // === Handle incoming movements (from backend) ===
   useEffect(() => {

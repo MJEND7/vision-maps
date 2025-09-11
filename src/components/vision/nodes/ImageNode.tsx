@@ -24,7 +24,7 @@ export default memo(function ImageNode(props: NodeProps<any>) {
       
       <div className="p-4">
         <div className="flex items-center gap-2 mb-2">
-          <Image className="w-3 h-3 text-blue-600" />
+          <Image className="w-3 h-3 text-blue-600" role="presentation" />
           <span className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Image</span>
         </div>
         <div className="mb-2">
