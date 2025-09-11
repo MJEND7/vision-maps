@@ -99,6 +99,28 @@ export const update = mutation({
     },
 });
 
+export const deleteEdge = mutation({
+    args: {
+        frameId: v.id("frames"),
+        edgeId: v.string(),
+    },
+    handler: async (ctx, args) => {
+        // Do access checks here
+        const edge = await ctx.db
+            .query("edges")
+            .withIndex("frame", (q) => q.eq("frameId", args.frameId))
+            .filter((q) => q.eq(q.field("edge.id"), args.edgeId))
+            .unique();
+        
+        if (edge) {
+            await ctx.db.delete(edge._id);
+            return { success: true };
+        }
+        
+        return { success: false, error: "Edge not found" };
+    },
+});
+
 export const connect = mutation({
     args: {
         frameId: v.string(),

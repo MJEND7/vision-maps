@@ -18,6 +18,8 @@ import { Button } from "../ui/button";
 interface CanvasContextMenuProps {
   frameId: Id<"frames">;
   selectedNodes: string[];
+  selectedEdges: string[];
+  contextType: 'node' | 'edge' | 'pane';
   selectedNodeData?: { id: string; type: string; data: any }[]; // Add node data for editing
   onDeleteSelected?: () => void;
   onAddNodeClick?: () => void;
@@ -46,23 +48,43 @@ function useIsMobile() {
   return isMobile;
 }
 
-export function CanvasContextMenu({ frameId, selectedNodes, selectedNodeData, onDeleteSelected, onAddNodeClick, onEditNode, isOpen, position, onClose }: CanvasContextMenuProps) {
+export function CanvasContextMenu({ frameId, selectedNodes, selectedEdges, contextType, selectedNodeData, onDeleteSelected, onAddNodeClick, onEditNode, isOpen, position, onClose }: CanvasContextMenuProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const isMobile = useIsMobile();
   
   const removeMultipleNodesFromFrame = useMutation(api.frames.removeMultipleNodesFromFrame);
+  const deleteEdge = useMutation(api.edges.deleteEdge).withOptimisticUpdate((store, args) => {
+    const currentEdges = store.getQuery(api.edges.get, { frameId: args.frameId }) ?? [];
+    const updatedEdges = currentEdges.filter(edge => edge.id !== args.edgeId);
+    store.setQuery(api.edges.get, { frameId: args.frameId }, updatedEdges);
+  });
 
   const handleDeleteSelected = useCallback(async () => {
-    if (isDeleting || selectedNodes.length === 0) return;
+    if (isDeleting || (selectedNodes.length === 0 && selectedEdges.length === 0)) return;
     
     setIsDeleting(true);
     try {
-      const result = await removeMultipleNodesFromFrame({
-        frameId,
-        nodeIds: selectedNodes,
-      });
+      if (selectedNodes.length > 0) {
+        const result = await removeMultipleNodesFromFrame({
+          frameId,
+          nodeIds: selectedNodes,
+        });
+        
+        console.log(`Deleted ${result.deletedCount} nodes and ${result.deletedEdgeCount} edges`);
+      }
       
-      console.log(`Deleted ${result.deletedCount} nodes and ${result.deletedEdgeCount} edges`);
+      if (selectedEdges.length > 0) {
+        await Promise.all(
+          selectedEdges.map(edgeId =>
+            deleteEdge({
+              frameId,
+              edgeId,
+            })
+          )
+        );
+        
+        console.log(`Deleted ${selectedEdges.length} edges`);
+      }
       
       // Call optional callback
       onDeleteSelected?.();
@@ -70,13 +92,15 @@ export function CanvasContextMenu({ frameId, selectedNodes, selectedNodeData, on
       // Close menu/drawer
       onClose();
     } catch (error) {
-      console.error("Failed to delete selected nodes:", error);
+      console.error("Failed to delete selected items:", error);
     } finally {
       setIsDeleting(false);
     }
-  }, [removeMultipleNodesFromFrame, frameId, selectedNodes, onDeleteSelected, isDeleting, onClose]);
+  }, [removeMultipleNodesFromFrame, deleteEdge, frameId, selectedNodes, selectedEdges, onDeleteSelected, isDeleting, onClose]);
 
   const hasSelectedNodes = selectedNodes.length > 0;
+  const hasSelectedEdges = selectedEdges.length > 0;
+  const hasSelectedItems = hasSelectedNodes || hasSelectedEdges;
   const hasTextNode = selectedNodeData?.some(node => node.type === 'Text') || false;
   const singleTextNode = selectedNodes.length === 1 && hasTextNode ? selectedNodes[0] : null;
 
@@ -90,7 +114,7 @@ export function CanvasContextMenu({ frameId, selectedNodes, selectedNodeData, on
           <DrawerTitle>Canvas Actions</DrawerTitle>
         </DrawerHeader>
         <div className="p-4 space-y-2">
-          {singleTextNode && (
+          {singleTextNode && contextType === 'node' && (
             <Button
               variant="default"
               onClick={() => {
@@ -104,7 +128,7 @@ export function CanvasContextMenu({ frameId, selectedNodes, selectedNodeData, on
               Edit Text
             </Button>
           )}
-          {hasSelectedNodes && (
+          {hasSelectedItems && (
             <Button
               variant="destructive"
               onClick={handleDeleteSelected}
@@ -114,11 +138,13 @@ export function CanvasContextMenu({ frameId, selectedNodes, selectedNodeData, on
               <Trash2 className="h-4 w-4 mr-2" />
               {isDeleting 
                 ? "Deleting..." 
-                : `Delete`
+                : contextType === 'edge' 
+                  ? `Delete Edge${selectedEdges.length > 1 ? 's' : ''}`
+                  : `Delete ${selectedNodes.length + selectedEdges.length} item${(selectedNodes.length + selectedEdges.length) > 1 ? 's' : ''}`
               }
             </Button>
           )}
-          {!hasSelectedNodes && (
+          {!hasSelectedItems && contextType === 'pane' && (
             <Button
               variant="default"
               onClick={() => {
@@ -150,7 +176,7 @@ export function CanvasContextMenu({ frameId, selectedNodes, selectedNodeData, on
       }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {singleTextNode && (
+      {singleTextNode && contextType === 'node' && (
         <>
           <button
             className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
@@ -166,7 +192,7 @@ export function CanvasContextMenu({ frameId, selectedNodes, selectedNodeData, on
           <div className="h-px bg-border my-1" />
         </>
       )}
-      {hasSelectedNodes ? (
+      {hasSelectedItems ? (
         <button
           className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer text-destructive hover:bg-destructive/10"
           onClick={handleDeleteSelected}
@@ -175,10 +201,12 @@ export function CanvasContextMenu({ frameId, selectedNodes, selectedNodeData, on
           <Trash2 className="h-4 w-4" />
           {isDeleting 
             ? "Deleting..." 
-            : `Delete ${selectedNodes.length}`
+            : contextType === 'edge' 
+              ? `Delete Edge${selectedEdges.length > 1 ? 's' : ''}`
+              : `Delete ${selectedNodes.length + selectedEdges.length} item${(selectedNodes.length + selectedEdges.length) > 1 ? 's' : ''}`
           }
         </button>
-      ) : (
+      ) : contextType === 'pane' ? (
         <button
           className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
           onClick={() => {
@@ -189,7 +217,7 @@ export function CanvasContextMenu({ frameId, selectedNodes, selectedNodeData, on
           <Plus className="h-4 w-4" />
           Add Existing Node
         </button>
-      )}
+      ) : null}
     </div>
   );
 

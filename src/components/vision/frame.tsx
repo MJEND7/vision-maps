@@ -10,7 +10,9 @@ import {
     EdgeChange,
     Connection,
     Node,
+    Edge,
     applyNodeChanges,
+    DefaultEdgeOptions,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useState, useEffect } from "react";
@@ -43,12 +45,13 @@ export default function FrameComponent({
     const [isDark, setIsDark] = useState(false);
 
     // Dynamic edge styling
-    const defaultEdgeOptions = {
+    const defaultEdgeOptions: DefaultEdgeOptions = {
         animated: true,
         style: {
             stroke: isDark ? "#e5e5e5" : "#b1b1b7",
             strokeWidth: 2,
         },
+        markerEnd: { type: 'arrow', color: isDark ? "#e5e5e5" : "#b1b1b7" },
     };
 
     // Detect dark mode from Tailwind
@@ -70,17 +73,18 @@ export default function FrameComponent({
 
     const [nodes, setNodes] = useState<Node[]>([]);
     const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
+    const [selectedEdges, setSelectedEdges] = useState<string[]>([]);
     const [contextMenu, setContextMenu] = useState<{
         show: boolean;
         x: number;
         y: number;
-    }>({ show: false, x: 0, y: 0 });
+        type: 'node' | 'edge' | 'pane';
+    }>({ show: false, x: 0, y: 0, type: 'pane' });
     const [showAddNodeDialog, setShowAddNodeDialog] = useState(false);
     const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
 
     // === Convex data ===
-    const frameQ = useQuery(api.frames.get, { id });
-    const frame = useLastValue(frameQ);
+    const frame = useQuery(api.frames.get, { id });
     usePresence(api.presence as any, `vision:${id}:${frame?.vision}`, userId);
 
     const users = useQuery(api.presence.listRoom, {
@@ -139,10 +143,12 @@ export default function FrameComponent({
                             setSelectedNodes((sel) =>
                                 sel.includes(nodeId) ? sel : [nodeId]
                             );
+                            setSelectedEdges([]);
                             setContextMenu({
                                 show: true,
                                 x: event.clientX,
                                 y: event.clientY,
+                                type: 'node',
                             });
                         },
                     },
@@ -168,8 +174,9 @@ export default function FrameComponent({
 
     // === Selection ===
     const onSelectionChange = useCallback(
-        ({ nodes: selectedNodes }: { nodes: Node[] }) => {
+        ({ nodes: selectedNodes, edges: selectedEdges }: { nodes: Node[]; edges: Edge[] }) => {
             setSelectedNodes(selectedNodes.map((node) => node.id));
+            setSelectedEdges(selectedEdges.map((edge) => edge.id));
         },
         []
     );
@@ -228,17 +235,36 @@ export default function FrameComponent({
     const onPaneContextMenu = useCallback(
         (event: React.MouseEvent | MouseEvent) => {
             event.preventDefault();
+            setSelectedNodes([]);
+            setSelectedEdges([]);
             setContextMenu({
                 show: true,
                 x: event.clientX,
                 y: event.clientY,
+                type: 'pane',
+            });
+        },
+        []
+    );
+
+    const onEdgeContextMenu = useCallback(
+        (event: React.MouseEvent, edge: Edge) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setSelectedNodes([]);
+            setSelectedEdges([edge.id]);
+            setContextMenu({
+                show: true,
+                x: event.clientX,
+                y: event.clientY,
+                type: 'edge',
             });
         },
         []
     );
 
     const closeContextMenu = useCallback(() => {
-        setContextMenu({ show: false, x: 0, y: 0 });
+        setContextMenu({ show: false, x: 0, y: 0, type: 'pane' });
     }, []);
 
     useEffect(() => {
@@ -267,6 +293,7 @@ export default function FrameComponent({
                     show: true,
                     x: event.clientX,
                     y: event.clientY,
+                    type: 'node',
                 });
             }
         };
@@ -311,9 +338,6 @@ export default function FrameComponent({
 
     return (
         <div className="w-full h-[93%] px-4 pt-4">
-            <h2 className="text-xl font-semibold mb-4">
-                {frame?.title || "Loading..."}
-            </h2>
             <div className="relative h-[calc(100%-4rem)]">
                 <ReactFlow
                     nodes={nodes}
@@ -323,6 +347,7 @@ export default function FrameComponent({
                     onConnect={onConnect}
                     onSelectionChange={onSelectionChange}
                     onPaneContextMenu={onPaneContextMenu}
+                    onEdgeContextMenu={onEdgeContextMenu}
                     onMove={closeContextMenu}
                     onMoveStart={closeContextMenu}
                     nodeTypes={nodeTypes as any}
@@ -347,6 +372,8 @@ export default function FrameComponent({
                 <CanvasContextMenu
                     frameId={id}
                     selectedNodes={selectedNodes}
+                    selectedEdges={selectedEdges}
+                    contextType={contextMenu.type}
                     selectedNodeData={selectedNodes
                         .map((nodeId) => {
                             const node = nodes.find((n) => n.id === nodeId);
@@ -361,6 +388,7 @@ export default function FrameComponent({
                         .filter(Boolean) as { id: string; type: string; data: any }[]}
                     onDeleteSelected={() => {
                         setSelectedNodes([]);
+                        setSelectedEdges([]);
                         closeContextMenu();
                     }}
                     onAddNodeClick={() => {
