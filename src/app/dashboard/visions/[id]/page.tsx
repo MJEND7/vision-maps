@@ -593,6 +593,7 @@ function VisionDetailPageContent() {
                         )}
                         {tab.type === ViewMode.FRAME && (
                             <FrameComponent
+                                userId={user?.id}
                                 id={tab.id as Id<"frames">}
                             />
                         )}

@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { useUser, useOrganization, useOrganizationList } from "@clerk/nextjs";
 import { NotionSidebar } from "@/components/ui/notion-sidebar";
 import { useRouter } from "next/navigation";
-import { AuthWrapper } from "@/components/AuthWrapper";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/../convex/_generated/api";
 import { toast } from "sonner";
@@ -63,7 +62,7 @@ export default function NotificationsPage() {
     // Get real notifications from Convex - handle errors gracefully
     const allNotifications = useQuery(api.notifications.getUserNotifications, { limit: 50 });
     const notifications = allNotifications || [];
-    
+
     // Track if we're in an unstable auth state (during org operations)
     const isAuthStable = userLoaded && orgLoaded && isSignedIn;
 
@@ -142,23 +141,23 @@ export default function NotificationsPage() {
     const handleAcceptOrgInvite = async (notificationId: Id<"notifications">) => {
         try {
             const result = await acceptOrgInviteMutation({ notificationId });
-            
+
             if (result && "organizationId" in result) {
                 // Find the corresponding Clerk invitation
-                const clerkInvitation = userInvitations.data?.find(inv => 
+                const clerkInvitation = userInvitations.data?.find(inv =>
                     inv.publicOrganizationData.id === result.organizationId
                 );
-                
+
                 if (clerkInvitation) {
                     // Accept the Clerk invitation and switch to the organization
                     await clerkInvitation.accept();
                     await setActive?.({ organization: result.organizationId });
-                    
+
                     // Revalidate invitations
                     userInvitations.revalidate?.();
                 }
             }
-            
+
             toast.success("Organization invitation accepted!");
         } catch (error) {
             console.error("Failed to accept organization invitation:", error);
@@ -185,34 +184,31 @@ export default function NotificationsPage() {
         }
     };
 
-    const filteredNotifications = filter === "all" 
-        ? notifications 
+    const filteredNotifications = filter === "all"
+        ? notifications
         : notifications.filter(n => !n.isRead);
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
     if (!isAuthStable) {
         return (
-            <AuthWrapper>
-                <div className="flex h-screen bg-background">
-                    <NotionSidebar />
-                    <main className="flex-1 overflow-y-auto flex items-center justify-center">
-                        <div className="text-center p-8 bg-card/50 rounded-lg border border-dashed border-border">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                            <p className="text-muted-foreground">Loading notifications...</p>
-                        </div>
-                    </main>
-                </div>
-            </AuthWrapper>
+            <div className="flex h-screen bg-background">
+                <NotionSidebar />
+                <main className="flex-1 overflow-y-auto flex items-center justify-center">
+                    <div className="text-center p-8 bg-card/50 rounded-lg border border-dashed border-border">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                        <p className="text-muted-foreground">Loading notifications...</p>
+                    </div>
+                </main>
+            </div>
         );
     }
 
     return (
-        <AuthWrapper>
-            <div className="flex h-screen bg-background">
-                <NotionSidebar />
-                
-                <main className="flex-1 overflow-y-auto">
+        <div className="flex h-screen bg-background">
+            <NotionSidebar />
+
+            <main className="flex-1 overflow-y-auto">
                 <div className="max-w-4xl mx-auto px-6 py-8">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -230,8 +226,8 @@ export default function NotificationsPage() {
                             </div>
                             <div className="flex items-center gap-2">
                                 {unreadCount > 0 && (
-                                    <Button 
-                                        variant="outline" 
+                                    <Button
+                                        variant="outline"
                                         size="sm"
                                         onClick={handleMarkAllAsRead}
                                     >
@@ -276,8 +272,8 @@ export default function NotificationsPage() {
                                         transition={{ delay: index * 0.05 }}
                                         className={`
                                             p-4 rounded-lg border transition-all duration-200
-                                            ${notification.isRead 
-                                                ? "bg-card hover:bg-muted/50 border-border" 
+                                            ${notification.isRead
+                                                ? "bg-card hover:bg-muted/50 border-border"
                                                 : "bg-accent/30 border-l-4 border-l-primary hover:bg-accent/50 dark:border-l-blue-400"
                                             }
                                             ${(notification.type === "invite" || notification.type === "org_invite") && notification.inviteStatus === "pending" ? "" : "cursor-pointer"}
@@ -291,14 +287,14 @@ export default function NotificationsPage() {
                                         <div className="flex items-start gap-3">
                                             <div className={`
                                                 p-2 rounded-full 
-                                                ${notification.isRead 
-                                                    ? "bg-muted text-muted-foreground" 
+                                                ${notification.isRead
+                                                    ? "bg-muted text-muted-foreground"
                                                     : "bg-primary/10 text-primary dark:bg-blue-500/10 dark:text-blue-400"
                                                 }
                                             `}>
                                                 {getNotificationIcon(notification.type)}
                                             </div>
-                                            
+
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-start justify-between">
                                                     <div className="space-y-1 flex-1">
@@ -321,7 +317,7 @@ export default function NotificationsPage() {
                                                         <p className="text-xs text-muted-foreground">
                                                             {formatTimestamp(notification.createdAt)}
                                                         </p>
-                                                        
+
                                                         {/* Vision Invite Actions */}
                                                         {notification.type === "invite" && notification.inviteStatus === "pending" && (
                                                             <div className="flex gap-2 mt-3">
@@ -380,7 +376,7 @@ export default function NotificationsPage() {
                                                             </div>
                                                         )}
                                                     </div>
-                                                    
+
                                                     <div className="flex items-center gap-1 ml-2">
                                                         {!notification.isRead && (
                                                             <Button
@@ -423,7 +419,7 @@ export default function NotificationsPage() {
                                         {filter === "all" ? "No notifications" : "No unread notifications"}
                                     </h3>
                                     <p className="text-muted-foreground">
-                                        {filter === "all" 
+                                        {filter === "all"
                                             ? "You're all caught up! New notifications will appear here."
                                             : "All notifications have been read."
                                         }
@@ -434,7 +430,6 @@ export default function NotificationsPage() {
                     </motion.div>
                 </div>
             </main>
-            </div>
-        </AuthWrapper>
+        </div>
     );
 }

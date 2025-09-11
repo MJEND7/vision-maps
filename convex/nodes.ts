@@ -71,7 +71,7 @@ export const create = mutation({
         if (!userId) {
             throw new Error("Failed to get userId from identity")
         }
-    
+
         const data = {
             title: args.title,
             variant: args.variant,
@@ -86,8 +86,8 @@ export const create = mutation({
         const nodeId = await ctx.db.insert("nodes", data);
 
         if (args.position && args.frameId) {
-            const node = {...args.position, data: nodeId, type: args.variant || "Text"}
-            
+            const node = { ...args.position, data: nodeId, type: args.variant || "Text" }
+
             // Insert into framed_node for current state
             await ctx.db.insert("framed_node", {
                 frameId: args.frameId,
@@ -146,6 +146,15 @@ export const remove = mutation({
         }
 
         await ctx.db.delete(args.id);
+    },
+});
+
+export const getMany = query({
+    args: {
+        ids: v.array(v.id("nodes")),
+    },
+    handler: async (ctx, args) => {
+        return await Promise.all(args.ids.map((id) => ctx.db.get(id)));
     },
 });
 
@@ -303,7 +312,7 @@ export const findDuplicateNodes = query({
         let query = ctx.db
             .query("nodes")
             .withIndex("by_vision", (q) => q.eq("vision", args.visionId))
-            .filter((q) => 
+            .filter((q) =>
                 q.and(
                     q.eq(q.field("value"), args.value),
                     q.eq(q.field("variant"), args.variant)
@@ -313,7 +322,7 @@ export const findDuplicateNodes = query({
         const duplicateNodes = await query.collect();
 
         // Filter out the excluded node if provided
-        const filteredNodes = args.excludeNodeId 
+        const filteredNodes = args.excludeNodeId
             ? duplicateNodes.filter(node => node._id !== args.excludeNodeId)
             : duplicateNodes;
 
@@ -333,7 +342,7 @@ export const findDuplicateNodes = query({
         );
 
         // Sort by creation time (oldest first)
-        return nodesWithChannelInfo.sort((a, b) => 
+        return nodesWithChannelInfo.sort((a, b) =>
             new Date(a._creationTime).getTime() - new Date(b._creationTime).getTime()
         );
     },

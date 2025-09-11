@@ -14,7 +14,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useState, useEffect } from "react";
-import { useConvex, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import PasteBin from "../channel/paste-bin";
@@ -23,15 +23,30 @@ import { useMovementQueue } from "../../hooks/useMovementQueue";
 import nodeTypes from "./nodes";
 import { CanvasContextMenu } from "./canvas-context-menu";
 import { AddExistingNodeDialog } from "./add-existing-node-dialog";
+import usePresence from "@convex-dev/presence/react";
 
-export default function FrameComponent({ id }: { id: Id<"frames"> }) {
+function useLastValue<T>(value: T | undefined): T | undefined {
+    const [last, setLast] = useState<T | undefined>();
+    useEffect(() => {
+        if (value !== undefined && value !== "skip") setLast(value);
+    }, [value]);
+    return last;
+}
+
+export default function FrameComponent({
+    id,
+    userId,
+}: {
+    id: Id<"frames">;
+    userId: string;
+}) {
     const [isDark, setIsDark] = useState(false);
-    
-    // Dynamic edge options based on dark mode
+
+    // Dynamic edge styling
     const defaultEdgeOptions = {
         animated: true,
         style: {
-            stroke: isDark ? '#e5e5e5' : '#b1b1b7',
+            stroke: isDark ? "#e5e5e5" : "#b1b1b7",
             strokeWidth: 2,
         },
     };
@@ -39,24 +54,21 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
     // Detect dark mode from Tailwind
     useEffect(() => {
         const checkDarkMode = () => {
-            const isDarkMode = document.documentElement.classList.contains('dark');
+            const isDarkMode =
+                document.documentElement.classList.contains("dark");
             setIsDark(isDarkMode);
         };
-
-        // Check initially
         checkDarkMode();
 
-        // Set up observer to watch for class changes
         const observer = new MutationObserver(checkDarkMode);
         observer.observe(document.documentElement, {
             attributes: true,
-            attributeFilter: ['class']
+            attributeFilter: ["class"],
         });
-
         return () => observer.disconnect();
     }, []);
+
     const [nodes, setNodes] = useState<Node[]>([]);
-    const [isInitial, setIsInitial] = useState(false);
     const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
     const [contextMenu, setContextMenu] = useState<{
         show: boolean;
@@ -67,200 +79,106 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
     const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
 
     // === Convex data ===
-    const frame = useQuery(api.frames.get, { id });
-    const users = useQuery(
-        api.presence.listRoom,
-        { roomToken: `vision:${frame?.vision}` }
-    );
-    const createNode = useMutation(api.nodes.create).withOptimisticUpdate(
-        (store, args) => {
-            if (!args.frameId) return;
+    const frameQ = useQuery(api.frames.get, { id });
+    const frame = useLastValue(frameQ);
+    usePresence(api.presence as any, `vision:${id}:${frame?.vision}`, userId);
 
-            // Get current framed nodes and frame data
-            const currentFramedNodes = store.getQuery(api.frames.getFrameNodes, { frameId: args.frameId }) || [];
+    const users = useQuery(api.presence.listRoom, {
+        roomToken: `vision:${id}:${frame?.vision}`,
+    });
+    const isAlone = !(users?.find((u) => u.online));
 
-            // Create optimistic node
-            const optimisticNodeId = `optimistic-${crypto.randomUUID()}`;
-            const optimisticNode = {
-                _id: optimisticNodeId as Id<"framed_node">,
-                _creationTime: Date.now(),
-                frameId: args.frameId,
-                node: {
-                    ...args.position,
-                    id: args.position?.id || crypto.randomUUID(),
-                    type: args.variant || "Text",
-                    position: args.position?.position || { x: 0, y: 0 },
-                    data: optimisticNodeId as Id<"nodes">
-                }
-            };
-
-            // Add to framed nodes
-            store.setQuery(api.frames.getFrameNodes, { frameId: args.frameId }, [
-                ...currentFramedNodes,
-                optimisticNode
-            ]);
-        }
-    );
+    const createNode = useMutation(api.nodes.create);
     const updateEdges = useMutation(api.edges.update);
 
-    // Get nodes and edges for this frame reactively
-    const framedNodes = useQuery(api.frames.getFrameNodes, { frameId: id });
-    const edges = useQuery(api.edges.get, { frameId: id });
-    const convex = useConvex();
+    const framedNodesQ = useQuery(api.frames.getFrameNodes, { frameId: id });
+    const framedNodes = useLastValue(framedNodesQ);
+    const edgesQ = useQuery(api.edges.get, { frameId: id });
+    const nodeIds = framedNodes?.map((f) => f.node.data);
+    const nodeDataListQ = useQuery(api.nodes.getMany, nodeIds ? { ids: nodeIds } : "skip");
 
-    // === Movement Queue Hook ===
-    const {
-        setNodesMap,
-        handleNodesChange,
-        processMovementQueue,
-    } = useMovementQueue(id, users || undefined);
+    const edges = useLastValue(edgesQ);
+    const nodeDataList = useLastValue(nodeDataListQ);
 
-    // Convert framed nodes to React Flow nodes whenever they change
+
+    // Movement queue
+    const { setNodesMap, handleNodesChange } = useMovementQueue(
+        id,
+        isAlone,
+        setNodes
+    );
+
+    // === Node data transformation ===
     useEffect(() => {
-        if (!framedNodes) return;
+        if (!framedNodes || !nodeDataList) return;
 
-        const convertToReactFlowNodes = async () => {
-            const newMap = new Map();
-            const nodesWithData = await Promise.all(framedNodes.map(async (framedNode) => {
-                const node = (framedNode.node as any) as Node;
+        setNodes((current) => {
+            const newMap = new Map(current.map((n) => [n.id, n])); // existing
 
-                // If the node already has the data structure (from optimistic update)
-                if (node.data?.node) {
-                    newMap.set(node.id, node);
-                    return node;
-                }
+            framedNodes.forEach((framedNode) => {
+                const nodeId = framedNode.node.data;
+                const nodeData = nodeDataList.find((n) => n?._id === nodeId);
 
-                // For existing nodes, fetch the actual node data
-                try {
-                    const nodeData = await convex.query(api.nodes.get, { id: node.data as any });
-
-                    if (nodeData) {
-                        const reactFlowNode: Node = {
-                            ...node,
-                            type: nodeData.variant || "Text",
-                            data: {
-                                node: nodeData,
-                                nodeUser: null,
-                                frameId: id,
-                                editingNodeId: editingNodeId,
-                                onEditComplete: () => setEditingNodeId(null),
-                                onNodeRightClick: (nodeId: string, event: React.MouseEvent) => {
-                                    console.log('Node right-clicked:', nodeId);
-
-                                    // If the right-clicked node is not already selected, 
-                                    // clear selection and select only this node
-                                    setSelectedNodes(currentSelection => {
-                                        if (!currentSelection.includes(nodeId)) {
-                                            console.log('Node not in selection, selecting only:', nodeId);
-                                            return [nodeId];
-                                        } else {
-                                            console.log('Node already selected, keeping current selection:', currentSelection);
-                                            return currentSelection;
-                                        }
-                                    });
-
-                                    // Show context menu at mouse position
-                                    setContextMenu({
-                                        show: true,
-                                        x: event.clientX,
-                                        y: event.clientY,
-                                    });
-                                },
-                            }
-                        };
-                        newMap.set(node.id, reactFlowNode);
-                        return reactFlowNode;
-                    }
-                } catch (error) {
-                    console.error("Failed to fetch node data:", error);
-                }
-
-                // Fallback for nodes that failed to load
-                const fallbackNode: Node = {
-                    ...node,
-                    type: node.type || "Text",
+                const reactNode: Node = {
+                    ...(framedNode.node as any),
+                    type: nodeData?.variant || "Text",
                     data: {
-                        node: {
-                            _id: node.data,
-                            title: "Error loading node",
-                            variant: node.type || "Text",
-                            value: "",
-                        },
+                        node:
+                            nodeData ||
+                            ({
+                                _id: nodeId,
+                                title: "Error loading node",
+                                variant: "Text",
+                                value: "",
+                            } as any),
                         nodeUser: null,
                         frameId: id,
-                        editingNodeId: editingNodeId,
+                        editingNodeId,
                         onEditComplete: () => setEditingNodeId(null),
                         onNodeRightClick: (nodeId: string, event: React.MouseEvent) => {
-                            console.log('Node right-clicked:', nodeId);
-
-                            // If the right-clicked node is not already selected, 
-                            // clear selection and select only this node
-                            setSelectedNodes(currentSelection => {
-                                if (!currentSelection.includes(nodeId)) {
-                                    console.log('Node not in selection, selecting only:', nodeId);
-                                    return [nodeId];
-                                } else {
-                                    console.log('Node already selected, keeping current selection:', currentSelection);
-                                    return currentSelection;
-                                }
-                            });
-
+                            setSelectedNodes((sel) =>
+                                sel.includes(nodeId) ? sel : [nodeId]
+                            );
                             setContextMenu({
                                 show: true,
                                 x: event.clientX,
                                 y: event.clientY,
                             });
                         },
-                    }
+                    },
                 };
-                newMap.set(node.id, fallbackNode);
-                return fallbackNode;
-            }));
 
-            setNodes(nodesWithData);
+                newMap.set(reactNode.id, reactNode); // add/replace
+            });
+
+            const nextNodes = Array.from(newMap.values());
             setNodesMap(newMap);
-            setIsInitial(true);
-        };
+            return nextNodes;
+        });
+    }, [nodeDataList, setNodesMap, editingNodeId, id]);
 
-        convertToReactFlowNodes();
-    }, [framedNodes, setNodesMap, convex, editingNodeId, id]);
-
-    // === Process movement queue ===
-    const isAlone = !users || users.length === 0;
-    useEffect(() => {
-        if (isInitial && !isAlone) {
-            // Only process movement queue in multi-user mode
-            processMovementQueue(nodes, setNodes);
-        }
-    }, [processMovementQueue, isInitial, isAlone, nodes, setNodes]);
-
-    // === Node updates (batched) ===
+    // === Node updates (local + sync) ===
     const onNodesChange = useCallback(
         (changes: NodeChange[]) => {
-            // Apply changes to local state immediately for responsiveness
             setNodes((nds) => applyNodeChanges(changes, nds));
-
-            // Use hook to handle batching and syncing
             handleNodesChange(changes);
         },
         [handleNodesChange]
     );
 
-    // === Selection handling ===
+    // === Selection ===
     const onSelectionChange = useCallback(
         ({ nodes: selectedNodes }: { nodes: Node[] }) => {
-            setSelectedNodes(selectedNodes.map(node => node.id));
+            setSelectedNodes(selectedNodes.map((node) => node.id));
         },
         []
     );
 
-    // === Sync programmatic selection with ReactFlow ===
     useEffect(() => {
-        // Update node selection state in ReactFlow when selectedNodes changes
-        setNodes(currentNodes =>
-            currentNodes.map(node => ({
+        setNodes((current) =>
+            current.map((node) => ({
                 ...node,
-                selected: selectedNodes.includes(node.id)
+                selected: selectedNodes.includes(node.id),
             }))
         );
     }, [selectedNodes]);
@@ -269,28 +187,14 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
     const onEdgesChange = useCallback(
         (changes: EdgeChange[]) => {
             const avoidPending = changes.filter(
-                (change) => !("id" in change && change.id.startsWith("pending-"))
+                (c) => !("id" in c && c.id.startsWith("pending-"))
             );
-
-            const transformedChanges = avoidPending.map((change) => {
-                if (change.type === "add" && "item" in change) {
-                    return {
-                        type: change.type,
-                        item: {
-                            ...change.item,
-                            data: { bar: 0 }, // ensure valid data structure
-                        },
-                    };
-                }
-                return change;
-            });
-
-            updateEdges({ frameId: id, changes: transformedChanges as any });
+            updateEdges({ frameId: id, changes: avoidPending as any });
         },
         [updateEdges, id]
     );
 
-    // === Connecting edges ===
+    // === Edge connect ===
     const connect = useMutation(api.edges.connect).withOptimisticUpdate(
         (store, args) => {
             const currentEdges =
@@ -320,48 +224,45 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
         [connect, id]
     );
 
-    // === Canvas Right Click Handler ===
-    const onPaneContextMenu = useCallback((event: React.MouseEvent | MouseEvent) => {
-        console.log('Right click detected!', event);
-        event.preventDefault();
-        setContextMenu({
-            show: true,
-            x: event.clientX,
-            y: event.clientY,
-        });
-    }, []);
+    // === Context Menu handlers ===
+    const onPaneContextMenu = useCallback(
+        (event: React.MouseEvent | MouseEvent) => {
+            event.preventDefault();
+            setContextMenu({
+                show: true,
+                x: event.clientX,
+                y: event.clientY,
+            });
+        },
+        []
+    );
 
-    // === Close context menu ===
     const closeContextMenu = useCallback(() => {
         setContextMenu({ show: false, x: 0, y: 0 });
     }, []);
 
-    // === Click outside to close ===
     useEffect(() => {
         const handleClick = (event: MouseEvent) => {
-            // Don't close if clicking inside the context menu
             const target = event.target as Element;
-            if (target?.closest('[data-context-menu]')) {
-                return;
-            }
+            if (target?.closest("[data-context-menu]")) return;
             closeContextMenu();
         };
         if (contextMenu.show) {
-            document.addEventListener('click', handleClick);
-            return () => document.removeEventListener('click', handleClick);
+            document.addEventListener("click", handleClick);
+            return () => document.removeEventListener("click", handleClick);
         }
     }, [contextMenu.show, closeContextMenu]);
 
-    // === Selection rectangle right-click handler ===
+    // Selection rectangle right-click
     useEffect(() => {
         const handleSelectionRectContextMenu = (event: MouseEvent) => {
             const target = event.target as Element;
-
-            // Check if the right-click is on the selection rectangle
-            if (target?.classList.contains('react-flow__nodesselection-rect') && selectedNodes.length > 0) {
+            if (
+                target?.classList.contains("react-flow__nodesselection-rect") &&
+                selectedNodes.length > 0
+            ) {
                 event.preventDefault();
                 event.stopPropagation();
-
                 setContextMenu({
                     show: true,
                     x: event.clientX,
@@ -369,37 +270,38 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
                 });
             }
         };
-
-        // Add context menu listener to document
-        document.addEventListener('contextmenu', handleSelectionRectContextMenu, true);
-
+        document.addEventListener(
+            "contextmenu",
+            handleSelectionRectContextMenu,
+            true
+        );
         return () => {
-            document.removeEventListener('contextmenu', handleSelectionRectContextMenu, true);
+            document.removeEventListener(
+                "contextmenu",
+                handleSelectionRectContextMenu,
+                true
+            );
         };
     }, [selectedNodes.length]);
 
     // === Node creation ===
     const handleNodeCreation = async (data: Omit<CreateNodeArgs, "channel">) => {
         if (!frame) throw new Error("Failed to get a frame");
-
         await createNode({
             ...data,
             channel: frame.channel,
             frameId: frame._id,
             position: {
                 id: crypto.randomUUID(),
-                position: {
-                    x: Math.random() * 400,
-                    y: Math.random() * 400,
-                },
+                position: { x: Math.random() * 400, y: Math.random() * 400 },
                 type: data.variant || "Text",
-                data: "", // handled on backend
+                data: "",
             },
         });
     };
 
-    // === Loading state ===
-    if (!framedNodes || !edges || !frame) {
+    // === Loading ===
+    if (!framedNodes || !edges || !frame || !nodeDataList) {
         return (
             <div className="w-full h-[93%] px-4 pt-4 flex items-center justify-center">
                 <p>Loading frame...</p>
@@ -407,7 +309,6 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
         );
     }
 
-    // === Render ===
     return (
         <div className="w-full h-[93%] px-4 pt-4">
             <h2 className="text-xl font-semibold mb-4">
@@ -443,14 +344,21 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
                     />
                 </ReactFlow>
 
-                {/* Context Menu */}
                 <CanvasContextMenu
                     frameId={id}
                     selectedNodes={selectedNodes}
-                    selectedNodeData={selectedNodes.map(nodeId => {
-                        const node = nodes.find(n => n.id === nodeId);
-                        return node ? { id: nodeId, type: node.type || 'Text', data: node.data } : null;
-                    }).filter(Boolean) as { id: string; type: string; data: any }[]}
+                    selectedNodeData={selectedNodes
+                        .map((nodeId) => {
+                            const node = nodes.find((n) => n.id === nodeId);
+                            return node
+                                ? {
+                                    id: nodeId,
+                                    type: node.type || "Text",
+                                    data: node.data,
+                                }
+                                : null;
+                        })
+                        .filter(Boolean) as { id: string; type: string; data: any }[]}
                     onDeleteSelected={() => {
                         setSelectedNodes([]);
                         closeContextMenu();
@@ -468,15 +376,12 @@ export default function FrameComponent({ id }: { id: Id<"frames"> }) {
                     onClose={closeContextMenu}
                 />
 
-                {/* Add Existing Node Dialog */}
                 <AddExistingNodeDialog
                     isOpen={showAddNodeDialog}
                     onClose={() => setShowAddNodeDialog(false)}
                     frameId={id}
                     channelId={frame.channel}
-                    onNodeAdded={() => {
-                        setShowAddNodeDialog(false);
-                    }}
+                    onNodeAdded={() => setShowAddNodeDialog(false)}
                 />
             </div>
             <PasteBin

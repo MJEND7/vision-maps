@@ -320,17 +320,10 @@ export function ImprovedChatList({ visionId, selectedChatId, onChatSelect, onNew
                         animate={{ opacity: 1, y: 0 }}
                         className="flex flex-col items-center justify-center h-full text-center px-6"
                     >
-                        <div className="bg-primary/10 p-4 rounded-full mb-4">
-                            <MessageCircle className="w-8 h-8 text-primary" />
-                        </div>
-                        <h4 className="text-lg font-medium mb-2">No conversations yet</h4>
-                        <p className="text-sm text-muted-foreground mb-4">
+                        <h4 className="text-sm font-medium mb-2">No conversations yet</h4>
+                        <p className="text-xs text-muted-foreground mb-4">
                             Start your first AI conversation to see it here
                         </p>
-                        <Button onClick={onNewChat} className="gap-2">
-                            <Plus className="w-4 h-4" />
-                            Start a conversation
-                        </Button>
                     </motion.div>
                 ) : (
                     <div
