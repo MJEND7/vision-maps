@@ -33,6 +33,7 @@ import {
     Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { OrgRole, RoleUtils } from "@/lib/roles";
 
 interface CustomOrgPopupProps {
     children: React.ReactNode;
@@ -189,7 +190,7 @@ export function CustomOrgPopup({ children, onOrgChange }: CustomOrgPopupProps) {
                                             )}
                                         </div>
                                         <span className="text-xs text-muted-foreground">
-                                            {membership.organization.membersCount} members • {membership.role}
+                                            {membership.organization.membersCount} members
                                         </span>
                                     </div>
                                 </div>
@@ -395,9 +396,9 @@ function CreateOrgPopup({ open, onOpenChange, onOrgCreated }: CreateOrgPopupProp
 
 function InviteUsersPopup({ open, onOpenChange }: InviteUsersPopupProps) {
     const [email, setEmail] = useState("");
-    const [role, setRole] = useState<"org:admin" | "org:member">("org:member");
+    const [role, setRole] = useState<string>(OrgRole.MEMBER);
     const [loading, setLoading] = useState(false);
-    const [selectedUsers, setSelectedUsers] = useState<Array<{ email: string, role: "org:admin" | "org:member" }>>([]);
+    const [selectedUsers, setSelectedUsers] = useState<Array<{ email: string, role: string }>>([]);
 
     const searchUsers = useQuery(
         api.user.searchUsersByEmail,
@@ -432,7 +433,7 @@ function InviteUsersPopup({ open, onOpenChange }: InviteUsersPopupProps) {
 
         setSelectedUsers(prev => [...prev, { email: email.trim(), role }]);
         setEmail("");
-        setRole("org:member");
+        setRole(OrgRole.MEMBER);
     };
 
     const handleRemoveUser = (emailToRemove: string) => {
@@ -513,19 +514,21 @@ function InviteUsersPopup({ open, onOpenChange }: InviteUsersPopupProps) {
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline" className="flex items-center gap-1 min-w-[100px]">
-                                        <span className="text-sm">{role === "org:admin" ? "Admin" : "Member"}</span>
+                                        <span className="text-sm">{RoleUtils.getDisplayName(role)}</span>
                                         <ChevronDown className="w-3 h-3" />
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => setRole("org:member")}>
-                                        <Users className="w-4 h-4 mr-2" />
-                                        Member
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setRole("org:admin")}>
-                                        <Crown className="w-4 h-4 mr-2" />
-                                        Admin
-                                    </DropdownMenuItem>
+                                    {RoleUtils.getAllRoles().map((roleOption) => (
+                                        <DropdownMenuItem key={roleOption.value} onClick={() => setRole(roleOption.value)}>
+                                            {roleOption.value === OrgRole.ADMIN ? (
+                                                <Crown className="w-4 h-4 mr-2" />
+                                            ) : (
+                                                <Users className="w-4 h-4 mr-2" />
+                                            )}
+                                            {roleOption.label}
+                                        </DropdownMenuItem>
+                                    ))}
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
@@ -584,7 +587,7 @@ function InviteUsersPopup({ open, onOpenChange }: InviteUsersPopupProps) {
                                             <div className="flex flex-col">
                                                 <span className="text-sm">{user.email}</span>
                                                 <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                                    {user.role === "org:admin" ? (
+                                                    {RoleUtils.isAdmin(user.role) ? (
                                                         <>
                                                             <Crown className="w-3 h-3" />
                                                             Admin
@@ -631,9 +634,9 @@ function InviteUsersPopup({ open, onOpenChange }: InviteUsersPopupProps) {
 
 function InlineInviteUsers({ onInviteSent, onDone }: InlineInviteUsersProps) {
     const [email, setEmail] = useState("");
-    const [role, setRole] = useState<"org:admin" | "org:member">("org:member");
+    const [role, setRole] = useState<string>(OrgRole.MEMBER);
     const [loading, setLoading] = useState(false);
-    const [selectedUsers, setSelectedUsers] = useState<Array<{ email: string, role: "org:admin" | "org:member" }>>([]);
+    const [selectedUsers, setSelectedUsers] = useState<Array<{ email: string, role: string }>>([]);
 
     const searchUsers = useQuery(
         api.user.searchUsersByEmail,
@@ -668,7 +671,7 @@ function InlineInviteUsers({ onInviteSent, onDone }: InlineInviteUsersProps) {
 
         setSelectedUsers(prev => [...prev, { email: email.trim(), role }]);
         setEmail("");
-        setRole("org:member");
+        setRole(OrgRole.MEMBER);
     };
 
     const handleRemoveUser = (emailToRemove: string) => {
@@ -741,19 +744,21 @@ function InlineInviteUsers({ onInviteSent, onDone }: InlineInviteUsersProps) {
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="flex items-center gap-1 min-w-[100px]">
-                                <span className="text-sm">{role === "org:admin" ? "Admin" : "Member"}</span>
+                                <span className="text-sm">{RoleUtils.getDisplayName(role)}</span>
                                 <ChevronDown className="w-3 h-3" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setRole("org:member")}>
-                                <Users className="w-4 h-4 mr-2" />
-                                Member
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setRole("org:admin")}>
-                                <Crown className="w-4 h-4 mr-2" />
-                                Admin
-                            </DropdownMenuItem>
+                            {RoleUtils.getAllRoles().map((roleOption) => (
+                                <DropdownMenuItem key={roleOption.value} onClick={() => setRole(roleOption.value)}>
+                                    {roleOption.value === OrgRole.ADMIN ? (
+                                        <Crown className="w-4 h-4 mr-2" />
+                                    ) : (
+                                        <Users className="w-4 h-4 mr-2" />
+                                    )}
+                                    {roleOption.label}
+                                </DropdownMenuItem>
+                            ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -812,7 +817,7 @@ function InlineInviteUsers({ onInviteSent, onDone }: InlineInviteUsersProps) {
                                     <div className="flex flex-col">
                                         <span className="text-sm">{user.email}</span>
                                         <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                            {user.role === "org:admin" ? (
+                                            {RoleUtils.isAdmin(user.role) ? (
                                                 <>
                                                     <Crown className="w-3 h-3" />
                                                     Admin

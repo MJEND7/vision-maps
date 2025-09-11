@@ -24,6 +24,7 @@ import Logo from "@/icons/logo";
 import Link from "next/link";
 import ThemeSwitcher from "../ThemeSwitcher";
 import { CustomOrgPopup } from "@/components/ui/custom-org-popup";
+import { OrgSettingsDialog } from "@/components/ui/org-settings-dialog";
 
 export function NotionSidebar() {
     const { user } = useUser();
@@ -46,10 +47,11 @@ export function NotionSidebar() {
             keepPreviousData: true,
         }
     });
-    const { openUserProfile, openOrganizationProfile } = useClerk();
+    const { openUserProfile } = useClerk();
     const router = useRouter();
     const pathname = usePathname(); // Get current pathname
     const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+    const [orgSettingsOpen, setOrgSettingsOpen] = useState(false);
 
     const notificationCount = useQuery(
         api.notifications.getUnreadCount,
@@ -99,8 +101,8 @@ export function NotionSidebar() {
     };
 
     const handleSettingsClick = () => {
-        // This is only called for organization settings now
-        openOrganizationProfile();
+        // Open our custom organization settings dialog
+        setOrgSettingsOpen(true);
     };
 
     const handleOrganizationSelect = async (orgId: string) => {
@@ -179,19 +181,15 @@ export function NotionSidebar() {
                                 </span>
                             </div>
                         </div>
-                        <ChevronsUpDown className={`w-4 h-4 ${isOrgSwitching ? 'animate-spin' : ''}`} />
+                        <ChevronsUpDown className={`w-4 h-4`} />
                     </Button>
                 </CustomOrgPopup>
                 {organization && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
+                    <button
                         onClick={handleSettingsClick}
-                        title="Organization Settings"
-                    >
-                        <Settings className="w-4 h-4" />
-                    </Button>
+                        className="hover:rotate-180  rounded p-1 transition-all ease-in-out duration-500">
+                        <Settings size={18} />
+                    </button>
                 )}
             </div>
 
@@ -289,6 +287,14 @@ export function NotionSidebar() {
                 </button>
 
             </div>
+
+            {/* Organization Settings Dialog */}
+            {organization && (
+                <OrgSettingsDialog
+                    open={orgSettingsOpen}
+                    onOpenChange={setOrgSettingsOpen}
+                />
+            )}
         </div>
     );
 }
