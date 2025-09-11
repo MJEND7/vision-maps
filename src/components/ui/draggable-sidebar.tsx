@@ -46,6 +46,7 @@ interface DraggableSidebarProps {
 function DraggableChannel({
     channel,
     isSelected,
+    selectedTabId,
     isEditing,
     editingName,
     frames,
@@ -68,6 +69,7 @@ function DraggableChannel({
 }: {
     channel: Channel;
     isSelected: boolean;
+    selectedTabId: string | undefined,
     isEditing: boolean;
     editingName: string;
     frames: FrameItem[];
@@ -183,7 +185,7 @@ function DraggableChannel({
                             />
                         ) : (
                             <button
-                                className="text-left max-w-[190px] truncate py-1 flex-1"
+                                className="text-left max-w-[190px] truncate py-1.5 flex-1"
                                 onClick={() => onOpenTab("channel", channel._id, channel.title)}
                                 onDoubleClick={onEdit}
                             >
@@ -222,7 +224,7 @@ function DraggableChannel({
                                     <DraggableFrame
                                         key={frame._id}
                                         frame={frame}
-                                        isSelected={false}
+                                        isSelected={selectedTabId === frame._id}
                                         isEditing={editingFrame === frame._id}
                                         editingName={editingFrameName}
                                         onOpenTab={onOpenTab}
@@ -285,7 +287,7 @@ function DraggableFrame({
         >
             <motion.div
                 className={`${isSelected ? "bg-accent text-primary" : "text-muted-foreground/80 hover:text-primary"} 
-                p-1 flex items-center group`}
+                p-1 flex items-center group rounded-md`}
                 animate={{
                     scale: isDragging ? 1.02 : 1,
                 }}
@@ -376,6 +378,7 @@ export function DraggableSidebar(props: DraggableSidebarProps) {
                     <DraggableChannel
                         key={channel._id}
                         channel={channel}
+                        selectedTabId={props.selectedTabId}
                         isSelected={props.selectedTabId === channel._id}
                         isEditing={props.editingChannel === channel._id}
                         editingName={props.editingChannelName}
