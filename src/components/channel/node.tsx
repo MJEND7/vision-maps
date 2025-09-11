@@ -4,208 +4,15 @@ import { NodeWithFrame } from "../../../convex/channels";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { timeSinceFromDateString } from "@/utils/date";
 import { NodeVariants } from "../../../convex/tables/nodes";
-import Image from "next/image";
-import { AudioPlayer } from "./audio-player";
-import { VideoPlayer } from "./video-player";
-import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard } from "./metadata";
-import { useOGMetadataWithCache } from "@/utils/ogMetadata";
-import { Brain, ExternalLink, Edit2, Trash2, Check, X, Link2, Eye } from "lucide-react";
+import { Edit2, Trash2, Check, X, Link2, Eye } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "../ui/button";
-import { Textarea } from "../ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Badge } from "../ui/badge";
+import { renderNodeContent } from "../vision/nodes/NodeContentRenderer";
 
-// Component for nodes that need metadata fetching
-function NodeWithMetadata({ node, variant }: { node: NodeWithFrame, variant: NodeVariants }) {
-    const { fetchWithCache } = useOGMetadataWithCache();
-    const [metadata, setMetadata] = React.useState<any>(null);
-    const [isLoading, setIsLoading] = React.useState(true);
-
-    // Fetch metadata when component mounts
-    React.useEffect(() => {
-        const fetchMetadata = async () => {
-            try {
-                // Validate URL before fetching
-                if (!node.value || typeof node.value !== 'string') {
-                    console.error('Invalid node value:', node.value);
-                    setMetadata({
-                        title: 'Invalid URL',
-                        description: '',
-                        url: '',
-                        type: variant
-                    });
-                    return;
-                }
-
-                // If no rich metadata, fetch from cache/API
-                const result = await fetchWithCache(node.value);
-                setMetadata({
-                    ...result.metadata,
-                    type: variant
-                });
-            } catch (error) {
-                console.error('Error fetching metadata:', error);
-                // Set fallback metadata on error
-                setMetadata({
-                    title: 'Unable to load content',
-                    description: 'There was an error loading this content',
-                    url: node.value || '',
-                    type: variant
-                });
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchMetadata();
-    }, [node.value, variant, fetchWithCache, node]);
-
-    // Show loading state while fetching
-    if (isLoading) {
-        return (
-            <div className="animate-pulse">
-                <div className="bg-gray-200 h-32 w-full rounded-lg"></div>
-            </div>
-        );
-    }
-
-    // Render appropriate card based on variant
-    switch (variant) {
-        case NodeVariants.GitHub:
-            return <GitHubCard metadata={metadata} />;
-        case NodeVariants.Figma:
-            return <FigmaCard metadata={metadata} />;
-        case NodeVariants.YouTube:
-            return <YouTubeCard metadata={metadata} />;
-        case NodeVariants.Twitter:
-            return <TwitterCard metadata={metadata} />;
-        case NodeVariants.Notion:
-            return <NotionCard metadata={metadata} />;
-        case NodeVariants.Loom:
-            return <LoomCard metadata={metadata} />;
-        case NodeVariants.Spotify:
-            return <SpotifyCard metadata={metadata} />;
-        case NodeVariants.AppleMusic:
-            return <AppleMusicCard metadata={metadata} />;
-        case NodeVariants.Link:
-        default:
-            return <WebsiteCard metadata={metadata} />;
-    }
-}
-
-// Render node content based on variant
-function renderNodeContent(
-    node: NodeWithFrame,
-    onOpenChat?: (chatId: string) => void,
-    isEditing?: boolean,
-    editValue?: string,
-    setEditValue?: (value: string) => void,
-    textareaRef?: React.RefObject<HTMLTextAreaElement | null>,
-    onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
-) {
-    const variant = node.variant as NodeVariants;
-
-    switch (variant) {
-        case NodeVariants.Image:
-            return (
-                <div className="rounded-lg overflow-hidden border">
-                    <Image
-                        src={node.value}
-                        alt={node.title}
-                        width={300}
-                        height={200}
-                        className="w-full h-auto object-cover"
-                    />
-                </div>
-            );
-
-        case NodeVariants.Audio:
-            return (
-                <AudioPlayer
-                    src={node.value}
-                    title={node.title}
-                />
-            );
-
-        case NodeVariants.Video:
-            return (
-                <VideoPlayer
-                    src={node.value}
-                    title={node.title}
-                />
-            );
-
-        case NodeVariants.GitHub:
-        case NodeVariants.Figma:
-        case NodeVariants.YouTube:
-        case NodeVariants.Twitter:
-        case NodeVariants.Notion:
-        case NodeVariants.Loom:
-        case NodeVariants.Spotify:
-        case NodeVariants.AppleMusic:
-        case NodeVariants.Link:
-            return <NodeWithMetadata node={node} variant={variant} />;
-
-        case NodeVariants.AI:
-            return (
-                <div className="overflow-hidden w-full h-48 border border-accent rounded-lg flex flex-col justify-between">
-                    <div className="flex text-xs items-center justify-between gap-2 font-semibold p-3">
-                        <div className="flex items-center gap-2">
-                            LLM Node
-                        </div>
-                    </div>
-                    <div className="flex flex-col items-center justify-center gap-2">
-                        <Brain size={20} />
-                    </div>
-                    <div className="bg-accent flex items-center justify-between border-t border-accent p-3">
-                        <p className="text-sm font-semibold truncate">{node.title}</p>
-                        <button
-                            onClick={() => onOpenChat?.(node.value)}
-                            className="text-[10px] text-blue-600 hover:underline flex items-center gap-1"
-                        >
-                            <ExternalLink size={12} />
-                            Open Chat
-                        </button>
-                    </div>
-                </div>
-            )
-        //<ChatCard drivenIds={new Set()} onFocusInput={() => { }} chatId={node.value} />;
-
-        case NodeVariants.Text:
-            return (
-                <div>
-                    {isEditing ? (
-                        <Textarea
-                            ref={textareaRef}
-                            value={editValue}
-                            onChange={(e) => setEditValue?.(e.target.value)}
-                            onKeyDown={onKeyDown}
-                            className="text-sm min-h-[60px] resize-none"
-                            placeholder="Enter text..."
-                        />
-                    ) : (
-                        <p className="text-sm whitespace-pre-wrap">{node.value}</p>
-                    )}
-                </div>
-            );
-
-        default:
-            // For unknown types, try to detect if it's a file
-            if (node.value.startsWith('http') && !node.value.includes('youtube.com') && !node.value.includes('github.com')) {
-                return <NodeWithMetadata node={node} variant={NodeVariants.Link} />;
-            }
-            return (
-                <div className="w-full min-h-[8rem] p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <p className="text-sm text-muted-foreground">
-                        {node.variant} content: {node.value.substring(0, 100)}...
-                    </p>
-                </div>
-            );
-    }
-}
 
 export default function ChannelNode({
     node,
@@ -502,7 +309,7 @@ export default function ChannelNode({
 
                         {/* Render content based on node variant */}
                         <div className="w-[calc(100vw-5rem)] max-w-[40rem] sm:w-auto sm:min-w-[40rem]">
-                            {renderNodeContent(node, onOpenChat, isEditing, editValue, setEditValue, textareaRef, handleKeyDown)}
+                            {renderNodeContent(node, onOpenChat, isEditing, editValue, setEditValue, textareaRef, handleKeyDown, undefined, undefined, undefined, false)}
                         </div>
                     </div>
                 </div >

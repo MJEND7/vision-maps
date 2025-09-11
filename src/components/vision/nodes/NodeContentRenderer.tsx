@@ -91,11 +91,11 @@ const textNodeMarkdownComponents: Components = {
         <ol className="list-decimal list-inside space-y-0.5 text-card-foreground my-2 text-xs" {...props} />
     ),
     li: ({ ...props }) => (
-        <li className="ml-1 text-card-foreground text-xs my-2" {...props} />
+        <li className="ml-1 text-card-foreground text-xs py-2" {...props} />
     ),
     blockquote: ({ ...props }) => (
         <blockquote
-            className="my-2 border-l-2 border-border pl-1 italic text-muted-foreground my-1 text-xs"
+            className="y-2 border-l-2 border-border pl-1 italic text-muted-foreground text-xs"
             {...props}
         />
     ),
@@ -103,8 +103,8 @@ const textNodeMarkdownComponents: Components = {
 };
 
 // Component for expandable text content with header and smooth animations
-function ExpandableTextContent({ content, title }: { content: string; title?: string }) {
-    const [isExpanded, setIsExpanded] = React.useState(false);
+function ExpandableTextContent({ textExpand, content }: { textExpand: boolean, content: string; }) {
+    const [isExpanded, setIsExpanded] = React.useState((!textExpand));
     const [needsExpansion, setNeedsExpansion] = React.useState(false);
     const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -122,7 +122,7 @@ function ExpandableTextContent({ content, title }: { content: string; title?: st
         <div className="relative">
             {/* Header with expand button */}
             <div className="absolute -top-9 -right-2">
-                {needsExpansion && (
+                {needsExpansion && textExpand && (
                     <button
                         onClick={() => {
                             console.log("Toggle expand:", !isExpanded);
@@ -254,7 +254,8 @@ export function renderNodeContent(
     onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void,
     onSave?: () => void,
     onCancel?: () => void,
-    isSaving?: boolean
+    isSaving?: boolean,
+    textExpand: boolean = true,
 ) {
     const variant = node.variant as NodeVariants;
 
@@ -376,7 +377,7 @@ export function renderNodeContent(
                             </p>
                         </div>
                     ) : (
-                        <ExpandableTextContent content={node.value} title={node.title} />
+                        <ExpandableTextContent textExpand={textExpand} content={node.value} />
                     )}
                 </div>
             );
