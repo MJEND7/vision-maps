@@ -153,14 +153,14 @@ export function renderNodeContent(
                     <div className="flex flex-col items-center justify-center gap-2">
                         <Brain size={20} />
                     </div>
-                    <div className="bg-accent flex items-center justify-between border-t border-accent p-3">
-                        <p className="text-sm font-semibold ">{node.title}</p>
+                    <div className="bg-accent flex items-center gap-10 justify-between border-t border-accent p-3">
+                        <p className="text-sm font-semibold truncate">{node.title}</p>
                         <button
                             onClick={() => onOpenChat?.(node.value)}
-                            className="text-[10px] text-blue-600 hover:underline flex items-center gap-1"
+                            className="min-w-auto text-[10px] text-blue-600 hover:underline flex items-center gap-1"
                         >
                             <ExternalLink size={12} />
-                            Open Chat
+                            Open
                         </button>
                     </div>
                 </div>

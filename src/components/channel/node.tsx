@@ -161,7 +161,7 @@ function renderNodeContent(
                         <Brain size={20} />
                     </div>
                     <div className="bg-accent flex items-center justify-between border-t border-accent p-3">
-                        <p className="text-sm font-semibold ">{node.title}</p>
+                        <p className="w-[10px] text-sm font-semibold truncate">{node.title}</p>
                         <button
                             onClick={() => onOpenChat?.(node.value)}
                             className="text-[10px] text-blue-600 hover:underline flex items-center gap-1"

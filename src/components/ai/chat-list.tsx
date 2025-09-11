@@ -46,7 +46,7 @@ export function ChatList({ chats, selectedChatId, onChatSelect, onNewChat, onCha
     };
     return (
         <div className={cn("flex flex-col h-full", className)}>
-            <div className="flex items-center justify-between p-3 border-b">
+            <div className="flex items-center justify-between p-3">
                 <h3 className="text-sm font-medium">AI Chats</h3>
                 <Button
                     onClick={onNewChat}
@@ -58,7 +58,7 @@ export function ChatList({ chats, selectedChatId, onChatSelect, onNewChat, onCha
                 </Button>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 pt-3 overflow-y-auto">
                 {chats.length === 0 ? (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}

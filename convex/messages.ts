@@ -1,4 +1,4 @@
-import { query, mutation, httpAction, internalQuery } from "./_generated/server";
+import { query, mutation, httpAction, internalQuery, action, internalMutation, internalAction } from "./_generated/server";
 import { PersistentTextStreaming, StreamId } from "@convex-dev/persistent-text-streaming";
 import { v, Infer } from "convex/values";
 import { requireAuth } from "./utils/auth";
@@ -12,7 +12,7 @@ const listMessagesByChatArgs = v.object({
     chatId: v.id("chats"),
     cursor: v.optional(v.string()),
     numItems: v.optional(v.number()),
-    paginationOpts:  paginationOptsValidator
+    paginationOpts: paginationOptsValidator
 
 });
 
@@ -33,6 +33,11 @@ const getStreamBodyArgs = v.object({
     streamId: v.string(),
 });
 
+const generateChatNameActionArgs = v.object({
+    chatId: v.id("chats"),
+    messageContent: v.string(),
+});
+
 export const persistentTextStreaming = new PersistentTextStreaming(
     components.persistentTextStreaming
 );
@@ -41,7 +46,7 @@ export const listMessagesByChat = query({
     args: listMessagesByChatArgs,
     handler: async (ctx, args) => {
         const identity = await requireAuth(ctx);
-        
+
         if (!identity?.userId) {
             throw new Error("Authentication required");
         }
@@ -95,6 +100,15 @@ export const sendMessage = mutation({
             throw new Error("Failed to get the user Id")
         }
 
+        // Check if this is the first user message in the chat
+        const existingMessages = await ctx.db
+            .query("messages")
+            .withIndex("by_chatId", (q) => q.eq("chatId", args.chatId))
+            .filter((q) => q.eq(q.field("role"), "user"))
+            .collect();
+
+        const isFirstMessage = existingMessages.length === 0;
+
         const streamId = await persistentTextStreaming.createStream(ctx);
         const messageId = await ctx.db.insert("messages", {
             chatId: args.chatId,
@@ -103,6 +117,16 @@ export const sendMessage = mutation({
             role: "user",
             streamId: streamId.toString(),
         });
+
+        // If this is the first message, trigger chat naming action
+        if (isFirstMessage) {
+            // Schedule the naming action to run asynchronously (non-blocking)
+            await ctx.scheduler.runAfter(0, internal.messages.generateChatNameAction, {
+                chatId: args.chatId,
+                messageContent: args.content
+            });
+        }
+
         return { messageId, streamId: streamId.toString() };
     },
 });
@@ -208,11 +232,84 @@ export const streamChat = httpAction(async (ctx, request) => {
     return response;
 });
 
+// Internal mutation for updating chat and node titles
+export const updateChatAndNodeTitle = internalMutation({
+    args: v.object({
+        chatId: v.id("chats"),
+        title: v.string(),
+    }),
+    handler: async (ctx, args) => {
+        const chat = await ctx.db.get(args.chatId);
+
+        // Update the chat title
+        await ctx.db.patch(args.chatId, {
+            title: args.title,
+        });
+
+        // If there's a linked node, update its title too
+        if (chat?.nodeId) {
+            const node = await ctx.db.get(chat.nodeId);
+            if (node) {
+                await ctx.db.patch(chat.nodeId, {
+                    title: args.title,
+                    updatedAt: new Date().toISOString(),
+                });
+            }
+        }
+    },
+});
+
+export const generateChatNameAction = internalAction({
+    args: generateChatNameActionArgs,
+    handler: async (ctx, args) => {
+        try {
+            const openai = new OpenAI();
+
+            const response = await openai.chat.completions.create({
+                model: "gpt-4.1-nano",
+                messages: [
+                    {
+                        role: "system",
+                        content: "Generate a short, descriptive title (3-6 words) for a chat conversation based on the user's first message. Return only the title, no quotes or extra text."
+                    },
+                    {
+                        role: "user",
+                        content: args.messageContent
+                    }
+                ],
+                max_tokens: 20,
+                temperature: 0.3,
+            });
+
+            const generatedTitle = response.choices[0]?.message?.content?.trim();
+
+            if (!generatedTitle) {
+                return { success: false, message: "Failed to generate title" };
+            }
+
+            // Use internal mutation to update titles
+            await ctx.runMutation(internal.messages.updateChatAndNodeTitle, {
+                chatId: args.chatId,
+                title: generatedTitle,
+            });
+
+            return {
+                success: true,
+                title: generatedTitle
+            };
+        } catch (error) {
+            console.error("Failed to generate chat name:", error);
+            return { success: false, message: "Failed to generate title" };
+        }
+    },
+});
+
 // Type exports
 export type ListMessagesByChatArgs = Infer<typeof listMessagesByChatArgs>;
 export type ClearMessagesArgs = Infer<typeof clearMessagesArgs>;
 export type SendMessageArgs = Infer<typeof sendMessageArgs>;
 export type GetChatHistoryArgs = Infer<typeof getChatHistoryArgs>;
 export type GetStreamBodyArgs = Infer<typeof getStreamBodyArgs>;
+export type GenerateChatNameActionArgs = Infer<typeof generateChatNameActionArgs>;
 
 // Note: streamChat is an httpAction, not a mutation/query, so we don't export types for it
