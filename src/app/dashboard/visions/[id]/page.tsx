@@ -20,6 +20,7 @@ import { NodeUserCacheProvider } from '@/hooks/useUserCache';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
+import { SidebarProvider } from '@/contexts/sidebar-context';
 
 enum ViewMode {
     CHANNEL = "channel",
@@ -589,13 +590,17 @@ function VisionDetailPageContent() {
                         className={cn("h-full", selectedTab?.id !== tab.id && "hidden")}
                     >
                         {tab.type === ViewMode.CHANNEL && user && (
-                            <Channel key={tab.id} channelId={tab.id} onOpenChat={handleOpenChat} onChannelNavigate={handleChannelNavigate} />
+                            <SidebarProvider onOpenChat={handleOpenChat} rightSidebarContentRef={rightSidebarContentRef}>
+                                <Channel key={tab.id} channelId={tab.id} onOpenChat={handleOpenChat} onChannelNavigate={handleChannelNavigate} />
+                            </SidebarProvider>
                         )}
                         {tab.type === ViewMode.FRAME && user?.id && (
-                            <FrameComponent
-                                userId={user.id}
-                                id={tab.id as Id<"frames">}
-                            />
+                            <SidebarProvider onOpenChat={handleOpenChat} rightSidebarContentRef={rightSidebarContentRef}>
+                                <FrameComponent
+                                    userId={user.id}
+                                    id={tab.id as Id<"frames">}
+                                />
+                            </SidebarProvider>
                         )}
                         {tab.type === ViewMode.SETTINGS && (
                             <SettingsComponent

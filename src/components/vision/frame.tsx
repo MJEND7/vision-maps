@@ -26,6 +26,7 @@ import nodeTypes from "./nodes";
 import { CanvasContextMenu } from "./canvas-context-menu";
 import { AddExistingNodeDialog } from "./add-existing-node-dialog";
 import usePresence from "@convex-dev/presence/react";
+import { useSidebar } from "../../contexts/sidebar-context";
 
 function useLastValue<T>(value: T | undefined): T | undefined {
     const [last, setLast] = useState<T | undefined>();
@@ -42,6 +43,7 @@ export default function FrameComponent({
     id: Id<"frames">;
     userId: string;
 }) {
+    const { openChat } = useSidebar();
     const [isDark, setIsDark] = useState(false);
 
     // Dynamic edge styling
@@ -139,6 +141,7 @@ export default function FrameComponent({
                         frameId: id,
                         editingNodeId,
                         onEditComplete: () => setEditingNodeId(null),
+                        onOpenChat: openChat,
                         onNodeRightClick: (nodeId: string, event: React.MouseEvent) => {
                             setSelectedNodes((sel) =>
                                 sel.includes(nodeId) ? sel : [nodeId]
@@ -161,7 +164,7 @@ export default function FrameComponent({
             setNodesMap(newMap);
             return nextNodes;
         });
-    }, [framedNodes, nodeDataList, setNodesMap, editingNodeId, id]);
+    }, [framedNodes, nodeDataList, setNodesMap, editingNodeId, id, openChat]);
 
     // === Node updates (local + sync) ===
     const onNodesChange = useCallback(
@@ -337,7 +340,7 @@ export default function FrameComponent({
     }
 
     return (
-        <div className="w-full h-[93%] px-4 pt-4">
+        <div className="w-full h-full px-4 pt-4">
             <div className="relative h-[calc(100%-4rem)]">
                 <ReactFlow
                     nodes={nodes}
