@@ -10,5 +10,6 @@ export class FramedNode {
         frameId: v.id(Frame.TABLE_NAME),
         node: nodeValidator(v.id("nodes")),
     }).index("by_frame", ["frameId"])
+      .index("nodeId", ["node.data"])
       .index("id", ["node.id"]);
 }

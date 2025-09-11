@@ -12,7 +12,7 @@ import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter, SyntaxHighlighterProps } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { oneLight } from "react-syntax-highlighter/dist/cjs/styles/prism";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 
 // Code component with copy functionality for text nodes
 const CodeComponent = ({ className, children, ...props }: any) => {

@@ -414,6 +414,11 @@ export const addToFrame = mutation({
             batchTimestamp: Date.now(),
         });
 
+        // Update the node to reference this frame
+        await ctx.db.patch(args.nodeId, {
+            frame: args.frameId,
+        });
+
         return reactFlowNode.id;
     },
 });

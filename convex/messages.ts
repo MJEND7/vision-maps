@@ -1,4 +1,4 @@
-import { query, mutation, httpAction, internalQuery, action, internalMutation, internalAction } from "./_generated/server";
+import { query, mutation, httpAction, internalQuery, internalMutation, internalAction } from "./_generated/server";
 import { PersistentTextStreaming, StreamId } from "@convex-dev/persistent-text-streaming";
 import { v, Infer } from "convex/values";
 import { requireAuth } from "./utils/auth";
@@ -36,6 +36,10 @@ const getStreamBodyArgs = v.object({
 const generateChatNameActionArgs = v.object({
     chatId: v.id("chats"),
     messageContent: v.string(),
+});
+
+const getConnectedNodeContextArgs = v.object({
+    chatId: v.id("chats"),
 });
 
 export const persistentTextStreaming = new PersistentTextStreaming(
@@ -203,17 +207,35 @@ export const streamChat = httpAction(async (ctx, request) => {
             // Lets grab the history up to now so that the AI has some context
             const history = await ctx.runQuery(internal.messages.getChatHistory, { chatId: chatId as Id<"chats"> });
 
+            // Get connected node context for additional AI context
+            const nodeContext = await ctx.runQuery(internal.messages.getConnectedNodeContext, { chatId: chatId as Id<"chats"> });
+
             const openai = new OpenAI()
+
+            // Build system message with connected node context
+            let systemContent = `You are a helpful assistant that can answer questions and help with tasks.
+Please provide your response in markdown format.
+
+You are continuing a conversation. The conversation so far is found in the following JSON-formatted value:`;
+
+            // Add connected node context if available
+            if (nodeContext.contextText) {
+                systemContent += `
+
+IMPORTANT: Additional context from connected nodes in the visual workspace:
+
+${nodeContext.contextText}
+
+Use this connected node context to inform your responses when relevant. The connected nodes represent information that has been "piped" into your AI node through visual connections.`;
+            }
+
             // Lets kickoff a stream request to OpenAI
             const stream = await openai.chat.completions.create({
                 model: "gpt-4.1-mini",
                 messages: [
                     {
                         role: "system",
-                        content: `You are a helpful assistant that can answer questions and help with tasks.
-          Please provide your response in markdown format.
-          
-          You are continuing a conversation. The conversation so far is found in the following JSON-formatted value:`,
+                        content: systemContent,
                     },
                     ...history,
                 ],
@@ -256,6 +278,93 @@ export const updateChatAndNodeTitle = internalMutation({
                 });
             }
         }
+    },
+});
+
+// Get connected node context for AI chat
+export const getConnectedNodeContext = internalQuery({
+    args: getConnectedNodeContextArgs,
+    handler: async (ctx, args) => {
+        // Get the chat to find its associated AI node
+        const chat = await ctx.db.get(args.chatId);
+        if (!chat) {
+            return { connectedNodes: [], contextText: "" };
+
+        }
+
+        const nodeId = chat.nodeId;
+
+        if (!nodeId) {
+            return { connectedNodes: [], contextText: "" };
+        }
+
+        // Get the AI node details
+        const framedNode = await ctx.db.query("framed_node").withIndex("nodeId", (q) => q.eq("node.data", nodeId)).first();
+        if (!framedNode || !framedNode.node.id) {
+            return { connectedNodes: [], contextText: "" };
+        }
+
+        // Find all edges where the AI node is the target (data flows INTO the AI)
+        const edges = await ctx.db
+            .query("edges")
+            .withIndex("target", (q) => q.eq("target", framedNode._id))
+            .collect();
+
+        if (edges.length === 0) {
+            return { connectedNodes: [], contextText: "" };
+        }
+
+        // Get source nodes from incoming edges
+        const sourceNodeIds = edges.map(edge => edge.source);
+
+        // Get framed nodes that match our source node IDs using the id index
+        const sourceFramedNodes = await Promise.all(
+            sourceNodeIds.map(async (nodeId) => {
+                return await ctx.db.get(nodeId)
+            })
+        );
+
+        // Filter out any null results
+        const validSourceFramedNodes = sourceFramedNodes.filter(fn => fn !== null);
+
+        // Get actual node data for each source node
+        const connectedNodeData = await Promise.all(
+            validSourceFramedNodes.map(async (framedNode) => {
+                const nodeData = await ctx.db.get(framedNode.node.data);
+                return { framedNode, nodeData };
+            })
+        );
+
+        // Filter for Text and Link nodes only, and ensure they have valid data
+        const relevantNodes = connectedNodeData
+            .filter(({ nodeData }) =>
+                nodeData &&
+                (nodeData.variant === "Text" || nodeData.variant === "Link") &&
+                nodeData.value &&
+                nodeData.value.trim().length > 0
+            )
+            .map(({ framedNode, nodeData }) => ({
+                id: framedNode.node.id,
+                type: nodeData!.variant,
+                title: nodeData!.title || `${nodeData!.variant} Node`,
+                value: nodeData!.value
+            }));
+
+        // Create context text from connected nodes
+        let contextText = "";
+        if (relevantNodes.length > 0) {
+            contextText = "CONNECTED NODE CONTEXT:\n\n";
+            relevantNodes.forEach(node => {
+                contextText += `--- ${node.title} (${node.type}) ---\n`;
+                contextText += `${node.value}\n\n`;
+            });
+            contextText += "END CONNECTED NODE CONTEXT\n\n";
+        }
+
+        return {
+            connectedNodes: relevantNodes,
+            contextText
+        };
     },
 });
 
@@ -311,5 +420,6 @@ export type SendMessageArgs = Infer<typeof sendMessageArgs>;
 export type GetChatHistoryArgs = Infer<typeof getChatHistoryArgs>;
 export type GetStreamBodyArgs = Infer<typeof getStreamBodyArgs>;
 export type GenerateChatNameActionArgs = Infer<typeof generateChatNameActionArgs>;
+export type GetConnectedNodeContextArgs = Infer<typeof getConnectedNodeContextArgs>;
 
 // Note: streamChat is an httpAction, not a mutation/query, so we don't export types for it

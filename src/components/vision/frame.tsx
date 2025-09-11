@@ -127,7 +127,7 @@ export default function FrameComponent({
                         node:
                             framedNode.node ||
                             ({
-                                _id: framedNode.node._id,
+                                _id: "",
                                 title: "Error loading node",
                                 variant: "Text",
                                 value: "",
