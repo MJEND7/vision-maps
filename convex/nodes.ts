@@ -51,6 +51,11 @@ const disconnectNodesArgs = v.object({
     targetNodeId: v.id("nodes"),
 });
 
+const createTextNodeFromMessageArgs = v.object({
+    messageText: v.string(),
+    chatId: v.id("chats"),
+});
+
 export const create = mutation({
     args: createArgs,
     handler: async (ctx, args) => {
@@ -414,3 +419,124 @@ export const addToFrame = mutation({
 });
 
 export type AddToFrameArgs = Infer<typeof addToFrameArgs>;
+
+export const createTextNodeFromMessage = mutation({
+    args: createTextNodeFromMessageArgs,
+    handler: async (ctx, args) => {
+        // Get the chat to find the linked AI node
+        const chat = await ctx.db.get(args.chatId);
+        if (!chat) {
+            throw new Error(`Chat with ID ${args.chatId} not found`);
+        }
+        if (!chat.nodeId) {
+            throw new Error(`Chat ${args.chatId} is not linked to any node. Chat data: ${JSON.stringify(chat)}`);
+        }
+
+        // Get the AI node to find its frame and position
+        const aiNode = await ctx.db.get(chat.nodeId);
+        if (!aiNode) {
+            throw new Error(`AI node with ID ${chat.nodeId} not found`);
+        }
+
+        // Check if the AI node is placed on any frame (check framed_node table)
+        const framedAiNode = await ctx.db
+            .query("framed_node")
+            .filter((q) => q.eq(q.field("node.data"), aiNode._id))
+            .first();
+
+        if (!framedAiNode) {
+            throw new Error(`This AI chat is not connected to an AI node on any frame. To create text nodes, you need to first add the AI node to a frame. You can do this by opening the chat from an AI node that's already placed on a frame, or by adding the AI node to a frame first.`);
+        }
+
+        // Use the frame from the framed_node table
+        const frameId = framedAiNode.frameId as Id<"frames">;
+
+        // Check vision access
+        if (aiNode.vision) {
+            await requireVisionAccess(ctx, aiNode.vision);
+        }
+
+        const now = new Date().toISOString();
+        const identity = await requireAuth(ctx);
+        const userId = (await getUserByIdenityId(ctx, identity.userId as string))?._id;
+
+        if (!userId) {
+            throw new Error("Failed to get userId from identity");
+        }
+
+        // Create the text node
+        const textNodeId = await ctx.db.insert("nodes", {
+            title: `Text from AI`,
+            variant: "Text",
+            value: args.messageText,
+            frame: frameId,
+            channel: aiNode.channel,
+            vision: aiNode.vision,
+            userId,
+            updatedAt: now,
+        });
+
+        // Calculate position for the new text node (150px below the AI node)
+        const newPosition = {
+            x: framedAiNode.node.position.x,
+            y: framedAiNode.node.position.y + 150,
+        };
+
+        const reactFlowNode = {
+            id: crypto.randomUUID(),
+            position: newPosition,
+            type: "Text",
+            data: textNodeId,
+        };
+
+        // Add the text node to the frame
+        await ctx.db.insert("framed_node", {
+            frameId: frameId,
+            node: reactFlowNode,
+        });
+
+        await ctx.db.insert("frame_positions", {
+            frameId: frameId,
+            nodeId: textNodeId,
+            batch: [reactFlowNode],
+            batchTimestamp: Date.now(),
+        });
+
+        // Create an edge from AI node to text node
+        const edgeId = `${framedAiNode.node.id}-${reactFlowNode.id}`;
+        const edge = {
+            id: edgeId,
+            source: framedAiNode.node.id,
+            target: reactFlowNode.id,
+            sourceHandle: null,
+            targetHandle: null,
+            data: { name: undefined },
+        };
+
+        // Get the framed node IDs for the edge
+        const sourceFramedNode = framedAiNode; // We already have this
+
+        const targetFramedNode = await ctx.db
+            .query("framed_node")
+            .withIndex("by_frame", (q) => q.eq("frameId", frameId))
+            .filter((q) => q.eq(q.field("node.data"), textNodeId))
+            .unique();
+
+        if (sourceFramedNode && targetFramedNode) {
+            await ctx.db.insert("edges", {
+                frameId: frameId,
+                edge,
+                source: sourceFramedNode._id,
+                target: targetFramedNode._id,
+            });
+        }
+
+        return {
+            textNodeId,
+            nodePosition: newPosition,
+            frameId: frameId,
+        };
+    },
+});
+
+export type CreateTextNodeFromMessageArgs = Infer<typeof createTextNodeFromMessageArgs>;

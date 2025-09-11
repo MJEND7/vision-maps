@@ -322,7 +322,7 @@ export const getFrameNodes = query({
             .collect();
 
         // Enhance the nodes with proper type based on actual node data
-        const enhancedNodes = await Promise.all(framedNodes.map(async (framedNode) => {
+        const enhancedNodes = (await Promise.all(framedNodes.map(async (framedNode) => {
             // Get the actual node data to access the variant
             const nodeData = await ctx.db.get(framedNode.node.data as any);
             if (nodeData && 'variant' in nodeData) {
@@ -331,13 +331,16 @@ export const getFrameNodes = query({
                     ...framedNode,
                     node: {
                         ...framedNode.node,
+                        _id: nodeData._id,
+                        variant: nodeData.variant,
+                        value: nodeData.value,
                         type: nodeData.variant || "Text"
                     }
                 };
                 return enhancedNode;
             }
-            return framedNode;
-        }));
+            return null;
+        }))).filter((n) => n !== null)
 
         return enhancedNodes;
     },
@@ -405,7 +408,9 @@ export const updateFramedNodePosition = mutation({
             .first();
 
         if (!existingFramedNode) {
-            throw new Error("Framed node not found");
+            // Node was likely deleted, silently ignore the position update
+            console.log(`Position update ignored for deleted node: ${args.nodeId}`);
+            return null;
         }
 
         // Update only the position in the node

@@ -1,12 +1,169 @@
 import React from 'react';
 import { NodeVariants } from "../../../../convex/tables/nodes";
 import Image from "next/image";
-import { Brain, Check, ExternalLink, X } from 'lucide-react';
+import { Brain, Check, ExternalLink, X, Expand, Minimize2 } from 'lucide-react';
 import { AudioPlayer } from "../../channel/audio-player";
 import { VideoPlayer } from "../../channel/video-player";
 import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard } from "../../channel/metadata";
 import { useOGMetadataWithCache } from "@/utils/ogMetadata";
 import { Button } from '@/components/ui/button';
+import Markdown, { Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { Prism as SyntaxHighlighter, SyntaxHighlighterProps } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import { oneLight } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import { motion, AnimatePresence } from "motion/react";
+
+// Code component with copy functionality for text nodes
+const CodeComponent = ({ className, children, ...props }: any) => {
+    const [copied, setCopied] = React.useState(false);
+    const match = /language-(\w+)/.exec(className || "");
+    const theme =
+        typeof window !== "undefined" &&
+            document.documentElement.classList.contains("dark")
+            ? oneDark
+            : oneLight;
+
+    const codeString = String(children).replace(/\n$/, "");
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(codeString);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error("Failed to copy code:", err);
+        }
+    };
+
+    return match ? (
+        <div className="max-w-full relative group my-3">
+            <button
+                onClick={handleCopy}
+                className="absolute top-2 right-2 p-2 text-xs rounded-md bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            >
+                {copied ? <Check size={12} /> : <ExternalLink size={12} />}
+            </button>
+            <SyntaxHighlighter
+                style={theme as SyntaxHighlighterProps["style"]}
+                language={match[1]}
+                PreTag="div"
+                className="rounded-md border text-xs"
+                {...props}
+            >
+                {codeString}
+            </SyntaxHighlighter>
+        </div>
+    ) : (
+        <code
+            className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono text-card-foreground"
+            {...props}
+        >
+            {children}
+        </code>
+    );
+};
+
+// Custom Markdown styles for text nodes (much smaller text)
+const textNodeMarkdownComponents: Components = {
+    h1: ({ ...props }) => (
+        <h1 className="text-md font-bold text-card-foreground py-3" {...props} />
+    ),
+    h2: ({ ...props }) => (
+        <h2 className="text-sm font-semibold text-card-foreground py-3" {...props} />
+    ),
+    h3: ({ ...props }) => (
+        <h2 className="text-xs font-semibold text-card-foreground py-3" {...props} />
+    ),
+    th: ({ ...props }) => (
+        <th className="whitespace-nowrap text-sm list-disc list-inside space-y-0.5  font-semibold text-card-foreground py-2" {...props} />
+    ),
+    td: ({ ...props }) => (
+        <td className="text-sm list-disc list-inside space-y-0.5 text-card-foreground py-2" {...props} />
+    ),
+    p: ({ ...props }) => (
+        <p className="text-xs text-card-foreground leading-tight py-2" {...props} />
+    ),
+    ul: ({ ...props }) => (
+        <ul className="list-disc list-inside space-y-0.5 text-card-foreground my-2 text-xs" {...props} />
+    ),
+    ol: ({ ...props }) => (
+        <ol className="list-decimal list-inside space-y-0.5 text-card-foreground my-2 text-xs" {...props} />
+    ),
+    li: ({ ...props }) => (
+        <li className="ml-1 text-card-foreground text-xs my-2" {...props} />
+    ),
+    blockquote: ({ ...props }) => (
+        <blockquote
+            className="my-2 border-l-2 border-border pl-1 italic text-muted-foreground my-1 text-xs"
+            {...props}
+        />
+    ),
+    code: CodeComponent,
+};
+
+// Component for expandable text content with header and smooth animations
+function ExpandableTextContent({ content, title }: { content: string; title?: string }) {
+    const [isExpanded, setIsExpanded] = React.useState(false);
+    const [needsExpansion, setNeedsExpansion] = React.useState(false);
+    const containerRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        if (containerRef.current && !isExpanded) {
+            const { scrollHeight, scrollWidth } = containerRef.current;
+            // Check if content exceeds 200px width or 150px height (accounting for header)
+            if (scrollHeight > 150 || scrollWidth > 200) {
+                setNeedsExpansion(true);
+            }
+        }
+    }, [content, isExpanded]);
+
+    return (
+        <div className="relative">
+            {/* Header with expand button */}
+            <div className="absolute -top-9 -right-2">
+                {needsExpansion && (
+                    <button
+                        onClick={() => {
+                            console.log("Toggle expand:", !isExpanded);
+                            setIsExpanded(!isExpanded);
+                        }}
+                        className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground transition-colors"
+                        title={isExpanded ? "Collapse" : "Expand"}
+                    >
+                        {isExpanded ? <Minimize2 size={10} /> : <Expand size={10} />}
+                    </button>
+                )}
+            </div>
+
+            {/* Animated content container */}
+            <motion.div
+                initial={false}
+                animate={{
+                    maxWidth: isExpanded ? "800px" : "300px",
+                    maxHeight: isExpanded ? "" : "150px",
+                }}
+                transition={{
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 30,
+                    duration: 0.4
+                }}
+                className={`${isExpanded ? '' : 'overflow-hidden'}`}
+                style={isExpanded ? { position: 'relative', zIndex: 1000 } : {}}
+            >
+                <div
+                    ref={containerRef}
+                    className="prose prose-sm"
+                >
+                    <Markdown remarkPlugins={[remarkGfm]} components={textNodeMarkdownComponents}>
+                        {content}
+                    </Markdown>
+                </div>
+            </motion.div>
+        </div>
+    );
+}
 
 // Component for nodes that need metadata fetching
 function NodeWithMetadata({ node, variant }: { node: any, variant: NodeVariants }) {
@@ -171,12 +328,17 @@ export function renderNodeContent(
                 <div>
                     {isEditing ? (
                         <div className="space-y-2">
+                            <div className="flex items-center justify-between mb-1 px-1">
+                                <span className="text-xs font-medium text-muted-foreground">
+                                    {node.title || "Text"}
+                                </span>
+                            </div>
                             <textarea
                                 ref={textareaRef}
                                 value={editValue}
                                 onChange={(e) => setEditValue?.(e.target.value)}
                                 onKeyDown={onKeyDown}
-                                className="text-sm min-h-[60px] resize-none w-full border border-border rounded p-2 bg-background text-foreground"
+                                className="text-sm resize-none w-auto border border-border rounded p-2 bg-background text-foreground"
                                 placeholder="Enter text..."
                             />
                             <div className="flex gap-2 justify-end">
@@ -187,7 +349,7 @@ export function renderNodeContent(
                                     disabled={isSaving}
                                     className="px-3 py-1 text-xs bg-muted hover:bg-muted/80 rounded flex items-center gap-1 disabled:opacity-50"
                                 >
-                                    <X className="w-3 h-3"/>
+                                    <X className="w-3 h-3" />
                                     Cancel
                                 </Button>
                                 <Button
@@ -203,7 +365,7 @@ export function renderNodeContent(
                                         </>
                                     ) : (
                                         <>
-                                            <Check className="w-3 h-3"/>
+                                            <Check className="w-3 h-3" />
                                             Save
                                         </>
                                     )}
@@ -214,7 +376,7 @@ export function renderNodeContent(
                             </p>
                         </div>
                     ) : (
-                        <p className="text-sm whitespace-pre-wrap text-foreground">{node.value}</p>
+                        <ExpandableTextContent content={node.value} title={node.title} />
                     )}
                 </div>
             );

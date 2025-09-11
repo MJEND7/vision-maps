@@ -207,6 +207,7 @@ export function ChatCard({ chatId, drivenIds, onFocusInput }: AiCardProps) {
                                                 onFocusInput();
                                             }}
                                             scrollToBottom={scrollToBottom}
+                                            isAssistant={true}
                                         />
                                     </MessageItem>
                                 </motion.div>

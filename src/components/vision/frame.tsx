@@ -28,14 +28,6 @@ import { AddExistingNodeDialog } from "./add-existing-node-dialog";
 import usePresence from "@convex-dev/presence/react";
 import { useSidebar } from "../../contexts/sidebar-context";
 
-function useLastValue<T>(value: T | undefined): T | undefined {
-    const [last, setLast] = useState<T | undefined>();
-    useEffect(() => {
-        if (value !== undefined && value !== "skip") setLast(value);
-    }, [value]);
-    return last;
-}
-
 export default function FrameComponent({
     id,
     userId,
@@ -97,15 +89,8 @@ export default function FrameComponent({
     const createNode = useMutation(api.nodes.create);
     const updateEdges = useMutation(api.edges.update);
 
-    const framedNodesQ = useQuery(api.frames.getFrameNodes, { frameId: id });
-    const framedNodes = useLastValue(framedNodesQ);
-    const edgesQ = useQuery(api.edges.get, { frameId: id });
-    const nodeIds = framedNodes?.map((f) => f.node.data);
-    const nodeDataListQ = useQuery(api.nodes.getMany, nodeIds ? { ids: nodeIds } : "skip");
-
-    const edges = useLastValue(edgesQ);
-    const nodeDataList = useLastValue(nodeDataListQ);
-
+    const framedNodes = useQuery(api.frames.getFrameNodes, { frameId: id });
+    const edges = useQuery(api.edges.get, { frameId: id });
 
     // Movement queue
     const { setNodesMap, handleNodesChange } = useMovementQueue(
@@ -116,23 +101,33 @@ export default function FrameComponent({
 
     // === Node data transformation ===
     useEffect(() => {
-        if (!framedNodes || !nodeDataList) return;
+        console.log("framed NODES", framedNodes)
+        if (!framedNodes) return;
 
         setNodes((current) => {
             const newMap = new Map(current.map((n) => [n.id, n])); // existing
+            
+            // Get the current set of node IDs from framedNodes
+            const framedNodeIds = new Set(framedNodes.map(fn => fn.node.id));
+            
+            // Remove nodes that are no longer in framedNodes
+            const currentNodeIds = Array.from(newMap.keys());
+            currentNodeIds.forEach(nodeId => {
+                if (!framedNodeIds.has(nodeId)) {
+                    newMap.delete(nodeId);
+                }
+            });
 
+            // Add/update nodes from framedNodes
             framedNodes.forEach((framedNode) => {
-                const nodeId = framedNode.node.data;
-                const nodeData = nodeDataList.find((n) => n?._id === nodeId);
-
                 const reactNode: Node = {
                     ...(framedNode.node as any),
-                    type: nodeData?.variant || "Text",
+                    type: framedNode.node.type || "Text",
                     data: {
                         node:
-                            nodeData ||
+                            framedNode.node ||
                             ({
-                                _id: nodeId,
+                                _id: framedNode.node._id,
                                 title: "Error loading node",
                                 variant: "Text",
                                 value: "",
@@ -164,9 +159,8 @@ export default function FrameComponent({
             setNodesMap(newMap);
             return nextNodes;
         });
-    }, [framedNodes, nodeDataList, setNodesMap, editingNodeId, id, openChat]);
+    }, [framedNodes, setNodesMap, editingNodeId, id, openChat]);
 
-    // === Node updates (local + sync) ===
     const onNodesChange = useCallback(
         (changes: NodeChange[]) => {
             setNodes((nds) => applyNodeChanges(changes, nds));
@@ -175,7 +169,6 @@ export default function FrameComponent({
         [handleNodesChange]
     );
 
-    // === Selection ===
     const onSelectionChange = useCallback(
         ({ nodes: selectedNodes, edges: selectedEdges }: { nodes: Node[]; edges: Edge[] }) => {
             setSelectedNodes(selectedNodes.map((node) => node.id));
@@ -193,7 +186,6 @@ export default function FrameComponent({
         );
     }, [selectedNodes]);
 
-    // === Edge updates ===
     const onEdgesChange = useCallback(
         (changes: EdgeChange[]) => {
             const avoidPending = changes.filter(
@@ -204,7 +196,6 @@ export default function FrameComponent({
         [updateEdges, id]
     );
 
-    // === Edge connect ===
     const connect = useMutation(api.edges.connect).withOptimisticUpdate(
         (store, args) => {
             const currentEdges =
@@ -234,7 +225,6 @@ export default function FrameComponent({
         [connect, id]
     );
 
-    // === Context Menu handlers ===
     const onPaneContextMenu = useCallback(
         (event: React.MouseEvent | MouseEvent) => {
             event.preventDefault();
@@ -314,7 +304,6 @@ export default function FrameComponent({
         };
     }, [selectedNodes.length]);
 
-    // === Node creation ===
     const handleNodeCreation = async (data: Omit<CreateNodeArgs, "channel">) => {
         if (!frame) throw new Error("Failed to get a frame");
         await createNode({
@@ -330,8 +319,7 @@ export default function FrameComponent({
         });
     };
 
-    // === Loading ===
-    if (!framedNodes || !edges || !frame || !nodeDataList) {
+    if (!framedNodes || !edges || !frame) {
         return (
             <div className="w-full h-[93%] px-4 pt-4 flex items-center justify-center">
                 <p>Loading frame...</p>
@@ -390,6 +378,7 @@ export default function FrameComponent({
                         })
                         .filter(Boolean) as { id: string; type: string; data: any }[]}
                     onDeleteSelected={() => {
+                        // Clear selections after deletion
                         setSelectedNodes([]);
                         setSelectedEdges([]);
                         closeContextMenu();

@@ -53,6 +53,7 @@ export function CanvasContextMenu({ frameId, selectedNodes, selectedEdges, conte
   const isMobile = useIsMobile();
   
   const removeMultipleNodesFromFrame = useMutation(api.frames.removeMultipleNodesFromFrame);
+  
   const deleteEdge = useMutation(api.edges.deleteEdge).withOptimisticUpdate((store, args) => {
     const currentEdges = store.getQuery(api.edges.get, { frameId: args.frameId }) ?? [];
     const updatedEdges = currentEdges.filter(edge => edge.id !== args.edgeId);

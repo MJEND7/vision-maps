@@ -12,7 +12,9 @@ import { oneLight } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { Doc } from "../../../../../convex/_generated/dataModel";
 import { getConvexSiteUrl } from "@/utils/convex";
 import { api } from "../../../../../convex/_generated/api";
-import { AlertCircle, Copy, CopyCheck, Sparkles } from "lucide-react";
+import { AlertCircle, Copy, CopyCheck, Sparkles, FileText } from "lucide-react";
+import { useMutation } from "convex/react";
+import { Button } from "@/components/ui/button";
 
 // Code component with copy functionality
 const CodeComponent = ({ className, children, ...props }: any) => {
@@ -98,12 +100,33 @@ export function ServerMessage({
     isDriven,
     stopStreaming,
     scrollToBottom,
+    isAssistant = false,
 }: {
     message: Doc<"messages">;
     isDriven: boolean;
     stopStreaming: () => void;
     scrollToBottom: () => void;
+    isAssistant?: boolean;
 }) {
+    const createTextNodeFromMessage = useMutation(api.nodes.createTextNodeFromMessage);
+    const [isCreatingNode, setIsCreatingNode] = useState(false);
+
+    const handleCreateTextNode = async () => {
+        if (!text || isCreatingNode) return;
+        
+        setIsCreatingNode(true);
+        try {
+            await createTextNodeFromMessage({
+                messageText: text,
+                chatId: message.chatId,
+            });
+        } catch (error) {
+            console.error("Failed to create text node:", error);
+        } finally {
+            setIsCreatingNode(false);
+        }
+    };
+
     const { text, status } = useStream(
         api.messages.getStreamBody,
         new URL(`${getConvexSiteUrl()}/chat-stream`),
@@ -174,6 +197,27 @@ export function ServerMessage({
                                 animate={{ opacity: [1, 0] }}
                                 transition={{ duration: 1, repeat: Infinity }}
                             />
+                        )}
+
+                        {/* Create Text Node Button - only show for completed AI messages */}
+                        {text && !isCurrentlyStreaming && isAssistant && (
+                            <motion.div
+                                className="mt-3 pt-3 border-t border-border"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                            >
+                                <Button
+                                    onClick={handleCreateTextNode}
+                                    disabled={isCreatingNode}
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-xs"
+                                >
+                                    <FileText className="w-3 h-3 mr-1" />
+                                    {isCreatingNode ? "Creating..." : "Create Text Node"}
+                                </Button>
+                            </motion.div>
                         )}
                     </motion.div>
                 )}
