@@ -420,6 +420,12 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
 
     const detectLinkType = useCallback((url: string): NodeVariants => {
         try {
+            // Validate URL exists and is a string
+            if (!url || typeof url !== 'string' || url.trim() === '') {
+                console.error('Invalid URL provided to detectLinkType:', url);
+                return NodeVariants.Link;
+            }
+
             const hostname = new URL(url).hostname.toLowerCase();
 
             if (hostname.includes('github.com')) return NodeVariants.GitHub;
@@ -433,27 +439,49 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
 
             return NodeVariants.Link; // Default to generic website
         } catch (error) {
-            console.error('Error parsing URL:', url, error);
+            console.error('Error parsing YouTube URL:', error);
+            console.error('URL value that caused error:', url, 'type:', typeof url);
             return NodeVariants.Link;
         }
     }, []);
 
     const fetchLinkMetadata = useCallback(async (url: string): Promise<any> => {
+        console.log('fetchLinkMetadata called with:', url, 'type:', typeof url);
         try {
+            // Validate URL before processing
+            if (!url || typeof url !== 'string' || url.trim() === '') {
+                throw new Error('Invalid URL provided to fetchLinkMetadata');
+            }
+
+            console.log('About to call fetchWithCache with:', url);
             const result = await fetchWithCache(url);
+            console.log('fetchWithCache result:', result);
             return {
                 ...result.metadata,
                 type: result.type
             };
         } catch (error) {
             console.error('Error fetching metadata:', error);
+            console.log('About to call detectLinkType with:', url);
             const fallbackType = detectLinkType(url);
-            return {
-                type: fallbackType,
-                title: new URL(url).hostname,
-                description: "",
-                url
-            };
+            
+            // Safe fallback with URL validation
+            try {
+                const hostname = url ? new URL(url).hostname : 'Invalid URL';
+                return {
+                    type: fallbackType,
+                    title: hostname,
+                    description: "",
+                    url: url || ""
+                };
+            } catch (urlError) {
+                return {
+                    type: fallbackType,
+                    title: 'Invalid URL',
+                    description: "",
+                    url: ""
+                };
+            }
         }
     }, [detectLinkType, fetchWithCache]);
 
@@ -481,6 +509,20 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
     }, [actions, updateMedia, startUpload]);
 
     const handleLinkPaste = useCallback(async (url: string) => {
+        // Validate URL before processing
+        if (!url || typeof url !== 'string' || url.trim() === '') {
+            console.error('Invalid URL provided to handleLinkPaste:', url);
+            return;
+        }
+
+        // Validate URL format
+        try {
+            new URL(url);
+        } catch (urlError) {
+            console.error('Invalid URL format:', url, urlError);
+            return;
+        }
+
         setMode(PasteBinMode.EMBED);
         pasteBinStorage.save.mode(PasteBinMode.EMBED);
         actions.setLoadingLinkMeta(true);
@@ -507,12 +549,18 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
     const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const clipboardData = e.clipboardData;
         const files = Array.from(clipboardData.files);
-        const text = clipboardData.getData("text");
+        
+        // Try multiple ways to get text data
+        let text = clipboardData.getData("text/plain") || clipboardData.getData("text") || clipboardData.getData("text/uri-list");
+
+        console.log('Paste event - text:', text, 'type:', typeof text, 'length:', text?.length);
 
         if (files.length > 0) {
             handleFileSelect(files[0]);
-        } else if (text && (text.startsWith("http://") || text.startsWith("https://"))) {
-            handleLinkPaste(text);
+        } else if (text && typeof text === 'string' && text.trim() && (text.trim().startsWith("http://") || text.trim().startsWith("https://"))) {
+            const cleanUrl = text.trim();
+            console.log('Processing URL:', cleanUrl);
+            handleLinkPaste(cleanUrl);
             updateTextContent("");  // Clear input after pasting link
         }
     }, [handleFileSelect, handleLinkPaste, updateTextContent]);
@@ -522,8 +570,8 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
         updateTextContent(value);
 
         // Auto-detect and handle URLs when user types/pastes
-        if (value && (value.startsWith("http://") || value.startsWith("https://"))) {
-            handleLinkPaste(value);
+        if (value && typeof value === 'string' && value.trim() && (value.startsWith("http://") || value.startsWith("https://"))) {
+            handleLinkPaste(value.trim());
             updateTextContent("");  // Clear input after processing link
             return;
         }
@@ -547,9 +595,9 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
     }, [handleLinkPaste, updateTextContent, mode]);
 
     const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        if (e.key === 'Enter' && textContent) {
+        if (e.key === 'Enter' && textContent && typeof textContent === 'string' && textContent.trim()) {
             if (textContent.startsWith("http://") || textContent.startsWith("https://")) {
-                handleLinkPaste(textContent);
+                handleLinkPaste(textContent.trim());
                 updateTextContent("");
             }
         }

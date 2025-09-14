@@ -341,3 +341,7 @@
                 transparent 60%);
     }
 }
+
+.nextjs-portal {
+  display: none !important;
+}

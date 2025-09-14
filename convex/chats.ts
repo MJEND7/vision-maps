@@ -34,10 +34,20 @@ const updateChatTitleArgs = v.object({
     title: v.string(),
 });
 
+const updateChatNodeIdArgs = v.object({
+    chatId: v.id("chats"),
+    nodeId: v.id("nodes"),
+});
+
 const createChatWithNodeArgs = v.object({
     title: v.string(),
     visionId: v.id("visions"),
     channelId: v.optional(v.id("channels")), // Optional - will use first channel if not provided
+    frameId: v.optional(v.id("frames")), // Optional - if provided, node will be added to frame
+    position: v.optional(v.object({
+        x: v.number(),
+        y: v.number(),
+    })), // Optional - position in frame, only used if frameId is provided
 });
 
 
@@ -314,6 +324,36 @@ export const createChatWithNode = mutation({
             nodeId: nodeId
         });
 
+        // If frameId and position are provided, add the node to the frame
+        if (args.frameId && args.position) {
+            // Create the React Flow node structure
+            const reactFlowNode = {
+                id: crypto.randomUUID(),
+                position: args.position,
+                type: "AI",
+                data: nodeId,
+            };
+
+            // Insert into framed_node for current state
+            await ctx.db.insert("framed_node", {
+                frameId: args.frameId,
+                node: reactFlowNode,
+            });
+
+            // Insert into frame_positions for batch tracking
+            await ctx.db.insert("frame_positions", {
+                frameId: args.frameId,
+                nodeId: nodeId,
+                batch: [reactFlowNode],
+                batchTimestamp: Date.now(),
+            });
+
+            // Update the node to reference this frame
+            await ctx.db.patch(nodeId, {
+                frame: args.frameId,
+            });
+        }
+
         return { 
             chatId, 
             nodeId,
@@ -361,6 +401,33 @@ export const updateChatTitle = mutation({
     },
 });
 
+export const updateChatNodeId = mutation({
+    args: updateChatNodeIdArgs,
+    handler: async (ctx, args) => {
+        const identity = await requireAuth(ctx);
+
+        if (!identity?.userId) {
+            throw new Error("Failed to get the user Id");
+        }
+
+        // Get the chat to verify ownership
+        const chat = await ctx.db.get(args.chatId);
+        if (!chat) {
+            throw new Error("Chat not found");
+        }
+
+        if (chat.userId !== identity.userId.toString()) {
+            throw new Error("Unauthorized: You can only update your own chats");
+        }
+
+        // Update the chat to reference the node
+        await ctx.db.patch(args.chatId, {
+            nodeId: args.nodeId,
+        });
+
+        return { success: true };
+    },
+});
 
 export const deleteChat = mutation({
     args: deleteChatArgs,
@@ -429,4 +496,5 @@ export type GetChatArgs = Infer<typeof getChatArgs>;
 export type DeleteChatArgs = Infer<typeof deleteChatArgs>;
 export type ListVisionChatsPaginatedArgs = Infer<typeof listVisionChatsPaginatedArgs>;
 export type UpdateChatTitleArgs = Infer<typeof updateChatTitleArgs>;
+export type UpdateChatNodeIdArgs = Infer<typeof updateChatNodeIdArgs>;
 

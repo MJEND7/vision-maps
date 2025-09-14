@@ -106,6 +106,7 @@ export default function Channel({
     const createNode = useMutation(api.nodes.create);
     const updateChannel = useMutation(api.channels.update);
     const deleteNode = useMutation(api.nodes.remove);
+    const updateChatNodeId = useMutation(api.chats.updateChatNodeId);
     const channel = useQuery(api.channels.get, {
         id: channelId as Id<"channels">,
     });
@@ -210,7 +211,20 @@ export default function Channel({
     const handleNodeCreation = async (
         data: Omit<CreateNodeArgs, "channel">
     ) => {
-        await createNode({ ...data, channel: channelId as Id<"channels"> });
+        const nodeId = await createNode({ ...data, channel: channelId as Id<"channels"> });
+        
+        // If this is an AI node and the value looks like a chatId, update the chat to link to this node
+        if (data.variant === "AI" && data.value) {
+            try {
+                await updateChatNodeId({
+                    chatId: data.value as Id<"chats">,
+                    nodeId: nodeId,
+                });
+            } catch (error) {
+                console.error("Failed to link chat to node:", error);
+            }
+        }
+
         setSortBy("latest");
         requestAnimationFrame(() => {
             if (scrollContainerRef.current) {

@@ -155,6 +155,7 @@ export default function FrameComponent({
     const createNode = useMutation(api.nodes.create);
     const updateEdges = useMutation(api.edges.update);
     const addExistingNodeToFrame = useMutation(api.nodes.addToFrame);
+    const updateChatNodeId = useMutation(api.chats.updateChatNodeId);
 
     const framedNodes = useQuery(api.frames.getFrameNodes, { frameId: id });
     const edges = useQuery(api.edges.get, { frameId: id });
@@ -393,7 +394,7 @@ export default function FrameComponent({
             centerY = 300 + (Math.random() - 0.5) * 400;
         }
         
-        await createNode({
+        const nodeId = await createNode({
             ...data,
             channel: frame.channel,
             frameId: frame._id,
@@ -407,6 +408,18 @@ export default function FrameComponent({
                 data: "",
             },
         });
+
+        // If this is an AI node and the value looks like a chatId, update the chat to link to this node
+        if (data.variant === "AI" && data.value) {
+            try {
+                await updateChatNodeId({
+                    chatId: data.value as Id<"chats">,
+                    nodeId: nodeId,
+                });
+            } catch (error) {
+                console.error("Failed to link chat to node:", error);
+            }
+        }
     };
 
     if (!framedNodes || !edges || !frame) {

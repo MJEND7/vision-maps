@@ -70,6 +70,11 @@ export function useOGMetadataWithCache() {
         type: NodeVariants;
         fromCache: boolean;
     }> => {
+        // Validate URL at the start
+        if (!url || typeof url !== 'string' || url.trim() === '') {
+            throw new Error(`Invalid URL provided to fetchWithCache: ${url}`);
+        }
+
         try {
             // First, check convex cache
             const cachedData = await convex.query(api.ogMetadata.getByUrl, { url });
@@ -99,14 +104,21 @@ export function useOGMetadataWithCache() {
             }
 
             // If not in cache, fetch from API
-            console.log('Not in cache, fetching from API for URL:', url);
             const result = await fetchOGMetadata(url);
 
             // Only cache in Convex if metadata fetch was successful (not fallback)
             // Check if the result indicates a fallback or incomplete metadata
+            let hostname;
+            try {
+                hostname = url ? new URL(url).hostname : 'unknown';
+            } catch (e) {
+                hostname = 'unknown';
+                console.error('Invalid URL in caching validation:', url, e);
+            }
+            
             const isValidForCaching = result.metadata && 
                                     result.metadata.title && 
-                                    result.metadata.title !== new URL(url).hostname &&
+                                    result.metadata.title !== hostname &&
                                     !result.metadata.description?.includes('Unable to fetch metadata') &&
                                     !result.isFallback;
             
@@ -117,12 +129,11 @@ export function useOGMetadataWithCache() {
                         metadata: result.metadata,
                         platformType: result.platformType,
                     });
-                    console.log('Cached metadata for URL:', url);
                 } catch (storeError) {
                     console.warn('Failed to cache metadata:', storeError);
                 }
             } else {
-                console.log('Skipping cache for incomplete/fallback metadata:', url);
+                console.warn('Skipping cache for incomplete/fallback metadata:', url);
             }
 
             // Map backend platform types to NodeVariants
