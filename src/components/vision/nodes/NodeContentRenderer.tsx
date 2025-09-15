@@ -298,7 +298,9 @@ export function renderNodeContent(
         case NodeVariants.Spotify:
         case NodeVariants.AppleMusic:
         case NodeVariants.Link:
-            return <NodeWithMetadata node={node} variant={variant} />;
+            return (
+                    <NodeWithMetadata node={node} variant={variant} />
+            )
 
         case NodeVariants.AI:
             return (

@@ -334,6 +334,7 @@ export const getFrameNodes = query({
                         _id: nodeData._id,
                         variant: nodeData.variant,
                         value: nodeData.value,
+                        thought: nodeData.thought,
                         type: nodeData.variant || "Text"
                     }
                 };

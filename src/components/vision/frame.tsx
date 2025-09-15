@@ -21,6 +21,7 @@ import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import PasteBin from "../channel/paste-bin";
 import { CreateNodeArgs } from "../../../convex/nodes";
+import { useMetadataCache } from "../../utils/ogMetadata";
 import { useMovementQueue } from "../../hooks/useMovementQueue";
 import nodeTypes from "./nodes";
 import { CanvasContextMenu } from "./canvas-context-menu";
@@ -101,6 +102,7 @@ export default function FrameComponent({
     const { openChat } = useSidebar();
     const [isDark, setIsDark] = useState(false);
     const [getViewportCenter, setGetViewportCenter] = useState<(() => { x: number; y: number }) | null>(null);
+    const { cacheMetadataForUrl } = useMetadataCache();
     const [convertScreenToFlowPosition, setConvertScreenToFlowPosition] = useState<((x: number, y: number) => { x: number; y: number }) | null>(null);
     const [rightClickPosition, setRightClickPosition] = useState<{ x: number; y: number } | null>(null);
 
@@ -380,8 +382,14 @@ export default function FrameComponent({
         };
     }, [selectedNodes.length]);
 
+
     const handleNodeCreation = async (data: Omit<CreateNodeArgs, "channel">) => {
         if (!frame) throw new Error("Failed to get a frame");
+        
+        // Cache OG metadata for URLs
+        if (data.value) {
+            await cacheMetadataForUrl(data.value);
+        }
         
         // Use viewport center if available, otherwise fallback to reasonable center
         let centerX, centerY;

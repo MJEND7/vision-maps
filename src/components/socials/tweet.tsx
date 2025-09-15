@@ -15,6 +15,14 @@ import {
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 
+// Global cache for tweet data to prevent duplicate requests
+const tweetCache = new Map<string, {
+    data: ITweet | null;
+    error: Error | null;
+    loading: boolean;
+    promise?: Promise<ITweet>;
+}>();
+
 type Props = {
     tweet: ITweet
     components?: TwitterComponents
@@ -44,6 +52,53 @@ export const MyTweet = ({ tweet: t, components }: Props) => {
     )
 }
 
+// Cached fetch function to prevent duplicate requests
+const fetchTweetCached = async (id: string): Promise<ITweet> => {
+    const cached = tweetCache.get(id);
+    
+    // If we have cached data, return it
+    if (cached && !cached.loading && cached.data) {
+        console.log(`Tweet ${id}: Using cached data`);
+        return cached.data;
+    }
+    
+    // If we have a cached error, throw it
+    if (cached && !cached.loading && cached.error) {
+        console.log(`Tweet ${id}: Using cached error`);
+        throw cached.error;
+    }
+    
+    // If we're already loading, wait for the existing promise
+    if (cached && cached.loading && cached.promise) {
+        console.log(`Tweet ${id}: Waiting for existing request`);
+        return cached.promise;
+    }
+    
+    console.log(`Tweet ${id}: Making new API request`);
+    
+    // Create new fetch promise
+    const promise = fetch(`/api/tweet/${id}`)
+        .then(res => {
+            if (!res.ok) throw new Error('Failed to fetch tweet')
+            return res.json()
+        })
+        .then((data: ITweet) => {
+            console.log(`Tweet ${id}: Successfully cached`);
+            tweetCache.set(id, { data, error: null, loading: false });
+            return data;
+        })
+        .catch((err: Error) => {
+            console.log(`Tweet ${id}: Cached error`);
+            tweetCache.set(id, { data: null, error: err, loading: false });
+            throw err;
+        });
+    
+    // Cache the loading state and promise
+    tweetCache.set(id, { data: null, error: null, loading: true, promise });
+    
+    return promise;
+};
+
 export const Tweet = ({ id, components, onError }: TweetProps) => {
     const [tweet, setTweet] = useState<ITweet | null>(null)
     const [loading, setLoading] = useState(true)
@@ -52,11 +107,24 @@ export const Tweet = ({ id, components, onError }: TweetProps) => {
     useEffect(() => {
         if (!id) return
 
-        fetch(`/api/tweet/${id}`)
-            .then(res => {
-                if (!res.ok) throw new Error('Failed to fetch tweet')
-                return res.json()
-            })
+        // Check cache first
+        const cached = tweetCache.get(id);
+        if (cached && !cached.loading) {
+            if (cached.data) {
+                setTweet(cached.data);
+                setLoading(false);
+                return;
+            }
+            if (cached.error) {
+                setError(cached.error);
+                setLoading(false);
+                if (onError) onError(cached.error);
+                return;
+            }
+        }
+
+        // Use cached fetch
+        fetchTweetCached(id)
             .then((data) => {
                 setTweet(data)
                 setLoading(false)

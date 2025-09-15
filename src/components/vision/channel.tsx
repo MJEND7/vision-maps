@@ -28,6 +28,7 @@ import { useNodeUserCache } from "@/hooks/useUserCache";
 import PasteBin from "../channel/paste-bin";
 import { CreateNodeArgs } from "../../../convex/nodes";
 import { NODE_VARIANTS } from "@/lib/constants";
+import { useMetadataCache } from "../../utils/ogMetadata";
 import ChannelNode from "../channel/node";
 import {
     ChannelSkeleton,
@@ -83,6 +84,8 @@ export default function Channel({
     const titleRef = useRef<HTMLInputElement>(null);
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    
+    const { cacheMetadataForUrl } = useMetadataCache();
 
     // Mobile detection
     useEffect(() => {
@@ -208,9 +211,15 @@ export default function Channel({
         }
     };
 
+
     const handleNodeCreation = async (
         data: Omit<CreateNodeArgs, "channel">
     ) => {
+        // Cache OG metadata for URLs
+        if (data.value) {
+            await cacheMetadataForUrl(data.value);
+        }
+
         const nodeId = await createNode({ ...data, channel: channelId as Id<"channels"> });
         
         // If this is an AI node and the value looks like a chatId, update the chat to link to this node
