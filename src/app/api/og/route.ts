@@ -296,8 +296,6 @@ export async function POST(request: NextRequest) {
     // Extract platform-specific metadata using switch statement
     const metadata = await extractPlatformSpecificMetadata(result, url, platformType);
     
-    console.log('OG API returning metadata for:', url, 'with tweet text:', (metadata as any).tweetText ? 'YES' : 'NO');
-
     return NextResponse.json({ 
       success: true, 
       metadata,

@@ -7,7 +7,7 @@ import {
 } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Search, Filter, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -118,10 +118,7 @@ export default function Channel({
         nodesByChannel,
         loading,
         hasMore,
-        setNodes,
-        appendNodes,
         addNewNode,
-        updateNode,
         removeNode,
         syncWithServerData,
         setLoading,
@@ -142,7 +139,7 @@ export default function Channel({
         clearChannel(channelId);
     }, [debouncedSearch, selectedVariant, selectedUsers, sortBy, channelId, clearChannel]);
 
-    const storedNodes = nodesByChannel[channelId] || [];
+    const storedNodes = useMemo(() => nodesByChannel[channelId] || [], [nodesByChannel, channelId]);
     const isLoadingNodes = loading[channelId] || false;
     const isDone = !hasMore[channelId];
 
@@ -267,9 +264,9 @@ export default function Channel({
             variant: data.variant,
             value: data.value,
             thought: data.thought,
-            frame: data.frameId || null,
+            frame: data.frameId,
             channel: channelId as Id<"channels">,
-            vision: channel?.vision || null,
+            vision: channel?.vision,
             userId: "" as Id<"users">, // This will be filled by server
             updatedAt: new Date().toISOString(),
             frameTitle: null,
@@ -639,7 +636,7 @@ export default function Channel({
                 >
                     <InfiniteScroll
                         dataLength={storedNodes.length}
-                        next={() => loadMore(10)}
+                        next={() => loadMore()}
                         className={cn(
                             "flex scroll-smooth",
                             sortBy === "latest" ? "flex-col-reverse" : "flex-col",

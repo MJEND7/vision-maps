@@ -475,6 +475,7 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
                     url: url || ""
                 };
             } catch (urlError) {
+                console.error(urlError)
                 return {
                     type: fallbackType,
                     title: 'Invalid URL',
@@ -551,9 +552,7 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
         const files = Array.from(clipboardData.files);
         
         // Try multiple ways to get text data
-        let text = clipboardData.getData("text/plain") || clipboardData.getData("text") || clipboardData.getData("text/uri-list");
-
-        console.log('Paste event - text:', text, 'type:', typeof text, 'length:', text?.length);
+        const text = clipboardData.getData("text/plain") || clipboardData.getData("text") || clipboardData.getData("text/uri-list");
 
         if (files.length > 0) {
             handleFileSelect(files[0]);
