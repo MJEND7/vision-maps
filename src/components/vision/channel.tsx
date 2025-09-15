@@ -7,7 +7,7 @@ import {
 } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Search, Filter, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -104,6 +104,18 @@ export default function Channel({
     const updateChannel = useMutation(api.channels.update);
     const deleteNode = useMutation(api.nodes.remove);
     const updateChatNodeId = useMutation(api.chats.updateChatNodeId);
+    
+    // Memoize callback functions to prevent unnecessary re-renders
+    const showDeleteConfirmation = useCallback((node: any) => {
+        setNodeToDelete(node);
+        setShowDeleteDialog(true);
+        setShowMobileDrawer(false);
+    }, []);
+
+    const showMobileDrawerForNode = useCallback((node: any) => {
+        setNodeToDelete(node);
+        setShowMobileDrawer(true);
+    }, []);
     const channel = useQuery(api.channels.get, {
         id: channelId as Id<"channels">,
     });
@@ -309,12 +321,6 @@ export default function Channel({
         }
     };
 
-    // Delete dialog functions
-    const showDeleteConfirmation = (node: any) => {
-        setNodeToDelete(node);
-        setShowDeleteDialog(true);
-        setShowMobileDrawer(false);
-    };
 
     const confirmDelete = async () => {
         if (!nodeToDelete) return;
@@ -344,11 +350,6 @@ export default function Channel({
         setIsDeleting(false);
     };
 
-    // Mobile drawer functions
-    const showMobileDrawerForNode = (node: any) => {
-        setNodeToDelete(node);
-        setShowMobileDrawer(true);
-    };
 
     const hideMobileDrawer = () => {
         setShowMobileDrawer(false);

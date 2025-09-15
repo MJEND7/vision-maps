@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useTheme } from "next-themes";
 import { NodeVariants } from "../../../../convex/tables/nodes";
 import Image from "next/image";
 import { Brain, Check, ExternalLink, X, Expand, Minimize2 } from 'lucide-react';
@@ -9,6 +10,17 @@ import { useOGMetadataWithCache } from "@/utils/ogMetadata";
 import { Button } from '@/components/ui/button';
 import Markdown, { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+// Memoize remarkPlugins array to prevent unnecessary re-renders
+const REMARK_PLUGINS = [remarkGfm];
+
+// Memoize transition object to prevent framer-motion re-renders
+const EXPAND_TRANSITION = {
+    type: "spring" as const,
+    stiffness: 300,
+    damping: 30,
+    duration: 0.4
+};
 import { Prism as SyntaxHighlighter, SyntaxHighlighterProps } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { oneLight } from "react-syntax-highlighter/dist/cjs/styles/prism";
@@ -17,12 +29,13 @@ import { motion } from "motion/react";
 // Code component with copy functionality for text nodes
 const CodeComponent = ({ className, children, ...props }: any) => {
     const [copied, setCopied] = React.useState(false);
+    const { theme: currentTheme } = useTheme();
     const match = /language-(\w+)/.exec(className || "");
-    const theme =
-        typeof window !== "undefined" &&
-            document.documentElement.classList.contains("dark")
-            ? oneDark
-            : oneLight;
+    
+    // Memoize theme to prevent recalculation on every render
+    const theme = useMemo(() => {
+        return currentTheme === "dark" ? oneDark : oneLight;
+    }, [currentTheme]);
 
     const codeString = String(children).replace(/\n$/, "");
 
@@ -139,16 +152,11 @@ function ExpandableTextContent({ textExpand, content }: { textExpand: boolean, c
             {/* Animated content container */}
             <motion.div
                 initial={false}
-                animate={{
+                animate={useMemo(() => ({
                     maxWidth: isExpanded ? "800px" : "300px",
                     maxHeight: isExpanded ? "" : "150px",
-                }}
-                transition={{
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 30,
-                    duration: 0.4
-                }}
+                }), [isExpanded])}
+                transition={EXPAND_TRANSITION}
                 className={`${isExpanded ? '' : 'overflow-hidden'}`}
                 style={isExpanded ? { position: 'relative' } : {}}
             >
@@ -156,7 +164,7 @@ function ExpandableTextContent({ textExpand, content }: { textExpand: boolean, c
                     ref={containerRef}
                     className="prose prose-sm"
                 >
-                    <Markdown remarkPlugins={[remarkGfm]} components={textNodeMarkdownComponents}>
+                    <Markdown remarkPlugins={REMARK_PLUGINS} components={textNodeMarkdownComponents}>
                         {content}
                     </Markdown>
                 </div>

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronsDownUp, Frame, Settings, TableProperties, ChevronLeft, ChevronRight, ListTree, PanelRight, PanelRightClose, ArrowLeft } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import FrameComponent from '@/components/vision/frame';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Channel from '@/components/vision/channel';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../../../convex/_generated/api';
@@ -136,9 +136,9 @@ function VisionDetailPageContent() {
     const updateFrame = useMutation(api.frames.update);
     const reorderFrames = useMutation(api.frames.reorder);
 
-    // Extract data from the combined query
-    const channels = channelsWithFrames?.channels || [];
-    const framesByChannel = channelsWithFrames?.framesByChannel || {};
+    // Extract data from the combined query - memoized to prevent useCallback dependency changes
+    const channels = useMemo(() => channelsWithFrames?.channels || [], [channelsWithFrames?.channels]);
+    const framesByChannel = useMemo(() => channelsWithFrames?.framesByChannel || {}, [channelsWithFrames?.framesByChannel]);
 
     const isVisionLoading = vision === undefined;
     const isChannelsLoading = channelsWithFrames === undefined;

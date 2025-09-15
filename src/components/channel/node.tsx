@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, memo, useMemo } from "react";
 import { NodeUser } from "@/hooks/useUserCache";
 import { NodeWithFrame } from "../../../convex/channels";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -14,7 +14,7 @@ import { Badge } from "../ui/badge";
 import { renderNodeContent } from "../vision/nodes/NodeContentRenderer";
 
 
-export default function ChannelNode({
+function ChannelNode({
     node,
     nodeUser,
     onOpenChat,
@@ -39,17 +39,22 @@ export default function ChannelNode({
 
     const updateNode = useMutation(api.nodes.update);
 
-    // Find duplicate nodes for reference detection
-    const duplicateNodes = useQuery(
-        api.nodes.findDuplicateNodes,
-        node.vision && node.variant === NodeVariants.Text
+    // Memoize query parameters to prevent unnecessary queries
+    const duplicateQueryParams = useMemo(() => {
+        return node.vision && node.variant === NodeVariants.Text
             ? {
                 visionId: node.vision,
                 value: node.value,
                 variant: node.variant,
                 excludeNodeId: node._id as Id<"nodes">,
             }
-            : "skip"
+            : "skip";
+    }, [node.vision, node.variant, node.value, node._id]);
+
+    // Find duplicate nodes for reference detection
+    const duplicateNodes = useQuery(
+        api.nodes.findDuplicateNodes,
+        duplicateQueryParams
     );
 
     const isReference = duplicateNodes && duplicateNodes.length > 0;
@@ -295,3 +300,5 @@ export default function ChannelNode({
         </>
     )
 }
+
+export default memo(ChannelNode);

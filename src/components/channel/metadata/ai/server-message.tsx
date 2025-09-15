@@ -6,6 +6,9 @@ import { useMemo, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import Markdown, { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+// Memoize remarkPlugins array to prevent unnecessary re-renders
+const REMARK_PLUGINS = [remarkGfm];
 import { Prism as SyntaxHighlighter, SyntaxHighlighterProps } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { oneLight } from "react-syntax-highlighter/dist/cjs/styles/prism";
@@ -15,16 +18,18 @@ import { api } from "../../../../../convex/_generated/api";
 import { AlertCircle, Copy, CopyCheck, Sparkles, FileText } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "next-themes";
 
 // Code component with copy functionality
 const CodeComponent = ({ className, children, ...props }: any) => {
     const [copied, setCopied] = useState(false);
+    const { theme: currentTheme } = useTheme();
     const match = /language-(\w+)/.exec(className || "");
-    const theme =
-        typeof window !== "undefined" &&
-            document.documentElement.classList.contains("dark")
-            ? oneDark
-            : oneLight;
+    
+    // Memoize theme to prevent recalculation on every render
+    const theme = useMemo(() => {
+        return currentTheme === "dark" ? oneDark : oneLight;
+    }, [currentTheme]);
 
     const codeString = String(children).replace(/\n$/, "");
 
@@ -189,7 +194,7 @@ export function ServerMessage({
                         className="max-w-full break-words"
                     >
                         <div className="prose prose-sm max-w-none">
-                            <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                            <Markdown remarkPlugins={REMARK_PLUGINS} components={markdownComponents}>
                                 {text}
                             </Markdown>
                         </div>
