@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/popover";
 import { MultiUserSelector } from "@/components/ui/multi-user-selector";
 import { useNodeUserCache } from "@/hooks/useUserCache";
+import { useNodeStore } from "@/hooks/useNodeStore";
+import { NodeWithFrame } from "../../../convex/channels";
 import PasteBin from "../channel/paste-bin";
 import { CreateNodeArgs } from "../../../convex/nodes";
 import { NODE_VARIANTS } from "@/lib/constants";
@@ -98,14 +100,6 @@ export default function Channel({
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // Debounce search query
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(searchQuery);
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
-
     const createNode = useMutation(api.nodes.create);
     const updateChannel = useMutation(api.channels.update);
     const deleteNode = useMutation(api.nodes.remove);
@@ -119,6 +113,39 @@ export default function Channel({
     // Get the getUserForNode function from the node user cache hook
     const { getUserForNode, prefetchUsers } = useNodeUserCache();
 
+    // Local store for optimistic updates
+    const {
+        nodesByChannel,
+        loading,
+        hasMore,
+        setNodes,
+        appendNodes,
+        addNewNode,
+        updateNode,
+        removeNode,
+        syncWithServerData,
+        setLoading,
+        setHasMore,
+        clearChannel,
+    } = useNodeStore();
+
+    // Debounce search query
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Clear local store when filters change to force re-fetch
+    useEffect(() => {
+        clearChannel(channelId);
+    }, [debouncedSearch, selectedVariant, selectedUsers, sortBy, channelId, clearChannel]);
+
+    const storedNodes = nodesByChannel[channelId] || [];
+    const isLoadingNodes = loading[channelId] || false;
+    const isDone = !hasMore[channelId];
+
     useEffect(() => {
         if (channel?.title) {
             setTitleValue(channel?.title);
@@ -129,10 +156,11 @@ export default function Channel({
         }
     }, [channel?.title, channel?.description]);
 
+    // Use regular query to sync with server data
     const {
-        results: storedNodes,
+        results: serverNodes,
         status,
-        loadMore,
+        loadMore: loadMoreFromServer,
     } = usePaginatedQuery(
         api.nodes.listByChannel,
         {
@@ -149,9 +177,19 @@ export default function Channel({
         { initialNumItems: 10 }
     );
 
-    const isDone = status == "Exhausted";
-    const isLoadingNodes =
-        status == "LoadingMore" || status == "LoadingFirstPage";
+    // Sync server data with local store
+    useEffect(() => {
+        if (serverNodes && serverNodes.length > 0) {
+            syncWithServerData(channelId, serverNodes);
+        }
+        setHasMore(channelId, status !== "Exhausted");
+        setLoading(channelId, status === "LoadingMore" || status === "LoadingFirstPage");
+    }, [serverNodes, status, channelId, syncWithServerData, setHasMore, setLoading]);
+
+    const loadMore = () => {
+        setLoading(channelId, true);
+        loadMoreFromServer(10);
+    };
 
     // Pre-fetch unique users from nodes when data changes
     useEffect(() => {
@@ -220,29 +258,58 @@ export default function Channel({
             await cacheMetadataForUrl(data.value);
         }
 
-        const nodeId = await createNode({ ...data, channel: channelId as Id<"channels"> });
-        
-        // If this is an AI node and the value looks like a chatId, update the chat to link to this node
-        if (data.variant === "AI" && data.value) {
-            try {
-                await updateChatNodeId({
-                    chatId: data.value as Id<"chats">,
-                    nodeId: nodeId,
-                });
-            } catch (error) {
-                console.error("Failed to link chat to node:", error);
-            }
-        }
+        // Optimistic update: create a temporary node with predicted ID
+        const tempNodeId = `temp_${Date.now()}` as Id<"nodes">;
+        const tempNode: NodeWithFrame = {
+            _id: tempNodeId,
+            _creationTime: Date.now(),
+            title: data.title,
+            variant: data.variant,
+            value: data.value,
+            thought: data.thought,
+            frame: data.frameId || null,
+            channel: channelId as Id<"channels">,
+            vision: channel?.vision || null,
+            userId: "" as Id<"users">, // This will be filled by server
+            updatedAt: new Date().toISOString(),
+            frameTitle: null,
+        };
 
-        setSortBy("latest");
-        requestAnimationFrame(() => {
-            if (scrollContainerRef.current) {
-                scrollContainerRef.current.scrollTo({
-                    top: scrollContainerRef.current.scrollHeight,
-                    behavior: "smooth",
-                });
+        // Add optimistically to local store
+        addNewNode(channelId, tempNode);
+
+        try {
+            const nodeId = await createNode({ ...data, channel: channelId as Id<"channels"> });
+            
+            // Remove temp node and wait for server sync to add real node
+            removeNode(channelId, tempNodeId);
+            
+            // If this is an AI node and the value looks like a chatId, update the chat to link to this node
+            if (data.variant === "AI" && data.value) {
+                try {
+                    await updateChatNodeId({
+                        chatId: data.value as Id<"chats">,
+                        nodeId: nodeId,
+                    });
+                } catch (error) {
+                    console.error("Failed to link chat to node:", error);
+                }
             }
-        });
+
+            setSortBy("latest");
+            requestAnimationFrame(() => {
+                if (scrollContainerRef.current) {
+                    scrollContainerRef.current.scrollTo({
+                        top: scrollContainerRef.current.scrollHeight,
+                        behavior: "smooth",
+                    });
+                }
+            });
+        } catch (error) {
+            // Remove optimistic update on error
+            removeNode(channelId, tempNodeId);
+            console.error("Failed to create node:", error);
+        }
     };
 
     // Delete dialog functions
@@ -255,11 +322,19 @@ export default function Channel({
     const confirmDelete = async () => {
         if (!nodeToDelete) return;
         setIsDeleting(true);
+        
+        // Optimistic update: remove from local store immediately
+        const nodeId = nodeToDelete._id as Id<"nodes">;
+        const nodeBackup = nodeToDelete; // Keep backup for rollback
+        removeNode(channelId, nodeId);
+        
         try {
-            await deleteNode({ id: nodeToDelete._id as Id<"nodes"> });
+            await deleteNode({ id: nodeId });
             setShowDeleteDialog(false);
             setNodeToDelete(null);
         } catch (error) {
+            // Rollback: re-add the node on error
+            addNewNode(channelId, nodeBackup);
             console.error('Failed to delete node:', error);
         } finally {
             setIsDeleting(false);
