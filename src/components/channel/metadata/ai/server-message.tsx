@@ -13,7 +13,7 @@ import { Doc } from "../../../../../convex/_generated/dataModel";
 import { getConvexSiteUrl } from "@/utils/convex";
 import { api } from "../../../../../convex/_generated/api";
 import { AlertCircle, Copy, CopyCheck, Sparkles, FileText } from "lucide-react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { Button } from "@/components/ui/button";
 
 // Code component with copy functionality
@@ -110,6 +110,9 @@ export function ServerMessage({
 }) {
     const createTextNodeFromMessage = useMutation(api.nodes.createTextNodeFromMessage);
     const [isCreatingNode, setIsCreatingNode] = useState(false);
+    
+    // Check if the chat's AI node is on a frame
+    const isNodeOnFrame = useQuery(api.nodes.checkChatNodeOnFrame, { chatId: message.chatId });
 
     const handleCreateTextNode = async () => {
         if (!text || isCreatingNode) return;
@@ -199,8 +202,8 @@ export function ServerMessage({
                             />
                         )}
 
-                        {/* Create Text Node Button - only show for completed AI messages */}
-                        {text && !isCurrentlyStreaming && isAssistant && (
+                        {/* Create Text Node Button - only show for completed AI messages when node is on a frame */}
+                        {text && !isCurrentlyStreaming && isAssistant && isNodeOnFrame && (
                             <motion.div
                                 className="mt-3 pt-3 border-t border-border"
                                 initial={{ opacity: 0, y: 10 }}
