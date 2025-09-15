@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { DraggableTabs } from '@/components/ui/draggable-tabs';
 import { DraggableSidebar } from '@/components/ui/draggable-sidebar';
 import { PresenceFacePile } from '@/components/ui/face-pile';
-import { RightSidebarContent, RightSidebarContentRef } from '@/components/ui/right-sidebar';
+import { LeftSidebarContent, LeftSidebarContentRef } from '@/components/ui/left-sidebar';
 import { Button } from '@/components/ui/button';
 import { ChevronsDownUp, Frame, Settings, TableProperties, ChevronLeft, ChevronRight, ListTree, PanelRight, PanelRightClose, ArrowLeft } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
@@ -21,6 +21,7 @@ import ThemeSwitcher from '@/components/ThemeSwitcher';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { SidebarProvider } from '@/contexts/sidebar-context';
+import { VisionTitleSkeleton, DraggableSidebarSkeleton } from '@/components/vision-skeletons';
 
 enum ViewMode {
     CHANNEL = "channel",
@@ -103,16 +104,13 @@ function VisionDetailPageContent() {
     const [selectedTab, setSelectedTab] = useState<{ title: string, id: string, type: ViewMode } | null>(null)
     const [tabOrder, setTabOrder] = useState<{ title: string, id: string, type: ViewMode }[]>([])
     const [openChannels, setOpenChannels] = useState<Set<string>>(new Set());
-    const [framesByChannel, setFramesByChannel] = useState<Record<string, any[]>>({});
-    const [optimisticChannels, setOptimisticChannels] = useState<any[]>([]);
-    const [optimisticFrames, setOptimisticFrames] = useState<Record<string, any[]>>({});
     const [editingChannel, setEditingChannel] = useState<string | null>(null);
     const [editingChannelName, setEditingChannelName] = useState<string>('');
     const [editingFrame, setEditingFrame] = useState<string | null>(null);
     const [editingFrameName, setEditingFrameName] = useState<string>('');
     const [sidebarState, setSidebarState] = useState<SidebarState>(DEFAULT_SIDEBAR_STATE);
     const [isMobile, setIsMobile] = useState(false);
-    const rightSidebarContentRef = useRef<RightSidebarContentRef>(null);
+    const rightSidebarContentRef = useRef<LeftSidebarContentRef>(null);
     const leftResizeRef = useRef<HTMLDivElement>(null);
     const rightResizeRef = useRef<HTMLDivElement>(null);
     const leftSidebarRef = useRef<HTMLDivElement>(null);
@@ -126,8 +124,8 @@ function VisionDetailPageContent() {
         { id: visionId }
     );
 
-    const channels = useQuery(
-        api.channels.listByVision,
+    const channelsWithFrames = useQuery(
+        api.channels.listWithFramesByVision,
         { visionId }
     );
 
@@ -138,84 +136,12 @@ function VisionDetailPageContent() {
     const updateFrame = useMutation(api.frames.update);
     const reorderFrames = useMutation(api.frames.reorder);
 
-    const [channelsToFetchFrames, setChannelsToFetchFrames] = useState<string[]>([]);
+    // Extract data from the combined query
+    const channels = channelsWithFrames?.channels || [];
+    const framesByChannel = channelsWithFrames?.framesByChannel || {};
 
-    const framesToFetch = channelsToFetchFrames.length > 0 ? channelsToFetchFrames[0] : null;
-    const frames = useQuery(
-        api.frames.listByChannel,
-        framesToFetch ? { channelId: framesToFetch as Id<"channels"> } : "skip"
-    );
-
-    useEffect(() => {
-        if (frames && framesToFetch) {
-            setFramesByChannel(prev => ({
-                ...prev,
-                [framesToFetch]: frames
-            }));
-
-            setChannelsToFetchFrames(prev => prev.slice(1));
-        }
-    }, [frames, framesToFetch]);
-
-    useEffect(() => {
-        if (channels) {
-            setOptimisticChannels(channels);
-        }
-    }, [channels]);
-
-    useEffect(() => {
-        setOptimisticFrames(framesByChannel);
-    }, [framesByChannel]);
-
-    useEffect(() => {
-        if (channels && channels.length > 0) {
-            const openChannelIds = Array.from(openChannels).filter(id =>
-                channels.some(c => c._id === id)
-            );
-
-            if (openChannelIds.length > 0) {
-                setChannelsToFetchFrames(prev => {
-                    const newQueue = [...prev];
-                    openChannelIds.forEach(id => {
-                        if (!newQueue.includes(id)) {
-                            newQueue.unshift(id);
-                        }
-                    });
-                    return newQueue;
-                });
-            }
-
-            const timer = setTimeout(() => {
-                const remainingChannelIds = channels
-                    .filter(c => !openChannels.has(c._id))
-                    .map(c => c._id);
-
-                setChannelsToFetchFrames(prev => {
-                    const newQueue = [...prev];
-                    remainingChannelIds.forEach(id => {
-                        if (!newQueue.includes(id)) {
-                            newQueue.push(id);
-                        }
-                    });
-                    return newQueue;
-                });
-            }, 2000);
-
-            return () => clearTimeout(timer);
-        }
-    }, [channels, openChannels]);
-
-    const prioritizeChannelFrames = useCallback((channelId: string) => {
-        setChannelsToFetchFrames(prev => {
-            if (prev.includes(channelId)) {
-                return [channelId, ...prev.filter(id => id !== channelId)];
-            } else {
-                return [channelId, ...prev];
-            }
-        });
-    }, []);
-
-    const isLoading = vision === undefined;
+    const isVisionLoading = vision === undefined;
+    const isChannelsLoading = channelsWithFrames === undefined;
 
     const storageKey = `vision-${visionId}-opened-channels`;
     const tabsStorageKey = `vision-${visionId}-tabs`;
@@ -367,11 +293,7 @@ function VisionDetailPageContent() {
             return updatedOrder;
         });
 
-        setFramesByChannel(prev => {
-            const updated = { ...prev };
-            delete updated[channelId];
-            return updated;
-        });
+        // Channel frame deletion is handled by the backend query refresh
 
         setOpenChannels(prev => {
             const newSet = new Set(prev);
@@ -401,13 +323,7 @@ function VisionDetailPageContent() {
             return updatedOrder;
         });
 
-        setFramesByChannel(prev => {
-            const updated = { ...prev };
-            Object.keys(updated).forEach(channelId => {
-                updated[channelId] = updated[channelId].filter(frame => frame._id !== frameId);
-            });
-            return updated;
-        });
+        // Frame deletion is handled by the backend query refresh
     }, [selectedTab]);
 
     const handleFramesDeleted = useCallback((frameIds: string[]) => {
@@ -431,36 +347,10 @@ function VisionDetailPageContent() {
             return updatedOrder;
         });
 
-        setFramesByChannel(prev => {
-            const updated = { ...prev };
-            Object.keys(updated).forEach(channelId => {
-                updated[channelId] = updated[channelId].filter(frame => !frameIds.includes(frame._id));
-            });
-            return updated;
-        });
+        // Frames deletion is handled by the backend query refresh
     }, [selectedTab]);
 
-    const handleChannelReorder = useCallback((channelIds: string[]) => {
-        setOptimisticChannels(prev => {
-            const channelMap = new Map(prev.map(c => [c._id, c]));
-            return channelIds.map(id => channelMap.get(id)).filter(Boolean);
-        });
-    }, []);
-
-    const handleFrameReorder = useCallback((channelId: string, frameIds: string[]) => {
-        setOptimisticFrames(prev => {
-            const currentFrames = prev[channelId] || [];
-            const frameMap = new Map(currentFrames.map(f => [f._id, f]));
-            const reorderedFrames = frameIds.map(id => frameMap.get(id)).filter(Boolean);
-
-            return {
-                ...prev,
-                [channelId]: reorderedFrames
-            };
-        });
-    }, []);
-
-    const syncChannelOrder = useCallback(async (channelIds: string[]) => {
+    const handleChannelReorder = useCallback(async (channelIds: string[]) => {
         try {
             await reorderChannels({
                 visionId,
@@ -468,13 +358,10 @@ function VisionDetailPageContent() {
             });
         } catch (error) {
             console.error('Failed to reorder channels:', error);
-            if (channels) {
-                setOptimisticChannels(channels);
-            }
         }
-    }, [reorderChannels, visionId, channels]);
+    }, [reorderChannels, visionId]);
 
-    const syncFrameOrder = useCallback(async (channelId: string, frameIds: string[]) => {
+    const handleFrameReorder = useCallback(async (channelId: string, frameIds: string[]) => {
         try {
             await reorderFrames({
                 channelId: channelId as Id<"channels">,
@@ -482,9 +369,8 @@ function VisionDetailPageContent() {
             });
         } catch (error) {
             console.error('Failed to reorder frames:', error);
-            setOptimisticFrames(framesByChannel);
         }
-    }, [reorderFrames, framesByChannel]);
+    }, [reorderFrames]);
 
     const saveSidebarStateDebounced = useCallback((newState: SidebarState) => {
         if (sidebarSaveTimeout.current) {
@@ -675,7 +561,6 @@ function VisionDetailPageContent() {
                 newSet.delete(channelId);
             } else {
                 newSet.add(channelId);
-                prioritizeChannelFrames(channelId);
             }
             return newSet;
         });
@@ -762,15 +647,6 @@ function VisionDetailPageContent() {
             });
 
             if (frameId) {
-                setFramesByChannel(prev => ({
-                    ...prev,
-                    [channelId]: [...(prev[channelId] || []), {
-                        _id: frameId,
-                        title: defaultTitle,
-                        channel: channelId
-                    }]
-                }));
-
                 setEditingFrame(frameId);
                 setEditingFrameName(defaultTitle);
 
@@ -796,18 +672,6 @@ function VisionDetailPageContent() {
             await updateFrame({
                 id: frameId as Id<"frames">,
                 title: editingFrameName.trim()
-            });
-
-            setFramesByChannel(prev => {
-                const updated = { ...prev };
-                Object.keys(updated).forEach(channelId => {
-                    updated[channelId] = updated[channelId].map(frame =>
-                        frame._id === frameId
-                            ? { ...frame, title: editingFrameName.trim() }
-                            : frame
-                    );
-                });
-                return updated;
             });
 
             updateTabTitle(frameId, editingFrameName.trim());
@@ -975,14 +839,18 @@ function VisionDetailPageContent() {
                                 className="w-[250px] h-full bg-card border-r border-border flex z-50 absolute top-0 left-0 shadow-lg"
                             >
                                 <div className="flex-1 space-y-2 overflow-hidden">
-                                    <TitleCard
-                                        OpenSettings={(id) => {
-                                            openTab(ViewMode.SETTINGS, id, ViewMode.SETTINGS);
-                                            setSidebarState(prev => ({ ...prev, leftOpen: false }));
-                                        }}
-                                        isLoading={isLoading}
-                                        vision={vision}
-                                    />
+                                    {isVisionLoading ? (
+                                        <VisionTitleSkeleton />
+                                    ) : (
+                                        <TitleCard
+                                            OpenSettings={(id) => {
+                                                openTab(ViewMode.SETTINGS, id, ViewMode.SETTINGS);
+                                                setSidebarState(prev => ({ ...prev, leftOpen: false }));
+                                            }}
+                                            isLoading={isVisionLoading}
+                                            vision={vision}
+                                        />
+                                    )}
 
                                     <>
                                         <hr />
@@ -992,6 +860,7 @@ function VisionDetailPageContent() {
                                                     variant={"outline"}
                                                     className="text-xs text-muted-foreground flex items-center gap-1"
                                                     onClick={handleCreateChannel}
+                                                    disabled={isChannelsLoading}
                                                 >
                                                     <TableProperties size={15} /> New channel
                                                 </Button>
@@ -1003,10 +872,12 @@ function VisionDetailPageContent() {
                                                     <ChevronsDownUp />
                                                 </Button>
                                             </div>
-                                            {optimisticChannels && optimisticChannels.length > 0 ? (
+                                            {isChannelsLoading ? (
+                                                <DraggableSidebarSkeleton />
+                                            ) : channels && channels.length > 0 ? (
                                                 <DraggableSidebar
-                                                    channels={optimisticChannels}
-                                                    framesByChannel={optimisticFrames}
+                                                    channels={channels}
+                                                    framesByChannel={framesByChannel}
                                                     openChannels={openChannels}
                                                     selectedTabId={selectedTab?.id}
                                                     editingChannel={editingChannel}
@@ -1014,9 +885,9 @@ function VisionDetailPageContent() {
                                                     editingFrame={editingFrame}
                                                     editingFrameName={editingFrameName}
                                                     onChannelReorder={handleChannelReorder}
-                                                    onChannelReorderEnd={syncChannelOrder}
+                                                    onChannelReorderEnd={handleChannelReorder}
                                                     onFrameReorder={handleFrameReorder}
-                                                    onFrameReorderEnd={syncFrameOrder}
+                                                    onFrameReorderEnd={handleFrameReorder}
                                                     onToggleChannel={toggleChannel}
                                                     onOpenTab={(type, id, title) => {
                                                         if (type === "channel") {
@@ -1038,7 +909,7 @@ function VisionDetailPageContent() {
                                                 />
                                             ) : (
                                                 <div className="text-xs text-muted-foreground/60 px-3">
-                                                    {channels === undefined ? 'Loading channels...' : 'No channels yet'}
+                                                    No channels yet
                                                 </div>
                                             )}
                                         </div>
@@ -1057,13 +928,17 @@ function VisionDetailPageContent() {
                             }}
                         >
                             <div className="flex-1 space-y-2 overflow-hidden">
-                                <TitleCard
-                                    OpenSettings={(id) => {
-                                        openTab(ViewMode.SETTINGS, id, ViewMode.SETTINGS);
-                                    }}
-                                    isLoading={isLoading}
-                                    vision={vision}
-                                />
+                                {isVisionLoading ? (
+                                    <VisionTitleSkeleton />
+                                ) : (
+                                    <TitleCard
+                                        OpenSettings={(id) => {
+                                            openTab(ViewMode.SETTINGS, id, ViewMode.SETTINGS);
+                                        }}
+                                        isLoading={isVisionLoading}
+                                        vision={vision}
+                                    />
+                                )}
 
                                 <>
                                     <hr />
@@ -1073,6 +948,7 @@ function VisionDetailPageContent() {
                                                 variant={"outline"}
                                                 className="text-xs text-muted-foreground flex items-center gap-1"
                                                 onClick={handleCreateChannel}
+                                                disabled={isChannelsLoading}
                                             >
                                                 <TableProperties size={15} /> New channel
                                             </Button>
@@ -1084,10 +960,12 @@ function VisionDetailPageContent() {
                                                 <ChevronsDownUp />
                                             </Button>
                                         </div>
-                                        {optimisticChannels && optimisticChannels.length > 0 ? (
+                                        {isChannelsLoading ? (
+                                            <DraggableSidebarSkeleton />
+                                        ) : channels && channels.length > 0 ? (
                                             <DraggableSidebar
-                                                channels={optimisticChannels}
-                                                framesByChannel={optimisticFrames}
+                                                channels={channels}
+                                                framesByChannel={framesByChannel}
                                                 openChannels={openChannels}
                                                 selectedTabId={selectedTab?.id}
                                                 editingChannel={editingChannel}
@@ -1095,9 +973,9 @@ function VisionDetailPageContent() {
                                                 editingFrame={editingFrame}
                                                 editingFrameName={editingFrameName}
                                                 onChannelReorder={handleChannelReorder}
-                                                onChannelReorderEnd={syncChannelOrder}
+                                                onChannelReorderEnd={handleChannelReorder}
                                                 onFrameReorder={handleFrameReorder}
-                                                onFrameReorderEnd={syncFrameOrder}
+                                                onFrameReorderEnd={handleFrameReorder}
                                                 onToggleChannel={toggleChannel}
                                                 onOpenTab={(type, id, title) => {
                                                     if (type === "channel") {
@@ -1118,7 +996,7 @@ function VisionDetailPageContent() {
                                             />
                                         ) : (
                                             <div className="text-xs text-muted-foreground/60 px-3">
-                                                {channels === undefined ? 'Loading channels...' : 'No channels yet'}
+                                                No channels yet
                                             </div>
                                         )}
                                     </div>
@@ -1222,7 +1100,7 @@ function VisionDetailPageContent() {
                                 </div>
 
                                 <div className="flex-1 min-h-0">
-                                    <RightSidebarContent
+                                    <LeftSidebarContent
                                         ref={rightSidebarContentRef}
                                         visionId={visionId}
                                         onChannelNavigate={handleChannelNavigate}
@@ -1254,7 +1132,7 @@ function VisionDetailPageContent() {
                             </div>
 
                             <div className="flex-1 min-h-0">
-                                <RightSidebarContent
+                                <LeftSidebarContent
                                     ref={rightSidebarContentRef}
                                     visionId={visionId}
                                     onChannelNavigate={handleChannelNavigate}

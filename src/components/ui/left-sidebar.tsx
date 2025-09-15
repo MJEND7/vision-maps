@@ -11,17 +11,17 @@ import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 
-interface RightSidebarContentProps {
+interface LeftSidebarContentProps {
     visionId: string;
     onChannelNavigate?: (channelId: string, nodeId?: string) => void;
 }
 
-export interface RightSidebarContentRef {
+export interface LeftSidebarContentRef {
     openChat: (chatId: string) => void;
 }
 
-export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSidebarContentProps>(
-    function RightSidebarContent({ visionId, onChannelNavigate }, ref) {
+export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarContentProps>(
+    function LeftSidebarContent({ visionId, onChannelNavigate }, ref) {
         const [selectedTab, setSelectedTab] = useState("ai");
         const [selectedChatId, setSelectedChatId] = useState<string>();
         const [drivenMessageIds, setDrivenMessageIds] = useState(new Set<string>());
@@ -76,19 +76,6 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
         return (
             <div className="h-full flex flex-col">
                 <Tabs defaultValue="ai" value={selectedTab} onValueChange={setSelectedTab} className="h-full flex flex-col">
-                    {/* TODO 
-                         <TabsList className="shrink-0 grid w-full grid-cols-2">
-                             <TabsTrigger value="ai" className="flex items-center gap-2">
-                                 <Bot className="w-4 h-4" />
-                                 <span>AI</span>
-                             </TabsTrigger>
-                             <TabsTrigger value="comments" className="flex items-center gap-2">
-                                 <MessageSquare className="w-4 h-4" />
-                                 <span>Comments</span>
-                             </TabsTrigger>
-                         </TabsList>
-                     */}
-
                     <TabsContent value="ai" className="flex-1 flex flex-col mt-0 min-h-0">
                         {!selectedChatId ? (
                             <ImprovedChatList
@@ -141,7 +128,6 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
                         </motion.div>
                     </TabsContent>
                 </Tabs>
-
             </div>
         );
     });
