@@ -544,4 +544,27 @@ export const createTextNodeFromMessage = mutation({
     },
 });
 
+const checkChatNodeOnFrameArgs = v.object({
+    chatId: v.id("chats"),
+});
+
+export const checkChatNodeOnFrame = query({
+    args: checkChatNodeOnFrameArgs,
+    handler: async (ctx, args) => {
+        // Get the chat to find the linked AI node
+        const chat = await ctx.db.get(args.chatId);
+        if (!chat || !chat.nodeId) {
+            return false;
+        }
+
+        // Check if the AI node is placed on any frame (check framed_node table)
+        const framedAiNode = await ctx.db
+            .query("framed_node")
+            .filter((q) => q.eq(q.field("node.data"), chat.nodeId))
+            .first();
+
+        return !!framedAiNode;
+    },
+});
+
 export type CreateTextNodeFromMessageArgs = Infer<typeof createTextNodeFromMessageArgs>;

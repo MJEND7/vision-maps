@@ -7,7 +7,7 @@ import {
 } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Search, Filter, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -25,9 +25,12 @@ import {
 } from "@/components/ui/popover";
 import { MultiUserSelector } from "@/components/ui/multi-user-selector";
 import { useNodeUserCache } from "@/hooks/useUserCache";
+import { useNodeStore } from "@/hooks/useNodeStore";
+import { NodeWithFrame } from "../../../convex/channels";
 import PasteBin from "../channel/paste-bin";
 import { CreateNodeArgs } from "../../../convex/nodes";
 import { NODE_VARIANTS } from "@/lib/constants";
+import { useMetadataCache } from "../../utils/ogMetadata";
 import ChannelNode from "../channel/node";
 import {
     ChannelSkeleton,
@@ -83,6 +86,8 @@ export default function Channel({
     const titleRef = useRef<HTMLInputElement>(null);
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    
+    const { cacheMetadataForUrl } = useMetadataCache();
 
     // Mobile detection
     useEffect(() => {
@@ -95,18 +100,22 @@ export default function Channel({
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // Debounce search query
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(searchQuery);
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
-
     const createNode = useMutation(api.nodes.create);
     const updateChannel = useMutation(api.channels.update);
     const deleteNode = useMutation(api.nodes.remove);
     const updateChatNodeId = useMutation(api.chats.updateChatNodeId);
+    
+    // Memoize callback functions to prevent unnecessary re-renders
+    const showDeleteConfirmation = useCallback((node: any) => {
+        setNodeToDelete(node);
+        setShowDeleteDialog(true);
+        setShowMobileDrawer(false);
+    }, []);
+
+    const showMobileDrawerForNode = useCallback((node: any) => {
+        setNodeToDelete(node);
+        setShowMobileDrawer(true);
+    }, []);
     const channel = useQuery(api.channels.get, {
         id: channelId as Id<"channels">,
     });
@@ -115,6 +124,36 @@ export default function Channel({
 
     // Get the getUserForNode function from the node user cache hook
     const { getUserForNode, prefetchUsers } = useNodeUserCache();
+
+    // Local store for optimistic updates
+    const {
+        nodesByChannel,
+        loading,
+        hasMore,
+        addNewNode,
+        removeNode,
+        syncWithServerData,
+        setLoading,
+        setHasMore,
+        clearChannel,
+    } = useNodeStore();
+
+    // Debounce search query
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Clear local store when filters change to force re-fetch
+    useEffect(() => {
+        clearChannel(channelId);
+    }, [debouncedSearch, selectedVariant, selectedUsers, sortBy, channelId, clearChannel]);
+
+    const storedNodes = useMemo(() => nodesByChannel[channelId] || [], [nodesByChannel, channelId]);
+    const isLoadingNodes = loading[channelId] || false;
+    const isDone = !hasMore[channelId];
 
     useEffect(() => {
         if (channel?.title) {
@@ -126,10 +165,11 @@ export default function Channel({
         }
     }, [channel?.title, channel?.description]);
 
+    // Use regular query to sync with server data
     const {
-        results: storedNodes,
+        results: serverNodes,
         status,
-        loadMore,
+        loadMore: loadMoreFromServer,
     } = usePaginatedQuery(
         api.nodes.listByChannel,
         {
@@ -146,9 +186,19 @@ export default function Channel({
         { initialNumItems: 10 }
     );
 
-    const isDone = status == "Exhausted";
-    const isLoadingNodes =
-        status == "LoadingMore" || status == "LoadingFirstPage";
+    // Sync server data with local store
+    useEffect(() => {
+        if (serverNodes && serverNodes.length > 0) {
+            syncWithServerData(channelId, serverNodes);
+        }
+        setHasMore(channelId, status !== "Exhausted");
+        setLoading(channelId, status === "LoadingMore" || status === "LoadingFirstPage");
+    }, [serverNodes, status, channelId, syncWithServerData, setHasMore, setLoading]);
+
+    const loadMore = () => {
+        setLoading(channelId, true);
+        loadMoreFromServer(10);
+    };
 
     // Pre-fetch unique users from nodes when data changes
     useEffect(() => {
@@ -208,49 +258,86 @@ export default function Channel({
         }
     };
 
+
     const handleNodeCreation = async (
         data: Omit<CreateNodeArgs, "channel">
     ) => {
-        const nodeId = await createNode({ ...data, channel: channelId as Id<"channels"> });
-        
-        // If this is an AI node and the value looks like a chatId, update the chat to link to this node
-        if (data.variant === "AI" && data.value) {
-            try {
-                await updateChatNodeId({
-                    chatId: data.value as Id<"chats">,
-                    nodeId: nodeId,
-                });
-            } catch (error) {
-                console.error("Failed to link chat to node:", error);
-            }
+        // Cache OG metadata for URLs
+        if (data.value) {
+            await cacheMetadataForUrl(data.value);
         }
 
-        setSortBy("latest");
-        requestAnimationFrame(() => {
-            if (scrollContainerRef.current) {
-                scrollContainerRef.current.scrollTo({
-                    top: scrollContainerRef.current.scrollHeight,
-                    behavior: "smooth",
-                });
+        // Optimistic update: create a temporary node with predicted ID
+        const tempNodeId = `temp_${Date.now()}` as Id<"nodes">;
+        const tempNode: NodeWithFrame = {
+            _id: tempNodeId,
+            _creationTime: Date.now(),
+            title: data.title,
+            variant: data.variant,
+            value: data.value,
+            thought: data.thought,
+            frame: data.frameId,
+            channel: channelId as Id<"channels">,
+            vision: channel?.vision,
+            userId: "" as Id<"users">, // This will be filled by server
+            updatedAt: new Date().toISOString(),
+            frameTitle: null,
+        };
+
+        // Add optimistically to local store
+        addNewNode(channelId, tempNode);
+
+        try {
+            const nodeId = await createNode({ ...data, channel: channelId as Id<"channels"> });
+            
+            // Remove temp node and wait for server sync to add real node
+            removeNode(channelId, tempNodeId);
+            
+            // If this is an AI node and the value looks like a chatId, update the chat to link to this node
+            if (data.variant === "AI" && data.value) {
+                try {
+                    await updateChatNodeId({
+                        chatId: data.value as Id<"chats">,
+                        nodeId: nodeId,
+                    });
+                } catch (error) {
+                    console.error("Failed to link chat to node:", error);
+                }
             }
-        });
+
+            setSortBy("latest");
+            requestAnimationFrame(() => {
+                if (scrollContainerRef.current) {
+                    scrollContainerRef.current.scrollTo({
+                        top: scrollContainerRef.current.scrollHeight,
+                        behavior: "smooth",
+                    });
+                }
+            });
+        } catch (error) {
+            // Remove optimistic update on error
+            removeNode(channelId, tempNodeId);
+            console.error("Failed to create node:", error);
+        }
     };
 
-    // Delete dialog functions
-    const showDeleteConfirmation = (node: any) => {
-        setNodeToDelete(node);
-        setShowDeleteDialog(true);
-        setShowMobileDrawer(false);
-    };
 
     const confirmDelete = async () => {
         if (!nodeToDelete) return;
         setIsDeleting(true);
+        
+        // Optimistic update: remove from local store immediately
+        const nodeId = nodeToDelete._id as Id<"nodes">;
+        const nodeBackup = nodeToDelete; // Keep backup for rollback
+        removeNode(channelId, nodeId);
+        
         try {
-            await deleteNode({ id: nodeToDelete._id as Id<"nodes"> });
+            await deleteNode({ id: nodeId });
             setShowDeleteDialog(false);
             setNodeToDelete(null);
         } catch (error) {
+            // Rollback: re-add the node on error
+            addNewNode(channelId, nodeBackup);
             console.error('Failed to delete node:', error);
         } finally {
             setIsDeleting(false);
@@ -263,11 +350,6 @@ export default function Channel({
         setIsDeleting(false);
     };
 
-    // Mobile drawer functions
-    const showMobileDrawerForNode = (node: any) => {
-        setNodeToDelete(node);
-        setShowMobileDrawer(true);
-    };
 
     const hideMobileDrawer = () => {
         setShowMobileDrawer(false);
@@ -555,7 +637,7 @@ export default function Channel({
                 >
                     <InfiniteScroll
                         dataLength={storedNodes.length}
-                        next={() => loadMore(10)}
+                        next={() => loadMore()}
                         className={cn(
                             "flex scroll-smooth",
                             sortBy === "latest" ? "flex-col-reverse" : "flex-col",

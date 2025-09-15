@@ -130,25 +130,27 @@ function ChatWidget({ chat, isSelected, onSelect, onChannelNavigate, onDelete, o
                         </div>
                     ) : (
                         <div className="flex items-center gap-2">
-                            <h4 className="font-medium text-sm truncate flex-1 flex items-center gap-1.5">
-                                {chat.title}
+                            <div className="max-w-[280px] flex gap-2 items-center">
+                                <h4 className="w-full font-medium text-sm truncate">
+                                    {chat.title}
+                                </h4>
                                 {chat.nodeId && (
                                     <Brain className="w-3 h-3 text-blue-500" aria-label="Linked to AI node in channel" />
                                 )}
-                            </h4>
-                            <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={handleStartEdit}
-                                title="Edit title"
-                            >
-                                <Edit2 className="w-3 h-3" />
-                            </Button>
+                            </div>
                         </div>
                     )}
                 </div>
-                
+
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={handleStartEdit}
+                    title="Edit title"
+                >
+                    <Edit2 className="w-3 h-3" />
+                </Button>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button

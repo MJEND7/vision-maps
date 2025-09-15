@@ -15,12 +15,14 @@ import {
     DefaultEdgeOptions,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useMemo } from "react";
+import debounce from "lodash.debounce";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import PasteBin from "../channel/paste-bin";
 import { CreateNodeArgs } from "../../../convex/nodes";
+import { useMetadataCache } from "../../utils/ogMetadata";
 import { useMovementQueue } from "../../hooks/useMovementQueue";
 import nodeTypes from "./nodes";
 import { CanvasContextMenu } from "./canvas-context-menu";
@@ -101,18 +103,19 @@ export default function FrameComponent({
     const { openChat } = useSidebar();
     const [isDark, setIsDark] = useState(false);
     const [getViewportCenter, setGetViewportCenter] = useState<(() => { x: number; y: number }) | null>(null);
+    const { cacheMetadataForUrl } = useMetadataCache();
     const [convertScreenToFlowPosition, setConvertScreenToFlowPosition] = useState<((x: number, y: number) => { x: number; y: number }) | null>(null);
     const [rightClickPosition, setRightClickPosition] = useState<{ x: number; y: number } | null>(null);
 
-    // Dynamic edge styling
-    const defaultEdgeOptions: DefaultEdgeOptions = {
+    // Dynamic edge styling - memoized to prevent unnecessary re-renders
+    const defaultEdgeOptions: DefaultEdgeOptions = useMemo(() => ({
         animated: true,
         style: {
             stroke: isDark ? "#e5e5e5" : "#b1b1b7",
             strokeWidth: 2,
         },
         markerEnd: { type: 'arrow', color: isDark ? "#e5e5e5" : "#b1b1b7" },
-    };
+    }), [isDark]);
 
     // Detect dark mode from Tailwind
     useEffect(() => {
@@ -240,12 +243,20 @@ export default function FrameComponent({
         [handleNodesChange]
     );
 
-    const onSelectionChange = useCallback(
-        ({ nodes: selectedNodes, edges: selectedEdges }: { nodes: Node[]; edges: Edge[] }) => {
-            setSelectedNodes(selectedNodes.map((node) => node.id));
-            setSelectedEdges(selectedEdges.map((edge) => edge.id));
-        },
+    // Debounce selection changes to prevent excessive re-renders
+    const debouncedSelectionChange = useMemo(
+        () => debounce(({ nodes, edges }: { nodes: Node[]; edges: Edge[] }) => {
+            setSelectedNodes(nodes.map((node) => node.id));
+            setSelectedEdges(edges.map((edge) => edge.id));
+        }, 16), // ~60fps
         []
+    );
+
+    const onSelectionChange = useCallback(
+        (selection: { nodes: Node[]; edges: Edge[] }) => {
+            debouncedSelectionChange(selection);
+        },
+        [debouncedSelectionChange]
     );
 
     const onEdgesChange = useCallback(
@@ -380,8 +391,14 @@ export default function FrameComponent({
         };
     }, [selectedNodes.length]);
 
-    const handleNodeCreation = async (data: Omit<CreateNodeArgs, "channel">) => {
+
+    const handleNodeCreation = useCallback(async (data: Omit<CreateNodeArgs, "channel">) => {
         if (!frame) throw new Error("Failed to get a frame");
+        
+        // Cache OG metadata for URLs
+        if (data.value) {
+            await cacheMetadataForUrl(data.value);
+        }
         
         // Use viewport center if available, otherwise fallback to reasonable center
         let centerX, centerY;
@@ -420,7 +437,7 @@ export default function FrameComponent({
                 console.error("Failed to link chat to node:", error);
             }
         }
-    };
+    }, [frame, cacheMetadataForUrl, getViewportCenter, createNode, updateChatNodeId]);
 
     if (!framedNodes || !edges || !frame) {
         return (

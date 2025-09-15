@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
@@ -112,7 +112,7 @@ interface Media {
     chatId?: string;
 }
 
-export default function PasteBin({ onCreateNode, channelId, visionId }: { 
+function PasteBin({ onCreateNode, channelId, visionId }: { 
     onCreateNode: (data: Omit<CreateNodeArgs, "channel">) => void,
     channelId: string,
     visionId: string
@@ -144,6 +144,16 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
     
     // Use the reusable OG metadata hook
     const { fetchWithCache } = useOGMetadataWithCache();
+
+    // Memoize animation values to prevent unnecessary re-renders
+    const animationValues = useMemo(() => ({
+        containerWidth: mode !== PasteBinMode.IDLE || isDragOver ? "100%" : "10rem",
+        containerHeight: mode === PasteBinMode.AI ? "400px" :
+            mode !== PasteBinMode.IDLE ? "auto" :
+                isDragOver ? "8rem" : "2rem",
+        containerPadding: mode !== PasteBinMode.IDLE || isDragOver ? "0px" : "4px",
+        inputHeight: mode !== PasteBinMode.IDLE ? "120px" : "44px"
+    }), [mode, isDragOver]);
 
     // Helper function to convert Media to LinkMetadata for card components
     const mediaToLinkMetadata = useCallback((media: Media): LinkMetadata => {
@@ -297,40 +307,38 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
     // Focus textarea when text mode is activated
     useEffect(() => {
         if ((mode === PasteBinMode.TEXT || mode === PasteBinMode.AI) && textareaRef.current) {
-            // Small delay to ensure the component has rendered
-            setTimeout(() => {
+            // Use requestAnimationFrame instead of setTimeout for better performance
+            const focusTimeout = requestAnimationFrame(() => {
                 textareaRef.current?.focus();
-            }, 100);
+            });
+            return () => cancelAnimationFrame(focusTimeout);
         }
     }, [mode]);
 
-    // Reset to original state if input is empty for 3 seconds
+    // Reset to original state if input is empty for 3 seconds - debounced
     useEffect(() => {
-        if (mode === PasteBinMode.TEXT && !media) {
+        if (mode === PasteBinMode.TEXT && !media && !textContent.trim()) {
             // Clear existing timer
             if (emptyResetTimerRef.current) {
                 clearTimeout(emptyResetTimerRef.current);
             }
 
-            // If textContent is empty, start the 3-second timer
-            if (!textContent.trim()) {
-                emptyResetTimerRef.current = setTimeout(() => {
-                    setMode(PasteBinMode.IDLE);
-                    setIsTextMode(false);
-                    setTextContent("");
-                    pasteBinStorage.save.textContent("");
-                }, 1500);
-            }
-        }
+            // Only start timer if we're in text mode with empty content
+            emptyResetTimerRef.current = setTimeout(() => {
+                setMode(PasteBinMode.IDLE);
+                setIsTextMode(false);
+                setTextContent("");
+                pasteBinStorage.save.textContent("");
+            }, 1500);
 
-        // Cleanup timer if conditions change
-        return () => {
-            if (emptyResetTimerRef.current) {
-                clearTimeout(emptyResetTimerRef.current);
-                emptyResetTimerRef.current = null;
-            }
-        };
-    }, [mode, media, textContent, actions]);
+            return () => {
+                if (emptyResetTimerRef.current) {
+                    clearTimeout(emptyResetTimerRef.current);
+                    emptyResetTimerRef.current = null;
+                }
+            };
+        }
+    }, [mode, media, textContent]);
 
     const updateMedia = useCallback((mediaItem: Media | null) => {
         setMedia(mediaItem);
@@ -475,6 +483,7 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
                     url: url || ""
                 };
             } catch (urlError) {
+                console.error(urlError)
                 return {
                     type: fallbackType,
                     title: 'Invalid URL',
@@ -551,9 +560,7 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
         const files = Array.from(clipboardData.files);
         
         // Try multiple ways to get text data
-        let text = clipboardData.getData("text/plain") || clipboardData.getData("text") || clipboardData.getData("text/uri-list");
-
-        console.log('Paste event - text:', text, 'type:', typeof text, 'length:', text?.length);
+        const text = clipboardData.getData("text/plain") || clipboardData.getData("text") || clipboardData.getData("text/uri-list");
 
         if (files.length > 0) {
             handleFileSelect(files[0]);
@@ -812,30 +819,26 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
             <div className="relative">
                 {/* Floating helper / metadata container */}
                 <motion.div
-                    className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 will-change-transform  "
+                    className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 will-change-transform"
                     animate={{
-                        width: mode !== PasteBinMode.IDLE || isDragOver ? "100%" : "10rem",
+                        width: animationValues.containerWidth,
                     }}
                     transition={{
-                        type: "spring",
-                        stiffness: 300,
-                        damping: 35,
-                        mass: 0.9,
+                        type: "tween",
+                        duration: 0.2,
+                        ease: "easeOut"
                     }}
                 >
                     <motion.div
                         className="w-full overflow-hidden rounded-2xl shadow-md border border-accent bg-background"
                         animate={{
-                            height: mode === PasteBinMode.AI ? "400px" :
-                                mode !== PasteBinMode.IDLE ? "auto" :
-                                    isDragOver ? "8rem" : "2rem",
-                            padding: mode !== PasteBinMode.IDLE || isDragOver ? "0px" : "4px",
+                            height: animationValues.containerHeight,
+                            padding: animationValues.containerPadding,
                         }}
                         transition={{
-                            type: "spring",
-                            stiffness: 280,
-                            damping: 30,
-                            mass: 1.0,
+                            type: "tween",
+                            duration: 0.15,
+                            ease: "easeOut"
                         }}
                     >
                         <div className="relative flex flex-col items-center justify-center">
@@ -858,47 +861,27 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
                                 {mode === PasteBinMode.TEXT && (
                                     <motion.div
                                         key="text-mode"
-                                        className="w-full overflow-hidden"
+                                        className="w-full overflow-hidden p-4 flex justify-center"
                                         initial={{ height: 0, opacity: 0 }}
                                         animate={{ height: "auto", opacity: 1 }}
                                         exit={{ height: 0, opacity: 0 }}
                                         transition={{
-                                            type: "spring",
-                                            stiffness: 280,
-                                            damping: 30,
-                                            mass: 1.0,
+                                            type: "tween",
+                                            duration: 0.15,
+                                            ease: "easeOut"
                                         }}
                                     >
-                                        <motion.div
-                                            className="p-4 flex justify-center"
-                                            initial={{ y: 20, scale: 0.95 }}
-                                            animate={{ y: 0, scale: 1 }}
-                                            transition={{
-                                                type: "spring",
-                                                stiffness: 300,
-                                                damping: 25,
-                                                delay: 0.1
-                                            }}
-                                        >
-                                            <div className="w-full text-center">
-                                                <div className="flex flex-col items-center gap-1 text-gray-500">
-                                                    <motion.div
-                                                        initial={{ x: 40, opacity: 0 }}
-                                                        animate={{ x: 0, opacity: 1 }}
-                                                        exit={{ x: 40, opacity: 0 }}
-                                                        transition={{ delay: 0.08 }}
-                                                    >
-                                                        <Button
-                                                            size="sm"
-                                                            onClick={handleToggleAiMode}
-                                                            className="px-3 py-2 text-xs rounded-lg bg-primary group hover:bg-primary/90 text-primary-foreground disabled:opacity-50 transition-all duration-200"
-                                                        >
-                                                            <Brain className="dark:group-hover:text-blue-500 group-hover:text-purple-400" size={14} /> Start a Prompt
-                                                        </Button>
-                                                    </motion.div>
-                                                </div>
+                                        <div className="w-full text-center">
+                                            <div className="flex flex-col items-center gap-1 text-gray-500">
+                                                <Button
+                                                    size="sm"
+                                                    onClick={handleToggleAiMode}
+                                                    className="px-3 py-2 text-xs rounded-lg bg-primary group hover:bg-primary/90 text-primary-foreground disabled:opacity-50 transition-all duration-200"
+                                                >
+                                                    <Brain className="dark:group-hover:text-blue-500 group-hover:text-purple-400" size={14} /> Start a Prompt
+                                                </Button>
                                             </div>
-                                        </motion.div>
+                                        </div>
                                     </motion.div>
                                 )}
 
@@ -1109,13 +1092,12 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
                 <motion.div
                     className="relative"
                     animate={{
-                        height: mode !== PasteBinMode.IDLE ? "120px" : "44px"
+                        height: animationValues.inputHeight
                     }}
                     transition={{
-                        type: "spring",
-                        stiffness: 300,
-                        damping: 30,
-                        mass: 0.8
+                        type: "tween",
+                        duration: 0.2,
+                        ease: "easeOut"
                     }}
                 >
                     <Input
@@ -1248,3 +1230,5 @@ export default function PasteBin({ onCreateNode, channelId, visionId }: {
         </div>
     );
 }
+
+export default memo(PasteBin);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import ogs from 'open-graph-scraper';
+import { getTweet } from 'react-tweet/api';
 
 // Define types for the metadata extraction
 interface BaseMetadata {
@@ -46,6 +47,7 @@ interface TwitterMetadata extends BaseMetadata {
   replies?: number;
   twitterType?: "tweet" | "profile" | "media";
   tweetId?: string;
+  tweetText?: string;
 }
 
 interface FigmaMetadata extends BaseMetadata {
@@ -125,7 +127,7 @@ function extractYouTubeMetadata(result: any, baseMetadata: BaseMetadata): YouTub
   };
 }
 
-function extractTwitterMetadata(result: any, baseMetadata: BaseMetadata, url: string): TwitterMetadata {
+async function extractTwitterMetadata(result: any, baseMetadata: BaseMetadata, url: string): Promise<TwitterMetadata> {
   const jsonLD = result.jsonLD?.[0] || {};
   const usernameMatch = url.match(/(?:twitter\.com|x\.com)\/([^\/\?]+)/);
   const tweetIdMatch = url.match(/\/status\/(\d+)/);
@@ -134,6 +136,29 @@ function extractTwitterMetadata(result: any, baseMetadata: BaseMetadata, url: st
   let twitterType: "tweet" | "profile" | "media" = 'profile';
   if (url.includes('/status/')) twitterType = 'tweet';
   if (url.includes('/media') || url.includes('photo/')) twitterType = 'media';
+  
+  // Extract tweet text if we have a tweet ID
+  let tweetText: string | undefined;
+  if (tweetIdMatch?.[1]) {
+    console.log('Found tweet ID:', tweetIdMatch[1], 'attempting to fetch tweet text');
+    try {
+      const tweet = await getTweet(tweetIdMatch[1]);
+      console.log('Tweet fetched:', tweet ? 'success' : 'null');
+      if (tweet?.text) {
+        tweetText = tweet.text;
+        console.log('Tweet text extracted:', tweetText.substring(0, 100) + '...');
+      } else {
+        console.log('No tweet text found in response');
+      }
+    } catch (error) {
+      console.error('Failed to fetch tweet text:', error);
+      // Try to extract from OG description as fallback
+      tweetText = baseMetadata.description || undefined;
+      console.log('Using fallback description as tweet text:', tweetText);
+    }
+  } else {
+    console.log('No tweet ID found in URL:', url);
+  }
   
   return {
     ...baseMetadata,
@@ -150,6 +175,7 @@ function extractTwitterMetadata(result: any, baseMetadata: BaseMetadata, url: st
       stat.interactionType?.includes('CommentAction'))?.userInteractionCount || undefined,
     twitterType,
     tweetId: tweetIdMatch?.[1] || undefined,
+    tweetText,
   };
 }
 
@@ -175,7 +201,7 @@ function extractNotionMetadata(result: any, baseMetadata: BaseMetadata): NotionM
   };
 }
 
-function extractPlatformSpecificMetadata(result: any, url: string, platformType: string): PlatformMetadata {
+async function extractPlatformSpecificMetadata(result: any, url: string, platformType: string): Promise<PlatformMetadata> {
   const baseMetadata = extractBaseMetadata(result, url);
   
   switch (platformType) {
@@ -186,7 +212,7 @@ function extractPlatformSpecificMetadata(result: any, url: string, platformType:
       return extractYouTubeMetadata(result, baseMetadata);
       
     case 'twitter':
-      return extractTwitterMetadata(result, baseMetadata, url);
+      return await extractTwitterMetadata(result, baseMetadata, url);
       
     case 'figma':
       return extractFigmaMetadata(result, baseMetadata);
@@ -238,6 +264,7 @@ export async function POST(request: NextRequest) {
     }
 
     const platformType = detectPlatformType(url);
+    console.log('OG API processing URL:', url, 'detected platform:', platformType);
 
     const options = {
       url,
@@ -267,8 +294,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract platform-specific metadata using switch statement
-    const metadata = extractPlatformSpecificMetadata(result, url, platformType);
-
+    const metadata = await extractPlatformSpecificMetadata(result, url, platformType);
+    
     return NextResponse.json({ 
       success: true, 
       metadata,

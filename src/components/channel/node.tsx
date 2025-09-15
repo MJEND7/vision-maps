@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, memo, useMemo } from "react";
 import { NodeUser } from "@/hooks/useUserCache";
 import { NodeWithFrame } from "../../../convex/channels";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -14,7 +14,7 @@ import { Badge } from "../ui/badge";
 import { renderNodeContent } from "../vision/nodes/NodeContentRenderer";
 
 
-export default function ChannelNode({
+function ChannelNode({
     node,
     nodeUser,
     onOpenChat,
@@ -39,17 +39,22 @@ export default function ChannelNode({
 
     const updateNode = useMutation(api.nodes.update);
 
-    // Find duplicate nodes for reference detection
-    const duplicateNodes = useQuery(
-        api.nodes.findDuplicateNodes,
-        node.vision && node.variant === NodeVariants.Text
+    // Memoize query parameters to prevent unnecessary queries
+    const duplicateQueryParams = useMemo(() => {
+        return node.vision && node.variant === NodeVariants.Text
             ? {
                 visionId: node.vision,
                 value: node.value,
                 variant: node.variant,
                 excludeNodeId: node._id as Id<"nodes">,
             }
-            : "skip"
+            : "skip";
+    }, [node.vision, node.variant, node.value, node._id]);
+
+    // Find duplicate nodes for reference detection
+    const duplicateNodes = useQuery(
+        api.nodes.findDuplicateNodes,
+        duplicateQueryParams
     );
 
     const isReference = duplicateNodes && duplicateNodes.length > 0;
@@ -124,36 +129,6 @@ export default function ChannelNode({
         }
     };
 
-    // Show loading state if user data isn't available yet
-    if (!nodeUser) {
-        return (
-            <div key={node._id} className="flex items-start gap-3">
-                <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse" />
-                <div className="space-y-2 flex-1">
-                    <span className="flex items-center gap-3">
-                        <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
-                        <div className="text-right text-xs text-muted-foreground/70">
-                            {timeSinceFromDateString(new Date(node._creationTime))}
-                        </div>
-                    </span>
-                    <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                            <h3 className="font-medium">{node.title}</h3>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                {node.thought || "No description"}
-                            </p>
-                            {node.frameTitle && (
-                                <p className="text-xs text-blue-600 mt-1">
-                                    Frame: {node.frameTitle}
-                                </p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )
-    }
-
     return (
         <>
             <div
@@ -166,16 +141,24 @@ export default function ChannelNode({
                 onTouchEnd={handleTouchEnd}
                 onTouchMove={handleTouchMove}
             >
-                <Avatar className="h-8 w-8">
-                    <AvatarImage src={nodeUser.profileImage} alt={nodeUser.name} />
-                    <AvatarFallback className="text-xs">
-                        {nodeUser.name.split(" ").map(n => n[0]).join("").toUpperCase()}
-                    </AvatarFallback>
-                </Avatar>
+                {!nodeUser ? (
+                    <div className="p-4 bg-gray-200 rounded-full animate-pulse" />
+                ) : (
+                    <Avatar className="h-8 w-8">
+                        <AvatarImage src={nodeUser.profileImage} alt={nodeUser.name} />
+                        <AvatarFallback className="text-xs">
+                            {nodeUser.name.split(" ").map(n => n[0]).join("").toUpperCase()}
+                        </AvatarFallback>
+                    </Avatar>
+                )}
                 <div className="">
                     <span className="flex justify-between items-center gap-3">
                         <div className="flex items-center gap-2">
-                            <span className="font-semibold">{nodeUser.name}</span>
+                            {!nodeUser ? (
+                                <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+                            ) : (
+                                <span className="font-semibold">{nodeUser.name}</span>
+                            )}
                             {isReference && originalNode && (
                                 <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                                     <PopoverTrigger asChild>
@@ -314,7 +297,8 @@ export default function ChannelNode({
                     </div>
                 </div >
             </div >
-
         </>
     )
 }
+
+export default memo(ChannelNode);

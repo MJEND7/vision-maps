@@ -259,16 +259,69 @@ export const streamChat = httpAction(async (ctx, request) => {
                 Please make sure you state the title of the node when you use it.`;
             }
 
+            // Collect images and files from connected nodes for OpenAI vision/file support
+            const mediaContent: any[] = [];
+            
+            nodeContext.connectedNodes.forEach((node: any) => {
+                // Handle Image nodes directly
+                if (node.type === "Image") {
+                    mediaContent.push({
+                        type: "image_url",
+                        image_url: {
+                            url: node.value,
+                            detail: "auto"
+                        }
+                    });
+                }
+                
+                // Handle media nodes with image metadata (thumbnails, etc.)
+                if (node.ogMetadata?.image && 
+                    (node.type === "YouTube" || node.type === "Link" || node.type === "Video")) {
+                    mediaContent.push({
+                        type: "image_url",
+                        image_url: {
+                            url: node.ogMetadata.image,
+                            detail: "auto"
+                        }
+                    });
+                }
+            });
+
+            // Build messages array with media content if available
+            const messages: any[] = [
+                {
+                    role: "system",
+                    content: systemContent,
+                },
+                ...history
+            ];
+
+            // If we have media content, add it to the last user message or create a new one
+            if (mediaContent.length > 0) {
+                const lastMessage = messages[messages.length - 1];
+                if (lastMessage?.role === "user") {
+                    // Convert string content to array format and add media
+                    const content = [
+                        { type: "text", text: lastMessage.content },
+                        ...mediaContent
+                    ];
+                    lastMessage.content = content;
+                } else {
+                    // Add a new message with just media content
+                    messages.push({
+                        role: "user",
+                        content: [
+                            { type: "text", text: "Please analyze the connected media content:" },
+                            ...mediaContent
+                        ]
+                    });
+                }
+            }
+
             // Lets kickoff a stream request to OpenAI
             const stream = await openai.chat.completions.create({
                 model: "gpt-4.1-mini",
-                messages: [
-                    {
-                        role: "system",
-                        content: systemContent,
-                    },
-                    ...history,
-                ],
+                messages,
                 stream: true,
             });
 
@@ -365,11 +418,11 @@ export const getConnectedNodeContext = internalQuery({
             })
         );
 
-        // Filter for Text, Link, and YouTube nodes, and ensure they have valid data
+        // Filter for Text and media nodes (all nodes except AI), and ensure they have valid data
         const relevantNodes = connectedNodeData
             .filter(({ nodeData }) =>
                 nodeData &&
-                (nodeData.variant === "Text" || nodeData.variant === "Link" || nodeData.variant === "YouTube") &&
+                nodeData.variant !== "AI" &&
                 nodeData.value &&
                 nodeData.value.trim().length > 0
             )
@@ -377,22 +430,102 @@ export const getConnectedNodeContext = internalQuery({
                 id: framedNode.node.id,
                 type: nodeData!.variant,
                 title: nodeData!.title || `${nodeData!.variant} Node`,
-                value: nodeData!.value
+                value: nodeData!.value,
+                thought: nodeData!.thought
             }));
 
-        // Create context text from connected nodes
+        // Fetch OG metadata for media nodes (exclude Text nodes)
+        const mediaNodesWithMetadata = await Promise.all(
+            relevantNodes
+                .filter(node => node.type !== "Text")
+                .map(async (node) => {
+                    try {
+                        const ogData = await ctx.db
+                            .query("og_metadata")
+                            .withIndex("by_url", (q) => q.eq("url", node.value))
+                            .first();
+
+                        // Check if expired (30 days)
+                        if (ogData) {
+                            const now = new Date();
+                            const expiresAt = new Date(ogData.expiresAt);
+                            
+                            if (now <= expiresAt) {
+                                return {
+                                    ...node,
+                                    ogMetadata: ogData.metadata
+                                };
+                            }
+                        }
+
+                        return {
+                            ...node,
+                            ogMetadata: null
+                        };
+                    } catch (error) {
+                        console.error(`Failed to fetch OG metadata for ${node.value}:`, error);
+                        return {
+                            ...node,
+                            ogMetadata: null
+                        };
+                    }
+                })
+        );
+
+        // Combine text nodes (no metadata needed) with media nodes (with metadata)
+        const textNodes = relevantNodes.filter(node => node.type === "Text");
+        const allNodesWithMetadata = [
+            ...textNodes.map(node => ({ ...node, ogMetadata: null })),
+            ...mediaNodesWithMetadata
+        ];
+
+        // Create context text from connected nodes with OG metadata
         let contextText = "";
-        if (relevantNodes.length > 0) {
+        if (allNodesWithMetadata.length > 0) {
             contextText = "CONNECTED NODE CONTEXT:\n\n";
-            relevantNodes.forEach(node => {
+            allNodesWithMetadata.forEach(node => {
                 contextText += `--- ${node.title} (${node.type}) ---\n`;
-                contextText += `${node.value}\n\n`;
+                
+                // For Text nodes, include content and thought
+                if (node.type === "Text") {
+                    contextText += `Content: ${node.value}\n`;
+                    if (node.thought && node.thought.trim().length > 0) {
+                        contextText += `Thought: ${node.thought}\n`;
+                    }
+                    contextText += "\n";
+                } else {
+                    // For media nodes, include URL, thought, and metadata if available
+                    contextText += `URL: ${node.value}\n`;
+                    
+                    if (node.thought && node.thought.trim().length > 0) {
+                        contextText += `Thought: ${node.thought}\n`;
+                    }
+                    
+                    if (node.ogMetadata) {
+                        const meta = node.ogMetadata;
+                        if (meta.title) contextText += `Title: ${meta.title}\n`;
+                        if (meta.description) contextText += `Description: ${meta.description}\n`;
+                        if (meta.tweetText) contextText += `Tweet Content: ${meta.tweetText}\n`;
+                        if (meta.author) contextText += `Author: ${meta.author}\n`;
+                        if (meta.channelName) contextText += `Channel: ${meta.channelName}\n`;
+                        if (meta.duration) contextText += `Duration: ${meta.duration}\n`;
+                        if (meta.views) contextText += `Views: ${meta.views.toLocaleString()}\n`;
+                        if (meta.likes) contextText += `Likes: ${meta.likes.toLocaleString()}\n`;
+                        if (meta.stars) contextText += `Stars: ${meta.stars.toLocaleString()}\n`;
+                        if (meta.forks) contextText += `Forks: ${meta.forks.toLocaleString()}\n`;
+                        if (meta.language) contextText += `Language: ${meta.language}\n`;
+                        if (meta.artist) contextText += `Artist: ${meta.artist}\n`;
+                        if (meta.album) contextText += `Album: ${meta.album}\n`;
+                        if (meta.publishedAt) contextText += `Published: ${meta.publishedAt}\n`;
+                    }
+                    contextText += "\n";
+                }
             });
             contextText += "END CONNECTED NODE CONTEXT\n\n";
         }
 
         return {
-            connectedNodes: relevantNodes,
+            connectedNodes: allNodesWithMetadata,
             contextText
         };
     },

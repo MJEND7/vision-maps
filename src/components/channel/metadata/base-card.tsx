@@ -5,6 +5,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { formatDate } from "@/utils/date";
 
+// Memoize animation objects to prevent motion.div re-renders
+const CARD_INITIAL = { opacity: 0, scale: 0.95 };
+const CARD_ANIMATE = { opacity: 1, scale: 1 };
+const CARD_TRANSITION = { type: "spring" as const, stiffness: 300, damping: 25 };
+
 type ImageAspect = 'landscape' | 'portrait' | 'square' | 'none';
 
 interface BaseCardProps {
@@ -97,9 +102,9 @@ export function BaseCard({
     return (
         <motion.div
             className={`${config.colors} rounded-lg overflow-hidden border`}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            initial={CARD_INITIAL}
+            animate={CARD_ANIMATE}
+            transition={CARD_TRANSITION}
         >
             {/* Image Section */}
             {image && (

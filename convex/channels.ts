@@ -203,6 +203,54 @@ export const listByVision = query({
   },
 });
 
+export const listWithFramesByVision = query({
+  args: listByVisionArgs,
+  handler: async (ctx, args) => {
+    await requireVisionAccess(ctx, args.visionId);
+
+    // Get all channels for this vision
+    const channels = await ctx.db
+      .query("channels")
+      .withIndex("by_vision", (q) => q.eq("vision", args.visionId))
+      .collect();
+
+    // Sort channels by sortOrder
+    channels.sort((a, b) => {
+      const orderA = a.sortOrder ?? 0;
+      const orderB = b.sortOrder ?? 0;
+      return orderA - orderB;
+    });
+
+    // Get all frames for this vision in one query
+    const allFrames = await ctx.db
+      .query("frames")
+      .withIndex("by_vision", (q) => q.eq("vision", args.visionId))
+      .collect();
+
+    // Sort frames by sortOrder
+    allFrames.sort((a, b) => {
+      const orderA = a.sortOrder ?? 0;
+      const orderB = b.sortOrder ?? 0;
+      return orderA - orderB;
+    });
+
+    // Group frames by channel
+    const framesByChannel: Record<string, any[]> = {};
+    for (const frame of allFrames) {
+      const channelId = frame.channel;
+      if (!framesByChannel[channelId]) {
+        framesByChannel[channelId] = [];
+      }
+      framesByChannel[channelId].push(frame);
+    }
+
+    return {
+      channels,
+      framesByChannel
+    };
+  },
+});
+
 export const getVisionUsers = query({
   args: getVisionUsersArgs,
   handler: async (ctx, args) => {

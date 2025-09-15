@@ -106,3 +106,58 @@ export function RoutingIndicator() {
         </div>
     );
 }
+
+export function VisionTitleSkeleton({ className }: { className?: string }) {
+    return (
+        <div className={`w-full space-y-2 pb-2 pt-4 px-4 ${className || ''}`}>
+            <div className="w-full flex justify-between items-center">
+                <div className="flex items-center gap-1">
+                    <Skeleton className="h-4 w-4" />
+                    <Skeleton className="h-4 w-12" />
+                </div>
+                <Skeleton className="h-4 w-4" />
+            </div>
+            <div className="space-y-1">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-3 w-60" />
+            </div>
+        </div>
+    );
+}
+
+export function DraggableSidebarSkeleton() {
+    return (
+        <div className="px-3 w-full space-y-4">
+            <div className="w-full flex items-center justify-between">
+                <Skeleton className="h-8 w-24" />
+                <Skeleton className="h-8 w-8" />
+            </div>
+            <div className="space-y-3">
+                {Array.from({ length: 4 }, (_, i) => (
+                    <ChannelSkeleton key={i} />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function ChannelSkeleton() {
+    return (
+        <div className="space-y-2">
+            <div className="flex items-center gap-2 p-2 rounded-md">
+                <Skeleton className="h-4 w-4" />
+                <Skeleton className="h-4 flex-1" />
+                <Skeleton className="h-4 w-4" />
+            </div>
+            {/* Frame skeletons */}
+            <div className="ml-6 space-y-1">
+                {Array.from({ length: Math.floor(Math.random() * 3) + 1 }, (_, i) => (
+                    <div key={i} className="flex items-center gap-2 p-1 rounded-sm">
+                        <Skeleton className="h-3 w-3" />
+                        <Skeleton className="h-3 w-20" />
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}

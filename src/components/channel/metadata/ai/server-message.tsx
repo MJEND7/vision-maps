@@ -6,6 +6,9 @@ import { useMemo, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import Markdown, { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+// Memoize remarkPlugins array to prevent unnecessary re-renders
+const REMARK_PLUGINS = [remarkGfm];
 import { Prism as SyntaxHighlighter, SyntaxHighlighterProps } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { oneLight } from "react-syntax-highlighter/dist/cjs/styles/prism";
@@ -13,18 +16,20 @@ import { Doc } from "../../../../../convex/_generated/dataModel";
 import { getConvexSiteUrl } from "@/utils/convex";
 import { api } from "../../../../../convex/_generated/api";
 import { AlertCircle, Copy, CopyCheck, Sparkles, FileText } from "lucide-react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "next-themes";
 
 // Code component with copy functionality
 const CodeComponent = ({ className, children, ...props }: any) => {
     const [copied, setCopied] = useState(false);
+    const { theme: currentTheme } = useTheme();
     const match = /language-(\w+)/.exec(className || "");
-    const theme =
-        typeof window !== "undefined" &&
-            document.documentElement.classList.contains("dark")
-            ? oneDark
-            : oneLight;
+    
+    // Memoize theme to prevent recalculation on every render
+    const theme = useMemo(() => {
+        return currentTheme === "dark" ? oneDark : oneLight;
+    }, [currentTheme]);
 
     const codeString = String(children).replace(/\n$/, "");
 
@@ -110,6 +115,9 @@ export function ServerMessage({
 }) {
     const createTextNodeFromMessage = useMutation(api.nodes.createTextNodeFromMessage);
     const [isCreatingNode, setIsCreatingNode] = useState(false);
+    
+    // Check if the chat's AI node is on a frame
+    const isNodeOnFrame = useQuery(api.nodes.checkChatNodeOnFrame, { chatId: message.chatId });
 
     const handleCreateTextNode = async () => {
         if (!text || isCreatingNode) return;
@@ -186,7 +194,7 @@ export function ServerMessage({
                         className="max-w-full break-words"
                     >
                         <div className="prose prose-sm max-w-none">
-                            <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                            <Markdown remarkPlugins={REMARK_PLUGINS} components={markdownComponents}>
                                 {text}
                             </Markdown>
                         </div>
@@ -199,8 +207,8 @@ export function ServerMessage({
                             />
                         )}
 
-                        {/* Create Text Node Button - only show for completed AI messages */}
-                        {text && !isCurrentlyStreaming && isAssistant && (
+                        {/* Create Text Node Button - only show for completed AI messages when node is on a frame */}
+                        {text && !isCurrentlyStreaming && isAssistant && isNodeOnFrame && (
                             <motion.div
                                 className="mt-3 pt-3 border-t border-border"
                                 initial={{ opacity: 0, y: 10 }}

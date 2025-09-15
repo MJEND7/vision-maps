@@ -22,7 +22,7 @@ export default memo(function LinkNode(props: NodeProps<any>) {
                 className="w-4 h-4 !bg-gray-500 !border-2 !border-background"
             />
 
-            <div className="p-4">
+            <div className="w-[500px] p-4">
                 <div className="flex items-center gap-2 mb-2">
                     <Link className="w-3 h-3 text-gray-600" />
                     <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Link</span>

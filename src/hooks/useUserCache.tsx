@@ -3,10 +3,14 @@
 import React, {
   createContext,
   useContext,
-  useMemo,
-  useCallback,
+  useReducer,
   useRef,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
 } from "react"
+
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { Id } from "../../convex/_generated/dataModel"
@@ -32,6 +36,35 @@ type NodeUserCacheContextType = {
 const NodeUserCacheContext =
   createContext<NodeUserCacheContextType | null>(null)
 
+// -------------------
+// Reducer for cache
+// -------------------
+type CacheAction =
+  | { type: "add"; user: NodeUser }
+  | { type: "fetching"; userId: Id<"users"> }
+
+function cacheReducer(
+  state: NodeUserCacheState,
+  action: CacheAction
+): NodeUserCacheState {
+  switch (action.type) {
+    case "add":
+      return {
+        nodeUsers: new Map(state.nodeUsers).set(action.user._id, action.user),
+        fetchingUsers: new Set(
+          [...state.fetchingUsers].filter((id) => id !== action.user._id)
+        ),
+      }
+    case "fetching":
+      return {
+        ...state,
+        fetchingUsers: state.fetchingUsers.add(action.userId),
+      }
+    default:
+      return state
+  }
+}
+
 interface NodeUserCacheProviderProps {
   children: React.ReactNode
   visionId: Id<"visions">
@@ -39,94 +72,66 @@ interface NodeUserCacheProviderProps {
 
 export function NodeUserCacheProvider({
   children,
-  visionId,
 }: NodeUserCacheProviderProps) {
-  // Persistent cache using useMemo with visionId as dependency
-  const cacheState = useMemo<NodeUserCacheState>(() => {
-    // reference visionId so eslint knows it's intentional
-    void visionId
-    return {
-      nodeUsers: new Map(),
-      fetchingUsers: new Set(),
-    }
-  }, [visionId])
+  // cache + reducer
+  const [state, dispatch] = useReducer(cacheReducer, {
+    nodeUsers: new Map(),
+    fetchingUsers: new Set() as Set<Id<"users">>,
+  })
 
-  // ✅ pendingFetches is now React state
-  const [pendingFetches, setPendingFetches] = React.useState<
-    Set<Id<"users">>
-  >(new Set())
+  // pending queue + current user being fetched
+  const pending = useRef<Id<"users">[]>([])
+  const [currentUserId, setCurrentUserId] =
+    useState<Id<"users"> | null>(null)
 
-  // Track pending fetches separately to avoid duplicate requests
-  const pendingFetchesRef = useRef<Set<Id<"users">>>(new Set())
-
-  // Get the first user that needs to be fetched
-  const nextUserToFetch = useMemo(() => {
-    const pending = Array.from(pendingFetches)
-    return pending.length > 0 ? pending[0] : null
-  }, [pendingFetches])
-
-  // Single user query - fetch one user at a time
+  // fetch single user with Convex
   const userData = useQuery(
     api.channels.getUser,
-    nextUserToFetch && !cacheState.nodeUsers.has(nextUserToFetch)
-      ? { userId: nextUserToFetch }
-      : "skip"
+    currentUserId ? { userId: currentUserId } : "skip"
   )
 
-  // Process completed query and update cache
-  React.useEffect(() => {
-    if (
-      userData &&
-      nextUserToFetch &&
-      !cacheState.nodeUsers.has(nextUserToFetch)
-    ) {
-      // Add to cache
-      cacheState.nodeUsers.set(nextUserToFetch, userData)
-
-      // Remove from pending + fetching
-      setPendingFetches((prev) => {
-        const newSet = new Set(prev)
-        newSet.delete(nextUserToFetch)
-        return newSet
-      })
-      cacheState.fetchingUsers.delete(nextUserToFetch)
-      pendingFetchesRef.current.delete(nextUserToFetch)
+  // When userData comes back, commit to cache and move queue
+  useEffect(() => {
+    if (userData && currentUserId) {
+      dispatch({ type: "add", user: userData })
+      // advance to next queued user
+      const next = pending.current.shift() ?? null
+      setCurrentUserId(next)
+      if (next) dispatch({ type: "fetching", userId: next })
     }
-  }, [userData, nextUserToFetch, cacheState])
+  }, [userData, currentUserId])
 
-  // ✅ Pure read-only function
+  // -------------------
+  // Cache API
+  // -------------------
   const getUserForNode = useCallback(
     (userId: Id<"users">): NodeUser | null => {
-      return cacheState.nodeUsers.get(userId) ?? null
+      return state.nodeUsers.get(userId) ?? null
     },
-    [cacheState]
+    [state.nodeUsers]
   )
 
-  // ✅ Safe function to schedule a fetch (no setState during render)
   const ensureUserFetched = useCallback(
     (userId: Id<"users">) => {
       if (
-        !cacheState.nodeUsers.has(userId) &&
-        !cacheState.fetchingUsers.has(userId) &&
-        !pendingFetchesRef.current.has(userId)
+        !state.nodeUsers.has(userId) &&
+        !state.fetchingUsers.has(userId) &&
+        !pending.current.includes(userId)
       ) {
-        setPendingFetches((prev) => {
-          const newSet = new Set(prev)
-          newSet.add(userId)
-          return newSet
-        })
-        cacheState.fetchingUsers.add(userId)
-        pendingFetchesRef.current.add(userId)
+        pending.current.push(userId)
+        if (!currentUserId) {
+          const next = pending.current.shift()!
+          setCurrentUserId(next)
+          dispatch({ type: "fetching", userId: next })
+        }
       }
     },
-    [cacheState]
+    [state, currentUserId]
   )
 
   const prefetchUsers = useCallback(
     (userIds: Id<"users">[]) => {
-      userIds.forEach((userId) => {
-        ensureUserFetched(userId)
-      })
+      userIds.forEach((id) => ensureUserFetched(id))
     },
     [ensureUserFetched]
   )
