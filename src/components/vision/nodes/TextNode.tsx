@@ -89,7 +89,7 @@ export default memo(function TextNode(props: NodeProps<any>) {
         className="w-4 h-4 !bg-green-500 !border-2 !border-background"
       />
       
-      <div className="p-4">
+      <div className={`${isEditing ? "w-[500px]" : ""} p-4`}>
         <div className="flex items-center gap-2 mb-2">
           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
           <span className="text-xs font-semibold text-green-600 uppercase tracking-wider">Text</span>

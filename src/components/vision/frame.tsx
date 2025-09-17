@@ -191,6 +191,9 @@ export default function FrameComponent({
 
             // Add/update nodes from framedNodes
             framedNodes.forEach((framedNode) => {
+                if (newMap.get(framedNode.node.id)) {
+                    return
+                }
                 const reactNode: Node = {
                     ...(framedNode.node as any),
                     type: framedNode.node.variant || "Text",
@@ -471,7 +474,6 @@ export default function FrameComponent({
                     zoomOnScroll={false}
                     zoomOnPinch={true}
                     zoomOnDoubleClick={false}
-                    panOnScrollMode="free"
                     zoomActivationKeyCode="Shift"
                 >
                     <Controls />
