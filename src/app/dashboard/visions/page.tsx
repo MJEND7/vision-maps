@@ -19,7 +19,6 @@ import { toast } from 'sonner';
 import { StaticFacePile } from '@/components/ui/face-pile';
 import { VisionTableSkeleton, VisionGridSkeleton } from '@/components/vision-skeletons';
 import { useOrganization } from '@clerk/nextjs';
-import { truncate } from '@/utils/string';
 import { NotionSidebar } from '@/components/ui/notion-sidebar';
 import { useOrgSwitch } from '@/contexts/OrgSwitchContext';
 
@@ -253,31 +252,38 @@ export default function SheetsPage() {
                                         key={vision._id}
                                         className="hover:shadow-xl transition-all ease-in-out shadow-lg flex flex-col justify-between rounded-3xl border"
                                     >
+                                        {/* Banner / Header button */}
                                         <button
                                             onClick={() =>
                                                 router.push(`${ROUTES.PROFILE.VISIONS}/${vision._id}`)
                                             }
                                             style={{ backgroundImage: `url(${vision.banner})` }}
                                             className="group relative flex h-[200px] items-center justify-center 
-         hover:shadow-inner rounded-t-3xl bg-cover bg-center"
+       hover:shadow-inner rounded-t-3xl bg-cover bg-center"
                                         >
-                                            <div className="bg-background text-primary p-1 rounded-lg absolute right-5 top-5 transition-all duration-300 ease-in-out opacity-0 invisible group-hover:opacity-100 group-hover:visible">
+                                            {/* Scan button on hover */}
+                                            <div className="bg-background text-primary p-[5px] rounded-md absolute right-5 top-5 transition-all duration-300 ease-in-out opacity-0 invisible group-hover:opacity-100 group-hover:visible">
                                                 <Scan size={18} />
                                             </div>
                                             <h1 className={`${vision.banner ? "hidden" : ""} text-lg`}>
                                                 {vision.title || "Untitled Vision"}
                                             </h1>
                                         </button>
+
                                         <hr />
+
+                                        {/* Content area */}
                                         <div className="flex gap-3 items-start bg-accent rounded-b-3xl space-y-1 px-3 py-2 text-left text-xs">
-                                            <div className='text-white mt-1 rounded-md bg-blue-400 p-2'>
+                                            <div className="text-white mt-1 rounded-md bg-blue-400 p-2">
                                                 <Map size={15} />
                                             </div>
-                                            <div className="w-full">
-                                                <div className="flex gap-2 items-start">
-                                                    <p className="flex-1 text-sm sm:text-md text-primary truncate min-w-0">
-                                                        {vision.title || 'No description provided.'}
+
+                                            <div className="w-full min-w-0">
+                                                <div className="flex gap-2 items-start min-w-0">
+                                                    <p className="flex-1 truncate text-sm sm:text-md text-primary">
+                                                        {vision.title || "No description provided."}
                                                     </p>
+
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
                                                             <button
@@ -285,12 +291,16 @@ export default function SheetsPage() {
                                                                     e.preventDefault();
                                                                     e.stopPropagation();
                                                                 }}
-                                                                className="p-1 hover:bg-muted rounded transition-colors"
+                                                                className="p-1 hover:bg-muted rounded transition-colors flex-shrink-0"
                                                             >
                                                                 <MoreHorizontal className="w-4 h-4" />
                                                             </button>
                                                         </DropdownMenuTrigger>
-                                                        <DropdownMenuContent className="text-muted-foreground" align="end">
+
+                                                        <DropdownMenuContent
+                                                            className="text-muted-foreground"
+                                                            align="end"
+                                                        >
                                                             <DropdownMenuItem onClick={() => handleShare(vision._id)}>
                                                                 <Share className="hover:text-primary w-4 h-4 mr-2" />
                                                                 Share
@@ -310,12 +320,17 @@ export default function SheetsPage() {
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
                                                 </div>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {truncate(vision.description || 'No description provided.', 38)}
+
+                                                <p className="truncate text-xs text-muted-foreground w-full">
+                                                    {vision.description || "No description provided."}
                                                 </p>
+
                                                 <div className="flex items-center justify-between">
                                                     <p className="text-xs text-primary/30">
-                                                        Updated {timeSinceFromDateString(new Date(vision.updatedAt) || new Date())}
+                                                        Updated{" "}
+                                                        {timeSinceFromDateString(
+                                                            new Date(vision.updatedAt) || new Date()
+                                                        )}
                                                     </p>
                                                     <StaticFacePile visionId={vision._id} />
                                                 </div>
