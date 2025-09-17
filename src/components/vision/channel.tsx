@@ -86,7 +86,7 @@ export default function Channel({
     const titleRef = useRef<HTMLInputElement>(null);
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
-    
+
     const { cacheMetadataForUrl } = useMetadataCache();
 
     // Mobile detection
@@ -104,7 +104,7 @@ export default function Channel({
     const updateChannel = useMutation(api.channels.update);
     const deleteNode = useMutation(api.nodes.remove);
     const updateChatNodeId = useMutation(api.chats.updateChatNodeId);
-    
+
     // Memoize callback functions to prevent unnecessary re-renders
     const showDeleteConfirmation = useCallback((node: any) => {
         setNodeToDelete(node);
@@ -267,32 +267,25 @@ export default function Channel({
             await cacheMetadataForUrl(data.value);
         }
 
-        // Optimistic update: create a temporary node with predicted ID
-        const tempNodeId = `temp_${Date.now()}` as Id<"nodes">;
-        const tempNode: NodeWithFrame = {
-            _id: tempNodeId,
-            _creationTime: Date.now(),
-            title: data.title,
-            variant: data.variant,
-            value: data.value,
-            thought: data.thought,
-            frame: data.frameId,
-            channel: channelId as Id<"channels">,
-            vision: channel?.vision,
-            userId: "" as Id<"users">, // This will be filled by server
-            updatedAt: new Date().toISOString(),
-            frameTitle: null,
-        };
-
-        // Add optimistically to local store
-        addNewNode(channelId, tempNode);
-
         try {
             const nodeId = await createNode({ ...data, channel: channelId as Id<"channels"> });
-            
-            // Remove temp node and wait for server sync to add real node
-            removeNode(channelId, tempNodeId);
-            
+
+            // Add optimistically to local store
+            let node = {
+                _id: nodeId, _creationTime: Date.now(),
+                title: data.title,
+                variant: data.variant,
+                value: data.value,
+                thought: data.thought,
+                frame: data.frameId,
+                channel: channelId as Id<"channels">,
+                vision: channel?.vision,
+                userId: "" as Id<"users">, // This will be filled by server
+                updatedAt: new Date().toISOString(),
+                frameTitle: null,
+            };
+            addNewNode(channelId, node);
+
             // If this is an AI node and the value looks like a chatId, update the chat to link to this node
             if (data.variant === "AI" && data.value) {
                 try {
@@ -316,7 +309,6 @@ export default function Channel({
             });
         } catch (error) {
             // Remove optimistic update on error
-            removeNode(channelId, tempNodeId);
             console.error("Failed to create node:", error);
         }
     };
@@ -325,12 +317,12 @@ export default function Channel({
     const confirmDelete = async () => {
         if (!nodeToDelete) return;
         setIsDeleting(true);
-        
+
         // Optimistic update: remove from local store immediately
         const nodeId = nodeToDelete._id as Id<"nodes">;
         const nodeBackup = nodeToDelete; // Keep backup for rollback
         removeNode(channelId, nodeId);
-        
+
         try {
             await deleteNode({ id: nodeId });
             setShowDeleteDialog(false);

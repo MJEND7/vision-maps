@@ -74,7 +74,7 @@ export const useNodeStore = create<NodeStore>()(
         return {
           nodesByChannel: {
             ...state.nodesByChannel,
-            [channelId]: [...existing, node], // Append new node at the end
+            [channelId]: [node, ...existing], // Append new node at the end
           },
         }
       })
