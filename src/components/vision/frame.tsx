@@ -467,6 +467,12 @@ export default function FrameComponent({
                     panOnDrag={true}
                     selectionOnDrag={true}
                     selectNodesOnDrag={false}
+                    panOnScroll={true}
+                    zoomOnScroll={false}
+                    zoomOnPinch={true}
+                    zoomOnDoubleClick={false}
+                    panOnScrollMode="free"
+                    zoomActivationKeyCode="Shift"
                 >
                     <Controls />
                     <Background
