@@ -61,7 +61,7 @@ function ViewportAwareNodeManager({
 
     const handleAddExistingNode = useCallback(async (nodeId: Id<"nodes">) => {
         let position: { x: number; y: number };
-        
+
         if (rightClickPosition) {
             // Use the right-click position if available
             position = rightClickPosition;
@@ -73,7 +73,7 @@ function ViewportAwareNodeManager({
                 y: center.y + (Math.random() - 0.5) * 200,
             };
         }
-        
+
         await addExistingNodeToFrame({
             nodeId,
             frameId: id,
@@ -176,10 +176,10 @@ export default function FrameComponent({
 
         setNodes((current) => {
             const newMap = new Map(current.map((n) => [n.id, n])); // existing
-            
+
             // Get the current set of node IDs from framedNodes
             const framedNodeIds = new Set(framedNodes.map(fn => fn.node.id));
-            
+
             // Remove nodes that are no longer in framedNodes
             const currentNodeIds = Array.from(newMap.keys());
             currentNodeIds.forEach(nodeId => {
@@ -191,12 +191,9 @@ export default function FrameComponent({
 
             // Add/update nodes from framedNodes
             framedNodes.forEach((framedNode) => {
-                if (currentNodeIds.includes(framedNode.node.id)) {
-                    return
-                }
                 const reactNode: Node = {
                     ...(framedNode.node as any),
-                    type: framedNode.node.type || "Text",
+                    type: framedNode.node.variant || "Text",
                     data: {
                         node:
                             framedNode.node ||
@@ -303,7 +300,7 @@ export default function FrameComponent({
             event.preventDefault();
             setSelectedNodes([]);
             setSelectedEdges([]);
-            
+
             // Convert screen coordinates to world coordinates for node positioning
             if (convertScreenToFlowPosition) {
                 try {
@@ -316,7 +313,7 @@ export default function FrameComponent({
             } else {
                 setRightClickPosition(null);
             }
-            
+
             setContextMenu({
                 show: true,
                 x: event.clientX,
@@ -394,12 +391,12 @@ export default function FrameComponent({
 
     const handleNodeCreation = useCallback(async (data: Omit<CreateNodeArgs, "channel">) => {
         if (!frame) throw new Error("Failed to get a frame");
-        
+
         // Cache OG metadata for URLs
         if (data.value) {
             await cacheMetadataForUrl(data.value);
         }
-        
+
         // Use viewport center if available, otherwise fallback to reasonable center
         let centerX, centerY;
         if (getViewportCenter) {
@@ -410,16 +407,16 @@ export default function FrameComponent({
             centerX = 300 + (Math.random() - 0.5) * 400;
             centerY = 300 + (Math.random() - 0.5) * 400;
         }
-        
+
         const nodeId = await createNode({
             ...data,
             channel: frame.channel,
             frameId: frame._id,
             position: {
                 id: crypto.randomUUID(),
-                position: { 
-                    x: centerX, 
-                    y: centerY 
+                position: {
+                    x: centerX,
+                    y: centerY
                 },
                 type: data.variant || "Text",
                 data: "",
@@ -475,10 +472,11 @@ export default function FrameComponent({
                     <Background
                         key={id}
                         variant={BackgroundVariant.Dots}
+                        id={`background-${id}`}
                         gap={10}
                         size={0.9}
                     />
-                    
+
                     <ViewportAwareNodeManager
                         showAddNodeDialog={showAddNodeDialog}
                         setShowAddNodeDialog={setShowAddNodeDialog}

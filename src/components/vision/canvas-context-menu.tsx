@@ -104,7 +104,15 @@ export function CanvasContextMenu({ frameId, selectedNodes, selectedEdges, conte
   const hasSelectedItems = hasSelectedNodes || hasSelectedEdges;
   const hasTextNode = selectedNodeData?.some(node => node.type === 'Text') || false;
   const singleTextNode = selectedNodes.length === 1 && hasTextNode ? selectedNodes[0] : null;
-
+  
+  console.log('CanvasContextMenu debug:', {
+    selectedNodes,
+    selectedNodeData,
+    hasTextNode,
+    singleTextNode,
+    contextType
+  });
+  
   if (!isOpen) return null;
 
   const contextMenu = isMobile ? (
