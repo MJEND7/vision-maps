@@ -94,7 +94,26 @@ export default memo(function TextNode(props: NodeProps<any>) {
           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
           <span className="text-xs font-semibold text-green-600 uppercase tracking-wider">Text</span>
         </div>
-        {renderNodeContent(node, props.data.onOpenChat, isEditing, editValue, setEditValue, textareaRef, handleKeyDown, handleSave, handleCancel, isSaving)}
+        {renderNodeContent(node, props.data.onOpenChat, isEditing, editValue, setEditValue, handleKeyDown)}
+        
+        {isEditing && (
+          <div className="flex gap-2 mt-3 pt-3 border-t border-green-500/20">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+            >
+              {isSaving ? 'Saving...' : 'Save'}
+            </button>
+            <button
+              onClick={handleCancel}
+              disabled={isSaving}
+              className="px-3 py-1.5 bg-gray-500 text-white text-sm rounded-md hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
       
       <Handle 

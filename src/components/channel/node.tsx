@@ -34,7 +34,6 @@ function ChannelNode({
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(node.value);
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const updateNode = useMutation(api.nodes.update);
@@ -91,10 +90,6 @@ function ChannelNode({
     const handleEdit = () => {
         setIsEditing(true);
         setEditValue(node.value);
-        // Close mobile drawer if it was open
-        setTimeout(() => {
-            textareaRef.current?.focus();
-        }, 0);
     };
 
     const handleSave = async () => {
@@ -292,7 +287,7 @@ function ChannelNode({
 
                         {/* Render content based on node variant */}
                         <div className="w-full">
-                            {renderNodeContent(node, onOpenChat, isEditing, editValue, setEditValue, textareaRef, handleKeyDown, undefined, undefined, undefined, false)}
+                            {renderNodeContent(node, onOpenChat, isEditing, editValue, setEditValue, handleKeyDown, false)}
                         </div>
                     </div>
                 </div >

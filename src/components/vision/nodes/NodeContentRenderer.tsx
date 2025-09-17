@@ -2,12 +2,11 @@ import React, { useMemo } from 'react';
 import { useTheme } from "next-themes";
 import { NodeVariants } from "../../../../convex/tables/nodes";
 import Image from "next/image";
-import { Brain, Check, ExternalLink, X, Expand, Minimize2 } from 'lucide-react';
+import { Brain, Check, ExternalLink, Expand, Minimize2 } from 'lucide-react';
 import { AudioPlayer } from "../../channel/audio-player";
 import { VideoPlayer } from "../../channel/video-player";
 import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard } from "../../channel/metadata";
 import { useOGMetadataWithCache } from "@/utils/ogMetadata";
-import { Button } from '@/components/ui/button';
 import Markdown, { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -25,6 +24,7 @@ import { Prism as SyntaxHighlighter, SyntaxHighlighterProps } from "react-syntax
 import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { oneLight } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { motion } from "motion/react";
+import { Textarea } from '@/components/ui/textarea';
 
 // Code component with copy functionality for text nodes
 const CodeComponent = ({ className, children, ...props }: any) => {
@@ -258,11 +258,7 @@ export function renderNodeContent(
     isEditing?: boolean,
     editValue?: string,
     setEditValue?: (value: string) => void,
-    textareaRef?: React.RefObject<HTMLTextAreaElement | null>,
     onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void,
-    onSave?: () => void,
-    onCancel?: () => void,
-    isSaving?: boolean,
     textExpand: boolean = true,
 ) {
     const variant = node.variant as NodeVariants;
@@ -338,50 +334,19 @@ export function renderNodeContent(
             return (
                 <div>
                     {isEditing ? (
-                        <div className="space-y-2">
+                        <div className="w-full space-y-2">
                             <div className="flex items-center justify-between mb-1 px-1">
                                 <span className="text-xs font-medium text-muted-foreground">
                                     {node.title || "Text"}
                                 </span>
                             </div>
-                            <textarea
-                                ref={textareaRef}
+                            <Textarea
                                 value={editValue}
                                 onChange={(e) => setEditValue?.(e.target.value)}
                                 onKeyDown={onKeyDown}
-                                className="text-sm resize-none w-auto border border-border rounded p-2 bg-background text-foreground"
+                                className="w-full text-sm resize-none border border-border rounded-xl p-2 bg-background text-foreground"
                                 placeholder="Enter text..."
                             />
-                            <div className="flex gap-2 justify-end">
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={onCancel}
-                                    disabled={isSaving}
-                                    className="px-3 py-1 text-xs bg-muted hover:bg-muted/80 rounded flex items-center gap-1 disabled:opacity-50"
-                                >
-                                    <X className="w-3 h-3" />
-                                    Cancel
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    onClick={onSave}
-                                    disabled={isSaving}
-                                    className="px-3 py-1 text-xs bg-primary text-primary-foreground hover:bg-primary/90 rounded flex items-center gap-1 disabled:opacity-50"
-                                >
-                                    {isSaving ? (
-                                        <>
-                                            <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Check className="w-3 h-3" />
-                                            Save
-                                        </>
-                                    )}
-                                </Button>
-                            </div>
                             <p className="text-xs text-muted-foreground">
                                 Press Ctrl+Enter to save, Escape to cancel
                             </p>
