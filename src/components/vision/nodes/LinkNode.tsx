@@ -3,7 +3,7 @@ import { Handle, Position, NodeProps } from '@xyflow/react';
 import { BadgeInfo, Link } from 'lucide-react';
 import { renderNodeContent } from './NodeContentRenderer';
 
-export default memo(function LinkNode(props: NodeProps<any>) {
+export default memo(function LinkNode(props: NodeProps & { data: any }) {
     const node = props.data.node;
 
     return (

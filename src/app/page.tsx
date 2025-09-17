@@ -1,14 +1,11 @@
 "use client";
 
 import { motion } from "motion/react"
-import { useState, useEffect } from "react"
 import LandingNav from "@/components/landing/LandingNav";
 import LandingFooter from "@/components/landing/LandingFooter";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Zap, Users, Palette, Video, Globe, Upload, ChevronLeft, ChevronRight } from "lucide-react";
+import { CheckCircle, Zap, Users, Palette, Video, Globe, Upload } from "lucide-react";
 import { Accordion } from "@/components/ui/accordion";
-import { SignedIn } from '@clerk/nextjs';
-import { CheckoutButton, usePlans } from '@clerk/nextjs/experimental'
 import WastedTimeTimer from "@/components/WastedTimeTimer";
 import { Authenticated, Unauthenticated } from "convex/react";
 import { useRouter } from "next/navigation";

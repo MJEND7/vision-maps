@@ -4,7 +4,7 @@ import { renderNodeContent } from './NodeContentRenderer';
 import { useMutation } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
 
-export default memo(function TextNode(props: NodeProps<any>) {
+export default memo(function TextNode(props: NodeProps & { data: any }) {
   const node = props.data.node;
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(node.value);

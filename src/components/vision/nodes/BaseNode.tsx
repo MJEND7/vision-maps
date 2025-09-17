@@ -14,7 +14,7 @@ export interface BaseNodeData {
   isMobile?: boolean;
 }
 
-export default memo(function BaseNode({ data }: NodeProps<any>) {
+export default memo(function BaseNode({ data }: NodeProps & { data: any }) {
   const node = data.node;
   
   return (

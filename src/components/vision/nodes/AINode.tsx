@@ -3,7 +3,7 @@ import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Brain } from 'lucide-react';
 import { renderNodeContent } from './NodeContentRenderer';
 
-export default memo(function AINode(props: NodeProps<any>) {
+export default memo(function AINode(props: NodeProps & { data: any }) {
   const node = props.data.node;
   
   return (

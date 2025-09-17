@@ -3,7 +3,7 @@ import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Image as ImageIcon } from 'lucide-react';
 import { renderNodeContent } from './NodeContentRenderer';
 
-export default memo(function ImageNode(props: NodeProps<any>) {
+export default memo(function ImageNode(props: NodeProps & { data: any }) {
   const node = props.data.node;
   
   return (

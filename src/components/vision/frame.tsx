@@ -192,7 +192,7 @@ export default function FrameComponent({
                         data: {
                             ...node.data,
                             node: {
-                                ...node.data.node,
+                                ...(node.data.node || {}),
                                 value: newValue,
                             }
                         }
