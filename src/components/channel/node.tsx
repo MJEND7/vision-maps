@@ -133,7 +133,7 @@ function ChannelNode({
         <>
             <div
                 key={node._id}
-                className={`flex items-start gap-3 group ${isMobile && node.variant === NodeVariants.Text && !isEditing
+                className={`w-full flex items-start gap-3 group ${isMobile && node.variant === NodeVariants.Text && !isEditing
                     ? 'active:bg-muted/30 transition-colors select-none'
                     : ''
                     }`}
@@ -151,7 +151,7 @@ function ChannelNode({
                         </AvatarFallback>
                     </Avatar>
                 )}
-                <div className="">
+                <div className="w-full max-w-xl">
                     <span className="flex justify-between items-center gap-3">
                         <div className="flex items-center gap-2">
                             {!nodeUser ? (
@@ -276,7 +276,7 @@ function ChannelNode({
                             </div>
                         )}
                     </span>
-                    <div className="flex flex-col gap-1">
+                    <div className="w-full flex flex-col gap-1">
                         <div className="flex-1">
                             {(node.thought && node.variant !== NodeVariants.Text) && (
                                 <p className="text-sm text-muted-foreground">
@@ -291,7 +291,7 @@ function ChannelNode({
                         </div>
 
                         {/* Render content based on node variant */}
-                        <div className="w-[calc(100vw-5rem)] max-w-[40rem] sm:w-auto sm:min-w-[40rem]">
+                        <div className="w-full">
                             {renderNodeContent(node, onOpenChat, isEditing, editValue, setEditValue, textareaRef, handleKeyDown, undefined, undefined, undefined, false)}
                         </div>
                     </div>

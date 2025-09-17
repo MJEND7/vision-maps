@@ -83,7 +83,7 @@ const textNodeMarkdownComponents: Components = {
         <h1 className="text-md font-bold text-card-foreground py-3" {...props} />
     ),
     h2: ({ ...props }) => (
-        <h2 className="text-sm font-semibold text-card-foreground py-3" {...props} />
+        <h2 className="text-md font-semibold text-card-foreground py-3" {...props} />
     ),
     h3: ({ ...props }) => (
         <h2 className="text-xs font-semibold text-card-foreground py-3" {...props} />
@@ -95,7 +95,7 @@ const textNodeMarkdownComponents: Components = {
         <td className="text-sm list-disc list-inside space-y-0.5 text-card-foreground py-2" {...props} />
     ),
     p: ({ ...props }) => (
-        <p className="text-xs text-card-foreground leading-tight py-2" {...props} />
+        <p className="text-sm text-card-foreground leading-tight py-2" {...props} />
     ),
     ul: ({ ...props }) => (
         <ul className="list-disc list-inside space-y-0.5 text-card-foreground my-2 text-xs" {...props} />

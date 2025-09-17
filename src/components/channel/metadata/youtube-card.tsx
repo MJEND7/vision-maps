@@ -130,7 +130,7 @@ export function YouTubeCard({ metadata }: YouTubeCardProps) {
     
     return (
         <motion.div
-            className="w-full  h-full bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm"
+            className="w-full h-full bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
