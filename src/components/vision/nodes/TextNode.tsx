@@ -22,6 +22,8 @@ export default memo(function TextNode(props: NodeProps<any>) {
         id: node._id,
         value: editValue,
       });
+      // Update the node content in the local state immediately
+      props.data.onUpdateNodeContent?.(props.id, editValue);
       setIsEditing(false);
       props.data.onEditComplete?.();
     } catch (error) {

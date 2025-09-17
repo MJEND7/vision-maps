@@ -144,7 +144,6 @@ export default function FrameComponent({
         type: 'node' | 'edge' | 'pane';
     }>({ show: false, x: 0, y: 0, type: 'pane' });
     const [showAddNodeDialog, setShowAddNodeDialog] = useState(false);
-    const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
 
     // === Convex data ===
     const frame = useQuery(api.frames.get, { id });
@@ -169,6 +168,40 @@ export default function FrameComponent({
         isAlone,
         setNodes
     );
+
+    // Function to update editingNodeId and nodes simultaneously
+    const updateEditingNodeId = useCallback((nodeId: string | null) => {
+        setNodes((currentNodes) => {
+            return currentNodes.map((node) => ({
+                ...node,
+                data: {
+                    ...node.data,
+                    editingNodeId: nodeId,
+                }
+            }));
+        });
+    }, []);
+
+    // Function to update node content in the nodes list
+    const updateNodeContent = useCallback((nodeId: string, newValue: string) => {
+        setNodes((currentNodes) => {
+            return currentNodes.map((node) => {
+                if (node.id === nodeId) {
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            node: {
+                                ...node.data.node,
+                                value: newValue,
+                            }
+                        }
+                    };
+                }
+                return node;
+            });
+        });
+    }, []);
 
     // === Node data transformation ===
     useEffect(() => {
@@ -208,8 +241,8 @@ export default function FrameComponent({
                             } as any),
                         nodeUser: null,
                         frameId: id,
-                        editingNodeId,
-                        onEditComplete: () => setEditingNodeId(null),
+                        onEditComplete: () => updateEditingNodeId(null),
+                        onUpdateNodeContent: updateNodeContent,
                         onOpenChat: openChat,
                         onNodeRightClick: (nodeId: string, event: React.MouseEvent) => {
                             setSelectedNodes((sel) =>
@@ -233,7 +266,7 @@ export default function FrameComponent({
             setNodesMap(newMap);
             return nextNodes;
         });
-    }, [framedNodes, setNodesMap, editingNodeId, id, openChat]);
+    }, [framedNodes, setNodesMap, id, openChat, updateEditingNodeId, updateNodeContent]);
 
     const onNodesChange = useCallback(
         (changes: NodeChange[]) => {
@@ -525,7 +558,7 @@ export default function FrameComponent({
                         closeContextMenu();
                     }}
                     onEditNode={(nodeId) => {
-                        setEditingNodeId(nodeId);
+                        updateEditingNodeId(nodeId);
                         closeContextMenu();
                     }}
                     isOpen={contextMenu.show}

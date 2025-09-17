@@ -26,7 +26,6 @@ import {
 import { MultiUserSelector } from "@/components/ui/multi-user-selector";
 import { useNodeUserCache } from "@/hooks/useUserCache";
 import { useNodeStore } from "@/hooks/useNodeStore";
-import { NodeWithFrame } from "../../../convex/channels";
 import PasteBin from "../channel/paste-bin";
 import { CreateNodeArgs } from "../../../convex/nodes";
 import { NODE_VARIANTS } from "@/lib/constants";
@@ -271,7 +270,7 @@ export default function Channel({
             const nodeId = await createNode({ ...data, channel: channelId as Id<"channels"> });
 
             // Add optimistically to local store
-            let node = {
+            const node = {
                 _id: nodeId, _creationTime: Date.now(),
                 title: data.title,
                 variant: data.variant,

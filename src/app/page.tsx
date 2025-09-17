@@ -414,7 +414,7 @@ function About() {
     );
 }
 
-function Pricing({ router }: { router: AppRouterInstance }) {
+export function PricingComponent({ router }: { router: AppRouterInstance }) {
     const [isAnnual, setIsAnnual] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(1);
     const [touchStart, setTouchStart] = useState<number | null>(null);

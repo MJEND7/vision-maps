@@ -344,7 +344,7 @@ export function renderNodeContent(
                                 value={editValue}
                                 onChange={(e) => setEditValue?.(e.target.value)}
                                 onKeyDown={onKeyDown}
-                                className="w-full text-sm resize-none border border-border rounded-xl p-2 bg-background text-foreground"
+                                className="nodrag w-full text-sm resize-none border border-border rounded-xl p-2 bg-background text-foreground"
                                 placeholder="Enter text..."
                             />
                             <p className="text-xs text-muted-foreground">
