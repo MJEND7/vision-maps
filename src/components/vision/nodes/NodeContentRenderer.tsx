@@ -6,6 +6,7 @@ import { Brain, Check, ExternalLink, Expand, Minimize2 } from 'lucide-react';
 import { AudioPlayer } from "../../channel/audio-player";
 import { VideoPlayer } from "../../channel/video-player";
 import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard } from "../../channel/metadata";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useOGMetadataWithCache } from "@/utils/ogMetadata";
 import Markdown, { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -31,7 +32,7 @@ const CodeComponent = ({ className, children, ...props }: any) => {
     const [copied, setCopied] = React.useState(false);
     const { theme: currentTheme } = useTheme();
     const match = /language-(\w+)/.exec(className || "");
-    
+
     // Memoize theme to prevent recalculation on every render
     const theme = useMemo(() => {
         return currentTheme === "dark" ? oneDark : oneLight;
@@ -261,20 +262,46 @@ export function renderNodeContent(
     onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void,
     textExpand: boolean = true,
 ) {
+    const [isImageDialogOpen, setIsImageDialogOpen] = React.useState(false);
     const variant = node.variant as NodeVariants;
 
     switch (variant) {
         case NodeVariants.Image:
             return (
-                <div className="rounded-lg overflow-hidden border">
-                    <Image
-                        src={node.value}
-                        alt={node.title || ''}
-                        width={300}
-                        height={200}
-                        className="w-full h-auto object-cover"
-                    />
-                </div>
+                <>
+                    <div className="rounded-lg overflow-hidden border cursor-pointer" onClick={() => setIsImageDialogOpen(true)}>
+                        <img
+                            src={node.value}
+                            alt={node.title || ''}
+                            className="w-full h-auto object-cover"
+                        />
+                    </div>
+                    <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
+                        <DialogContent
+                            className="max-w-none max-h-none bg-transparent border-none p-0 flex items-center justify-center"
+                            showCloseButton={false}
+                        >
+                            <DialogTitle className="sr-only">
+                                {node.title || 'Image'}
+                            </DialogTitle>
+                            <div className="relative">
+                                <img
+                                    src={node.value}
+                                    alt={node.title || ''}
+                                    className="max-w-[calc(100vw-4rem)] max-h-[calc(100vh-4rem)] w-auto h-auto object-contain"
+                                />
+                                <button
+                                    onClick={() => setIsImageDialogOpen(false)}
+                                    className="absolute top-4 right-4 p-3 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors touch-manipulation z-10"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                </>
             );
 
         case NodeVariants.Audio:
@@ -303,7 +330,7 @@ export function renderNodeContent(
         case NodeVariants.AppleMusic:
         case NodeVariants.Link:
             return (
-                    <NodeWithMetadata node={node} variant={variant} />
+                <NodeWithMetadata node={node} variant={variant} />
             )
 
         case NodeVariants.AI:
@@ -317,11 +344,13 @@ export function renderNodeContent(
                     <div className="flex flex-col items-center justify-center gap-2">
                         <Brain size={20} />
                     </div>
-                    <div className="bg-accent flex items-center gap-10 justify-between border-t border-accent p-3">
-                        <p className="text-sm font-semibold truncate">{node.title}</p>
+                    <div className="bg-accent flex items-center justify-between border-t border-accent p-3">
+                        <div className="max-w-[180px] lg:max-w-[200px] xl:max-w-full overflow-hidden">
+                            <p className="text-sm font-semibold truncate">{node.title}</p>
+                        </div>
                         <button
                             onClick={() => onOpenChat?.(node.value)}
-                            className="min-w-auto text-[10px] text-blue-600 hover:underline flex items-center gap-1"
+                            className="text-[10px] text-blue-600 hover:underline flex items-center gap-1"
                         >
                             <ExternalLink size={12} />
                             Open

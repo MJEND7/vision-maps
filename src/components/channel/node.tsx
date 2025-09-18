@@ -286,7 +286,7 @@ function ChannelNode({
                         </div>
 
                         {/* Render content based on node variant */}
-                        <div className="w-full">
+                        <div className="w-full sm:max-w-full max-w-[300px]">
                             {renderNodeContent(node, onOpenChat, isEditing, editValue, setEditValue, handleKeyDown, false)}
                         </div>
                     </div>

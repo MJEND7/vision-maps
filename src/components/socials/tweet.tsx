@@ -39,7 +39,7 @@ export const MyTweet = ({ tweet: t, components }: Props) => {
                 {tweet.mediaDetails?.length ? (
                     <div>
                         {tweet.mediaDetails.length <= 1 ? (
-                            <div className="h-[312px] w-full flex gap-3 items-end">
+                            <div className="max-h-[312px] w-full flex gap-3 items-end">
                                 <Image className='w-auto max-h-[300px] rounded-md' src={tweet.mediaDetails[0].media_url_https} alt="" width={400} height={300} />
                             </div>
                         ) : (

@@ -514,8 +514,8 @@ export default function FrameComponent({
                         key={id}
                         variant={BackgroundVariant.Dots}
                         id={`background-${id}`}
-                        gap={10}
-                        size={0.9}
+                        gap={40}
+                        size={2}
                     />
 
                     <ViewportAwareNodeManager

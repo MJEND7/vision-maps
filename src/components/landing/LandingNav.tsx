@@ -75,7 +75,7 @@ export default function LandingNav({
                     {showLoginHint && (
                         <motion.div
                             key="login-hint"
-                            className="absolute sm:-right-11 top-12 right-0 z-10"
+                            className="absolute sm:-right-11 top-12 right-0"
                             initial={{ scale: 0.8, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.5, opacity: 0 }}
@@ -278,7 +278,7 @@ export default function LandingNav({
             <div
                 className="hidden sm:flex  items-center justify-between w-auto rounded-r-4xl rounded-l-xl backdrop-blur-[5px] dark:bg-background/50 dark:backdrop-blur-md bg-accent/50 border pl-2 pr-3 py-2"
             >
-                <ThemeSwitcher size="sm" />
+                <ThemeSwitcher size="lg" />
             </div>
         </div>
     );

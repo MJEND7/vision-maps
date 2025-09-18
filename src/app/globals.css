@@ -345,3 +345,7 @@
 .nextjs-portal {
   display: none !important;
 }
+/* Only apply to FramePreview container */
+.frame-preview .react-flow__renderer {
+  touch-action: pan-y pan-x !important;
+}

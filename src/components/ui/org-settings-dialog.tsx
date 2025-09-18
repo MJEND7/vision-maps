@@ -112,12 +112,12 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
     // Mutations
     const createNotification = useMutation(api.notifications.createNotification);
 
-    // Update orgName when organization changes
+    // Update orgName when organization changes (but not when user is typing)
     useEffect(() => {
-        if (organization?.name && organization.name !== orgName) {
+        if (organization?.name) {
             setOrgName(organization.name);
         }
-    }, [organization?.name, orgName]);
+    }, [organization?.name]);
 
     if (!organization || !membership) {
         return null;
@@ -331,7 +331,7 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
                                     onClick={() => setActiveTab("danger")}
                                     className={`flex-shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 text-left rounded-lg transition-colors ${
                                         activeTab === "danger" 
-                                            ? "bg-destructive text-destructive-foreground shadow-sm" 
+                                            ? "bg-destructive text-white shadow-sm" 
                                             : "hover:bg-destructive/10 hover:text-destructive"
                                     }`}
                                 >

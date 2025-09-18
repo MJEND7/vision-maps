@@ -40,29 +40,18 @@ export default function Home() {
                 </div>
                 <LandingNav showLandingSections />
 
-                <Header router={router} />
+                <div
+                    id="home"
+                    className="relative h-[850px] px-40">
+                    <Header router={router} />
 
-                {/* Preview Section - Behind header on desktop, under header on mobile */}
-                <motion.section
-                    initial={{ opacity: 0, y: 50 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 1.8 }}
-                    className="absolute sm:absolute top-0 left-0 right-0 w-full -mt-0 mb-0 px-0 z-0 sm:z-0 hidden sm:block"
-                >
-                    <div className="w-full h-screen flex items-center justify-center">
-                            <FramePreview />
-                    </div>
-                </motion.section>
-
-                {/* Mobile Preview - under header */}
-                <motion.section
-                    initial={{ opacity: 0, y: 50 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 1.8 }}
-                    className="relative block sm:hidden"
-                >
-                    <FramePreview />
-                </motion.section>
+                    {/* Preview Section - Behind header on desktop, under header on mobile */}
+                    <section
+                        className="absolute top-0 left-0 right-0 w-full h-full -mt-0 mb-0 px-0 z-10 hidden sm:block"
+                    >
+                        <FramePreview />
+                    </section>
+                </div>
 
                 <Features />
                 <About />
@@ -76,14 +65,13 @@ export default function Home() {
 function Header({ router }: { router: AppRouterInstance }) {
     return (
         <motion.section
-            id="home"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1, delay: 0.5 }}
-            className="relative z-10 text-left flex justify-center flex-col h-[650px] px-40"
+            className="absolute z-[20] text-left top-[250px] p-4 rounded-lg max-w-[550px] backdrop-blur-xs"
         >
 
-            <motion.h1
+            <motion.div
                 initial={{ y: 100, opacity: 0, scale: 0.8 }}
                 animate={{ y: 0, opacity: 1, scale: 1 }}
                 transition={{
@@ -93,7 +81,7 @@ function Header({ router }: { router: AppRouterInstance }) {
                     stiffness: 100,
                     damping: 12
                 }}
-                className="text-[40px] sm:text-[60px] cursor-default font-light "
+                className="text-[40px] sm:text-[45px] cursor-default font-light "
             >
                 <motion.span
                     initial={{ opacity: 0, y: 20 }}
@@ -103,7 +91,7 @@ function Header({ router }: { router: AppRouterInstance }) {
                     The {" "}
                 </motion.span>
                 <motion.span
-                    className="z-10 font-bold moving-gradient font-display tracking-tight"
+                    className="font-bold moving-gradient font-display tracking-tight"
                 >
                     Visions {" "}
                 </motion.span>
@@ -114,7 +102,7 @@ function Header({ router }: { router: AppRouterInstance }) {
                 >
                     Platform.
                 </motion.span>
-            </motion.h1>
+            </motion.div>
             <motion.h2 className="max-w-[300px] sm:max-w-[700px] text-lg sm:text-2xl text-primary/80 mb-1">
                 The best way to tack your ideation.
             </motion.h2>
@@ -129,7 +117,7 @@ function Header({ router }: { router: AppRouterInstance }) {
                     type: "spring",
                     stiffness: 120
                 }}
-                className="space-y-3 mt-4"
+                className="relative space-y-3 mt-4"
             >
                 <div className="relative">
                     <motion.div className="absolute -left-8">
