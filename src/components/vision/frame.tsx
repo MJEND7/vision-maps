@@ -13,6 +13,7 @@ import {
     Edge,
     applyNodeChanges,
     DefaultEdgeOptions,
+    Position,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useState, useEffect, useMemo } from "react";
@@ -326,7 +327,13 @@ export default function FrameComponent({
                 console.warn("Ignoring pending connection", { connection });
                 return;
             }
-            connect({ frameId: id, connection });
+            // Set default sourceHandle to bottom and targetHandle to left if not provided
+            const connectionWithDefaults = {
+                ...connection,
+                sourceHandle: connection.sourceHandle || Position.Bottom,
+                targetHandle: connection.targetHandle || Position.Left,
+            };
+            connect({ frameId: id, connection: connectionWithDefaults });
         },
         [connect, id]
     );

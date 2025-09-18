@@ -45,7 +45,7 @@ export default function WastedTimeTimer() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 2.0 }}
     >
-      <p className="text-xs sm:text-[18px] text-primary/80">
+      <p className="text-xs sm:text-[18px] text-primary/80 sm:text-left text-center">
         Time not building your <span className="italic">Vision</span>: <span className="font-mono text-red-400 font-medium tabular-nums"
         style={{ minWidth: '60px', display: 'inline-block', textAlign: 'right' }}>{secondsWasted.toFixed(2)}s</span>
       </p>

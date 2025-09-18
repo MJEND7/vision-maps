@@ -19,6 +19,19 @@ export default memo(function AINode(props: NodeProps & { data: any }) {
       <Handle 
         type="target" 
         position={Position.Top}
+        id={Position.Top}
+        className="w-4 h-4 !bg-purple-500 !border-2 !border-background"
+      />
+      <Handle 
+        type="target" 
+        position={Position.Left}
+        id={Position.Left}
+        className="w-4 h-4 !bg-purple-500 !border-2 !border-background"
+      />
+      <Handle 
+        type="source" 
+        position={Position.Right}
+        id={Position.Right}
         className="w-4 h-4 !bg-purple-500 !border-2 !border-background"
       />
       
@@ -39,6 +52,7 @@ export default memo(function AINode(props: NodeProps & { data: any }) {
       <Handle 
         type="source" 
         position={Position.Bottom}
+        id={Position.Bottom}
         className="w-4 h-4 !bg-purple-500 !border-2 !border-background"
       />
     </div>

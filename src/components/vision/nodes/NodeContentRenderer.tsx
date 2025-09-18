@@ -252,6 +252,54 @@ function NodeWithMetadata({ node, variant }: { node: any, variant: NodeVariants 
     }
 }
 
+// Component for rendering image nodes with dialog
+function ImageNodeContent({ node }: { node: any }) {
+    const [isImageDialogOpen, setIsImageDialogOpen] = React.useState(false);
+    
+    return (
+        <>
+            <div className="rounded-lg overflow-hidden border cursor-pointer" onClick={() => setIsImageDialogOpen(true)}>
+                <Image
+                    src={node.value}
+                    alt={node.title || ''}
+                    width={330}
+                    height={200}
+                    quality={100}
+                    className="w-full h-auto object-cover"
+                />
+            </div>
+            <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
+                <DialogContent
+                    className="max-w-none max-h-none bg-transparent border-none p-0 flex items-center justify-center"
+                    showCloseButton={false}
+                >
+                    <DialogTitle className="sr-only">
+                        {node.title || 'Image'}
+                    </DialogTitle>
+                    <div className="relative">
+                        <Image
+                            src={node.value}
+                            alt={node.title || ''}
+                            width={1000}
+                            height={1000}
+                            quality={100}
+                            className="max-w-[calc(100vw-4rem)] max-h-[calc(100vh-4rem)] w-auto h-auto object-contain"
+                        />
+                        <button
+                            onClick={() => setIsImageDialogOpen(false)}
+                            className="absolute top-4 right-4 p-3 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors touch-manipulation z-10"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </>
+    );
+}
+
 // Render node content based on variant
 export function renderNodeContent(
     node: any,
@@ -262,47 +310,11 @@ export function renderNodeContent(
     onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void,
     textExpand: boolean = true,
 ) {
-    const [isImageDialogOpen, setIsImageDialogOpen] = React.useState(false);
     const variant = node.variant as NodeVariants;
 
     switch (variant) {
         case NodeVariants.Image:
-            return (
-                <>
-                    <div className="rounded-lg overflow-hidden border cursor-pointer" onClick={() => setIsImageDialogOpen(true)}>
-                        <img
-                            src={node.value}
-                            alt={node.title || ''}
-                            className="w-full h-auto object-cover"
-                        />
-                    </div>
-                    <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
-                        <DialogContent
-                            className="max-w-none max-h-none bg-transparent border-none p-0 flex items-center justify-center"
-                            showCloseButton={false}
-                        >
-                            <DialogTitle className="sr-only">
-                                {node.title || 'Image'}
-                            </DialogTitle>
-                            <div className="relative">
-                                <img
-                                    src={node.value}
-                                    alt={node.title || ''}
-                                    className="max-w-[calc(100vw-4rem)] max-h-[calc(100vh-4rem)] w-auto h-auto object-contain"
-                                />
-                                <button
-                                    onClick={() => setIsImageDialogOpen(false)}
-                                    className="absolute top-4 right-4 p-3 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors touch-manipulation z-10"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
-                </>
-            );
+            return <ImageNodeContent node={node} />;
 
         case NodeVariants.Audio:
             return (

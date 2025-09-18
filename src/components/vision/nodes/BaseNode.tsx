@@ -22,6 +22,19 @@ export default memo(function BaseNode({ data }: NodeProps & { data: any }) {
       <Handle 
         type="target" 
         position={Position.Top}
+        id={Position.Top}
+        className="w-3 h-3 !bg-blue-500"
+      />
+      <Handle 
+        type="target" 
+        position={Position.Left}
+        id={Position.Left}
+        className="w-3 h-3 !bg-blue-500"
+      />
+      <Handle 
+        type="source" 
+        position={Position.Right}
+        id={Position.Right}
         className="w-3 h-3 !bg-blue-500"
       />
       
@@ -40,6 +53,7 @@ export default memo(function BaseNode({ data }: NodeProps & { data: any }) {
       <Handle 
         type="source" 
         position={Position.Bottom}
+        id={Position.Bottom}
         className="w-3 h-3 !bg-blue-500"
       />
     </div>

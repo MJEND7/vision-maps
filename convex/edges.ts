@@ -106,15 +106,16 @@ export const deleteEdge = mutation({
     },
     handler: async (ctx, args) => {
         // Do access checks here
-        const edge = await ctx.db
+        const edges = await ctx.db
             .query("edges")
             .withIndex("frame", (q) => q.eq("frameId", args.frameId))
             .filter((q) => q.eq(q.field("edge.id"), args.edgeId))
-            .unique();
+            .collect();
         
-        if (edge) {
-            await ctx.db.delete(edge._id);
-            return { success: true };
+        if (edges.length > 0) {
+            // Delete all edges with this ID (in case there are duplicates)
+            await Promise.all(edges.map(edge => ctx.db.delete(edge._id)));
+            return { success: true, deletedCount: edges.length };
         }
         
         return { success: false, error: "Edge not found" };
@@ -143,22 +144,18 @@ export const connect = mutation({
         if (!sourceDoc || !targetDoc) {
             throw new Error("Source or target not found");
         }
+        // Check for existing edges between these nodes and delete them
+        // This ensures only one edge can exist per source-target pair
         const existing = await ctx.db
             .query("edges")
             .withIndex("source", (q) =>
                 q.eq("source", sourceDoc._id).eq("target", targetDoc._id),
             )
             .collect();
-        if (
-            existing.find(
-                (e) =>
-                    e.edge.source === source &&
-                    e.edge.target === target &&
-                    e.edge.sourceHandle === sourceHandle &&
-                    e.edge.targetHandle === targetHandle,
-            )
-        ) {
-            return;
+        
+        // Delete all existing edges between these nodes
+        if (existing.length > 0) {
+            await Promise.all(existing.map(edge => ctx.db.delete(edge._id)));
         }
         const sourceNode = await ctx.db
             .query("framed_node")
@@ -183,8 +180,8 @@ export const connect = mutation({
             id: `${source}-${target}`,
             source,
             target,
-            sourceHandle,
-            targetHandle,
+            sourceHandle: sourceHandle || "bottom", // Default to bottom if no sourceHandle provided
+            targetHandle: targetHandle || "left", // Default to left if no targetHandle provided
             data: { name: undefined }, // Match the expected edge data type
         };
         const edges = addEdge(newEdge, []);
