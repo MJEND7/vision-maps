@@ -287,6 +287,7 @@ function FramePreview({
             <ReactFlow
                 preventScrolling={false}
                 zoomOnScroll={false}
+                panOnDrag={!isMobileFlow}
                 nodeTypes={nodeTypes}
                 defaultNodes={defaultNodes}
                 defaultEdges={edges}
