@@ -170,9 +170,9 @@ function About() {
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
             id="about"
-            className="py-20 px-6 bg-background overflow-hidden"
+            className="py-20 px-40 bg-background overflow-hidden"
         >
-            <div className="max-w-6xl mx-auto space-y-16">
+            <div className="mx-auto space-y-16">
                 {/* Section 1: Left Quote/Image */}
                 <motion.div
                     initial={{ opacity: 0, x: -50 }}
@@ -182,16 +182,22 @@ function About() {
                     className="grid md:grid-cols-2 gap-12 items-center"
                 >
                     <div className="space-y-6">
-                        <h3 className="text-3xl font-bold text-primary">
+                        <h3 className="text-2xl sm:text-3xl font-bold text-primary">
                             &ldquo;Align priors and share your creative vision faster&rdquo;
                         </h3>
-                        <div className="w-full h-64 bg-muted rounded-lg border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
-                            <div className="text-center space-y-2">
-                                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                                    <Palette className="w-8 h-8 text-primary" />
-                                </div>
-                                <p className="text-sm text-muted-foreground">Brand Image Placeholder</p>
-                            </div>
+                        <div className="rounded-lg overflow-hidden">
+                            <video 
+                                className="scale-105"
+                                height={1080}
+                                width={1920}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                            >
+                                <source src="/landing/videos/1.mp4" type="video/mp4" />
+                                Your browser does not support the video tag.
+                            </video>
                         </div>
                     </div>
                     <div className="space-y-4">
@@ -211,16 +217,20 @@ function About() {
                         <Accordion items={featuresItems} />
                     </div>
                     <div className="space-y-6 order-1 md:order-2">
-                        <h3 className="text-3xl font-bold text-primary">
+                        <h3 className="text-2xl sm:text-3xl font-bold text-primary">
                             &ldquo;Transform scattered thoughts into a coherent, instantly consumable narrative&rdquo;
                         </h3>
-                        <div className="w-full h-64 bg-muted rounded-lg border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
-                            <div className="text-center space-y-2">
-                                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                                    <Video className="w-8 h-8 text-primary" />
-                                </div>
-                                <p className="text-sm text-muted-foreground">Product Demo Placeholder</p>
-                            </div>
+                        <div className="rounded-lg overflow-hidden">
+                            <video 
+                                className="scale-105"
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                            >
+                                <source src="/landing/videos/2.mp4" type="video/mp4" />
+                                Your browser does not support the video tag.
+                            </video>
                         </div>
                     </div>
                 </motion.div>
@@ -234,7 +244,7 @@ function About() {
                     className="grid md:grid-cols-2 gap-12 items-center"
                 >
                     <div className="space-y-6">
-                        <h3 className="text-3xl font-bold text-primary">
+                        <h3 className="text-2xl sm:text-3xl font-bold text-primary">
                             &ldquo;A dynamic, living Vision Map that speaks to your creative process&rdquo;
                         </h3>
                         <div className="w-full h-64 bg-muted rounded-lg border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
