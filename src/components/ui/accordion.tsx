@@ -61,7 +61,7 @@ export function Accordion({ items, className = '' }: AccordionProps) {
     <div className={`divide-y divide-border ${className}`}>
       {items.map((item, index) => (
         <AccordionItem
-          key={index}
+          key={item.title+index}
           title={item.title}
           content={item.content}
           isOpen={openIndex === index}

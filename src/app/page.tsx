@@ -5,11 +5,11 @@ import LandingNav from "@/components/landing/LandingNav";
 import LandingFooter from "@/components/landing/LandingFooter";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Zap, Users, Palette, Video, Globe, Upload } from "lucide-react";
-import { Accordion } from "@/components/ui/accordion";
 import { Authenticated, Unauthenticated } from "convex/react";
 import LightRays from "@/backgrounds/LightRays/LightRays";
 import { ROUTES } from "@/lib/constants";
 import { Header } from "@/components/landing/Header";
+import { About } from "@/components/landing/About";
 
 export default function Home() {
     return (
@@ -40,11 +40,11 @@ export default function Home() {
                     className="relative h-[750px] w-full bg-gradient bg-no-repeat bg-[center_120px] lg:bg-[65%_center] lg:bg-[length:35%]"
                 >
 
-                        <Header />
+                    <Header />
                 </div>
 
-                <Features />
                 <About />
+                <Features />
                 <CallToAction />
                 <LandingFooter />
             </motion.div>
@@ -52,75 +52,146 @@ export default function Home() {
     );
 }
 
-function Features() {
+export function Features() {
     const features = [
         {
-            icon: <Palette className="w-8 h-8" />,
-            title: "Visual Canvas",
-            description: "Create unlimited nodes on a free-form canvas with drawing tools and connectors.",
+            label: "Accounts",
+            tag: "EUR & GBP Soon",
+            title: "Multi-currency accounts",
+            description:
+                "Hold and manage multiple currencies in one place and swap between them instantly.",
+            icon: Palette,
+            bullets: ["Pay in any currency", "Unlimited accounts", "Instant swaps"],
+            size: "md:col-span-2 md:row-span-2", // big feature card
         },
         {
-            icon: <Video className="w-8 h-8" />,
-            title: "Rich Media Support",
-            description: "Embed YouTube videos, images, audio, 3D objects, PDFs, and more to capture your vision."
+            label: "Cards",
+            title: "Virtual cards",
+            description:
+                "Create virtual cards to spend online or in-store. Securely, in any currency and in any place.",
+            icon: Video,
+            bullets: ["Pay in any currency", "Unlimited cards", "Spending limits"],
+            size: "md:col-span-1 md:row-span-1",
         },
         {
-            icon: <Globe className="w-8 h-8" />,
-            title: "Platform Integrations",
-            description: "Connect with Figma, GitHub, Notion, and websites to pull in your existing work."
+            label: "Pay-ins",
+            tag: "Soon",
+            title: "Invoices",
+            description:
+                "Easily send professional invoices to your contacts and get paid directly into your account.",
+            icon: Upload,
+            bullets: ["Product catalogue", "Custom branding", "Multiple payment methods"],
+            size: "md:col-span-1",
         },
         {
-            icon: <Zap className="w-8 h-8" />,
+            label: "Pay-ins",
+            tag: "Soon",
+            title: "Receive",
+            description:
+                "Easily request payments from anyone. Share a link or generate an invoice to get paid instantly.",
+            icon: Globe,
+            bullets: ["Local currency support", "QR payment links", "Instant settlement"],
+            size: "md:col-span-1",
+        },
+        {
+            label: "Payouts",
+            title: "Send",
+            description:
+                "Send money across borders. Fast, secure, and with support for multiple currencies and assets.",
+            icon: Users,
+            bullets: ["Cross-border support", "Low FX fees", "Fast payment rails"],
+            size: "md:col-span-2  md:row-span-2",
+        },
+        {
+            label: "AI",
             title: "AI Assistant",
-            description: "Get help creating your vision and researching ideas with our built-in AI helper."
+            description:
+                "Get real-time help ideating, researching, and structuring your projects using our AI.",
+            icon: Zap,
+            bullets: ["Brainstorm with AI", "Context-aware help", "Export structured outputs"],
+            size: "md:col-span-1",
         },
-        {
-            icon: <Users className="w-8 h-8" />,
-            title: "Real-time Collaboration",
-            description: "Work together with team members with live updates and permission controls."
-        },
-        {
-            icon: <Upload className="w-8 h-8" />,
-            title: "Export & Share",
-            description: "Export your vision maps as JSON or share with read-only access links."
-        }
     ];
 
     return (
         <motion.section
+            id="features"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
-            id="features"
-            className="py-20 px-6"
+            className="py-20 px-6 bg-background relative"
         >
-            <div className="max-w-6xl mx-auto">
+            <div className="max-w-7xl mx-auto space-y-16">
+                {/* Section Header */}
                 <motion.div
-                    initial={{ y: 50, opacity: 0 }}
+                    initial={{ y: 40, opacity: 0 }}
                     whileInView={{ y: 0, opacity: 1 }}
                     transition={{ duration: 0.6 }}
                     viewport={{ once: true }}
-                    className="text-center flex items-center flex-col mb-16"
+                    className="text-center"
                 >
-                    <h2 className="text-5xl font-display font-light mb-4 relative">Features <span className="absolute [background-image:radial-gradient(ellipse_at_bottom,_rgba(192,192,192,0.4)_0%,_rgba(192,192,192,0.2)_30%,_transparent_60%)] dark:hover:[background-image:radial-gradient(ellipse_at_bottom,_rgba(255,255,255,0.3)_0%,_rgba(255,255,255,0.15)_30%,_transparent_60%)] " /> </h2>
-                    <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                        Everything you need to capture, communicate, and collaborate on your vision
+                    <h2 className="text-4xl md:text-5xl font-display font-bold mb-4 text-foreground">
+                        The Place for ideation and Shareing
+                    </h2>
+                    <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+                        Quickly input any form of media, keep track of all your ideations and have ideations sessions with you team.
+                        Collaborate, share and build with a single visions at any scale.
                     </p>
                 </motion.div>
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-15">
+
+                {/* Feature Grid */}
+                <div className="grid md:grid-cols-3 grid-cols-1 auto-rows-[220px] md:auto-rows-[280px] gap-6">
                     {features.map((feature, index) => (
                         <motion.div
-                            key={feature.title}
-                            initial={{ y: 50, opacity: 0 }}
+                            key={index}
+                            initial={{ y: 40, opacity: 0 }}
                             whileInView={{ y: 0, opacity: 1 }}
-                            transition={{ duration: 0.6, delay: index * 0.1 }}
+                            transition={{ duration: 0.5, delay: index * 0.1 }}
                             viewport={{ once: true }}
-                            className={`group p-2 border-black hover:scale-105 transition-all ease-in-out`}
+                            className={`flex flex-col justify-between rounded-xl border border-border 
+                         bg-gradient-to-b from-background/40 to-background/20 
+                         p-6 relative overflow-hidden hover:shadow-lg 
+                         transition-all duration-300 ease-in-out ${feature.size}`}
                         >
-                            <div className={`${(index % 2) ? "sm:rotate-0 rotate-180" : ""} text-primary mb-4`}>{feature.icon}</div>
-                            <h3 className={`${(index % 2) ? "text-right sm:text-left" : ""} text-2xl font-semibold font-gaegu mb-3`}>{feature.title}</h3>
-                            <p className={`${(index % 2) ? "text-right sm:text-left" : ""} group-hover:underline group-hover:text-primary transition-all ease-in-out text-muted-foreground`}>{feature.description}</p>
+                            {/* Top label */}
+                            <div className="flex items-center gap-3 text-xs font-medium mb-2">
+                                <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                    {feature.label}
+                                </span>
+                                {feature.tag && (
+                                    <span className="px-2 py-0.5 rounded-full bg-green-600/20 text-green-500 text-[11px]">
+                                        {feature.tag}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Title + description */}
+                            <div className="flex flex-col gap-2 flex-grow">
+                                <h3 className="text-lg md:text-xl font-semibold text-foreground">
+                                    {feature.title}
+                                </h3>
+                                <p className="text-sm text-muted-foreground leading-relaxed">
+                                    {feature.description}
+                                </p>
+                            </div>
+
+                            {/* Bullets */}
+                            {feature.bullets && (
+                                <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
+                                    {feature.bullets.map((item, i) => (
+                                        <li key={i} className="flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                            {item}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+
+                            {/* Decorative background icon */}
+                            <div className="absolute right-3 bottom-3 opacity-10 pointer-events-none">
+                                <feature.icon className="w-20 h-20 md:w-28 md:h-28 text-foreground" />
+                            </div>
                         </motion.div>
                     ))}
                 </div>
@@ -129,176 +200,6 @@ function Features() {
     );
 }
 
-function About() {
-    const visionItems = [
-        {
-            title: "Core Vision",
-            content: "As a founder and co-founder of three startups, I've learned that communicating early-stage ideas is both challenging and time-consuming. Vision Maps addresses this challenge by helping you quickly align priors and build shared context."
-        },
-        {
-            title: "What We Do",
-            content: "We believe that the only way to truly showcase your ideas is to build them—but building a full product takes time. Vision Maps lets you create that 'idea skeleton' quickly so you can align priors, transform scattered thoughts into coherent narratives, and accelerate the journey from idea to MVP."
-        }
-    ];
-
-    const featuresItems = [
-        {
-            title: "Creative Platform Integration",
-            content: "Universal paste mechanism and automatic content organization from common platforms (Websites, Figma, GitHub, YouTube, TikTok, Instagram, Spotify, Notion, etc.) with manual override capabilities."
-        },
-        {
-            title: "LLM-Powered Innovation",
-            content: "AI-driven brainstorming, vision validation, structured output generation, and usage credit system for scalable AI usage with flexible options for both free and premium users."
-        }
-    ];
-
-    const brandItems = [
-        {
-            title: "Brand & Strategic Vision",
-            content: "Vision Maps is more than just a tool—it's a revolutionary way of communicating ideas. Our aim is to build a brand centered around ideation and creative expression that transforms how founders and business owners convey their visions."
-        },
-        {
-            title: "Revolutionary Communication",
-            content: "When a founder steps into a VC meeting, they won't be limited to slides; they'll have a dynamic, living Vision Map that speaks to their creative process and demonstrates the full scope of their vision."
-        }
-    ];
-
-    return (
-        <motion.section
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            id="about"
-            className="py-20 px-40 bg-background overflow-hidden"
-        >
-            <div className="mx-auto space-y-16">
-                {/* Section 1: Left Quote/Image */}
-                <motion.div
-                    initial={{ opacity: 0, x: -50 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.8 }}
-                    viewport={{ once: true }}
-                    className="grid md:grid-cols-2 gap-12 items-center"
-                >
-                    <div className="space-y-6">
-                        <h3 className="text-2xl sm:text-3xl font-bold text-primary">
-                            &ldquo;Align priors and share your creative vision faster&rdquo;
-                        </h3>
-                        <div className="rounded-lg overflow-hidden">
-                            <video 
-                                className="scale-105"
-                                height={1080}
-                                width={1920}
-                                autoPlay
-                                loop
-                                muted
-                                playsInline
-                            >
-                                <source src="/landing/videos/1.mp4" type="video/mp4" />
-                                Your browser does not support the video tag.
-                            </video>
-                        </div>
-                    </div>
-                    <div className="space-y-4">
-                        <Accordion items={visionItems} />
-                    </div>
-                </motion.div>
-
-                {/* Section 2: Right Accordion */}
-                <motion.div
-                    initial={{ opacity: 0, x: 50 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.8 }}
-                    viewport={{ once: true }}
-                    className="grid md:grid-cols-2 gap-12 items-center"
-                >
-                    <div className="space-y-4 order-2 md:order-1">
-                        <Accordion items={featuresItems} />
-                    </div>
-                    <div className="space-y-6 order-1 md:order-2">
-                        <h3 className="text-2xl sm:text-3xl font-bold text-primary">
-                            &ldquo;Transform scattered thoughts into a coherent, instantly consumable narrative&rdquo;
-                        </h3>
-                        <div className="rounded-lg overflow-hidden">
-                            <video 
-                                className="scale-105"
-                                autoPlay
-                                loop
-                                muted
-                                playsInline
-                            >
-                                <source src="/landing/videos/2.mp4" type="video/mp4" />
-                                Your browser does not support the video tag.
-                            </video>
-                        </div>
-                    </div>
-                </motion.div>
-
-                {/* Section 3: Left Accordion */}
-                <motion.div
-                    initial={{ opacity: 0, x: -50 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.8 }}
-                    viewport={{ once: true }}
-                    className="grid md:grid-cols-2 gap-12 items-center"
-                >
-                    <div className="space-y-6">
-                        <h3 className="text-2xl sm:text-3xl font-bold text-primary">
-                            &ldquo;A dynamic, living Vision Map that speaks to your creative process&rdquo;
-                        </h3>
-                        <div className="w-full h-64 bg-muted rounded-lg border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
-                            <div className="text-center space-y-2">
-                                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                                    <Users className="w-8 h-8 text-primary" />
-                                </div>
-                                <p className="text-sm text-muted-foreground">Team Collaboration Placeholder</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="space-y-4">
-                        <Accordion items={brandItems} />
-                    </div>
-                </motion.div>
-
-                {/* Use Cases Section */}
-                <motion.div
-                    initial={{ opacity: 0, y: 50 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8 }}
-                    viewport={{ once: true }}
-                    className="text-center space-y-8 pt-16"
-                >
-                    <h2 className="text-4xl font-display font-light">Use Cases</h2>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
-                        {[
-                            "Explaining the vibe of a product and feel you want to create",
-                            "Application flows and user experience mapping",
-                            "General idea management and creative workflows",
-                            "A workspace to work with art, fragrances and your own art",
-                            "Shooting of a show or movie - reference shots, vibes, lighting, coloring, music",
-                            "Pitch presentations that go beyond static slides"
-                        ].map((useCase, index) => (
-                            <motion.div
-                                key={index}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.6, delay: index * 0.1 }}
-                                viewport={{ once: true }}
-                                className="p-6 bg-card border rounded-lg hover:shadow-lg transition-shadow"
-                            >
-                                <div className="flex items-start gap-3">
-                                    <CheckCircle className="w-5 h-5 text-green-500 mt-1 flex-shrink-0" />
-                                    <p className="text-sm text-muted-foreground text-left">{useCase}</p>
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
-                </motion.div>
-            </div>
-        </motion.section>
-    );
-}
 
 function CallToAction() {
     return (

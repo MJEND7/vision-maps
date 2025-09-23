@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useSignIn } from "@clerk/nextjs";
+import { useState, useEffect } from "react";
+import { useSignIn, useUser } from "@clerk/nextjs";
 import { motion } from "motion/react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -9,6 +9,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ROUTES } from "@/lib/constants";
+import { getLastUsedAuthMethod, getStoredLastAuthMethod, storeLastAuthMethod } from "@/utils/authMethods";
 
 interface CustomSignInProps {
     onSwitchToSignUp: () => void;
@@ -16,13 +17,22 @@ interface CustomSignInProps {
 
 export default function CustomSignIn({ onSwitchToSignUp }: CustomSignInProps) {
     const { isLoaded, signIn, setActive } = useSignIn();
+    const { user } = useUser();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
+    const [lastAuthMethod, setLastAuthMethod] = useState<ReturnType<typeof getLastUsedAuthMethod>>(null);
     
     const router = useRouter();
+
+    useEffect(() => {
+        // Try to get last auth method from user data or localStorage
+        const userAuthMethod = getLastUsedAuthMethod(user);
+        const storedAuthMethod = getStoredLastAuthMethod();
+        setLastAuthMethod(userAuthMethod || storedAuthMethod);
+    }, [user]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -39,6 +49,7 @@ export default function CustomSignIn({ onSwitchToSignUp }: CustomSignInProps) {
 
             if (result.status === "complete") {
                 await setActive({ session: result.createdSessionId });
+                storeLastAuthMethod('email');
                 router.push(ROUTES.HOME);
             } else {
                 const errorMessage = "Sign in failed. Please try again.";
@@ -59,6 +70,7 @@ export default function CustomSignIn({ onSwitchToSignUp }: CustomSignInProps) {
 
         setIsLoading(true);
         try {
+            storeLastAuthMethod('google');
             await signIn.authenticateWithRedirect({
                 strategy: "oauth_google",
                 redirectUrl: ROUTES.SSO_CALLBACK,
@@ -77,6 +89,7 @@ export default function CustomSignIn({ onSwitchToSignUp }: CustomSignInProps) {
 
         setIsLoading(true);
         try {
+            storeLastAuthMethod('github');
             await signIn.authenticateWithRedirect({
                 strategy: "oauth_github",
                 redirectUrl: ROUTES.SSO_CALLBACK,
@@ -122,7 +135,22 @@ export default function CustomSignIn({ onSwitchToSignUp }: CustomSignInProps) {
             <div className="bg-card border border-border rounded-xl shadow-lg sm:p-8 p-4 pt-12">
                 <div className="text-center mb-6">
                     <h2 className="text-2xl font-display font-bold mb-2">Welcome back, Vision</h2>
-                    <p className="text-muted-foreground font-body">Continue with Google or enter your details.</p>
+                    <p className="text-muted-foreground font-body">
+                        {lastAuthMethod 
+                            ? `Continue with ${lastAuthMethod.label} or try another method.`
+                            : "Continue with Google or enter your details."
+                        }
+                    </p>
+                    {lastAuthMethod && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mt-2 inline-flex items-center gap-2 text-sm text-primary bg-primary/10 px-3 py-1 rounded-full"
+                        >
+                            <span>{lastAuthMethod.icon}</span>
+                            <span>Last used: {lastAuthMethod.label}</span>
+                        </motion.div>
+                    )}
                 </div>
 
                 {error && (

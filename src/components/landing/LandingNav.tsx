@@ -102,22 +102,15 @@ export default function LandingNav({
                             <Link href={ROUTES.SIGNUP}>
                                 <Button size="lg">Sign up</Button>
                             </Link>
+                            <Link href={ROUTES.SIGNIN}>
+                                <Button variant={"outline"} size="lg">Login</Button>
+                            </Link>
                         </Unauthenticated>
                         <Authenticated>
                             <Link href={ROUTES.PROFILE.VISIONS}>
                                 <Button size="lg">Dashboard</Button>
                             </Link>
                         </Authenticated>
-                        <div className="flex w-8 h-8">
-                            <Authenticated>
-                                <UserAvatar />
-                            </Authenticated>
-                            <Unauthenticated>
-                                <Link className="cursor-pointer" href={ROUTES.SIGNIN}>
-                                    <MissingAvatar />
-                                </Link>
-                            </Unauthenticated>
-                        </div>
                     </div>
 
                     {/* Mobile Menu Toggle */}
@@ -174,7 +167,6 @@ export default function LandingNav({
                                 ))}
                             </div>
 
-                            {/* Mobile Auth Buttons */}
                             {/* Divider */}
                             < div className="my-3 border-t border-gray-200 dark:border-zinc-700" />
 

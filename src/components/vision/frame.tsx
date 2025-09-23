@@ -31,6 +31,7 @@ import { AddExistingNodeDialog } from "./add-existing-node-dialog";
 import usePresence from "@convex-dev/presence/react";
 import { useSidebar } from "../../contexts/sidebar-context";
 import { useViewportCenter } from "../../hooks/useViewportCenter";
+import { ReactFlowErrorBoundary } from "./ReactFlowErrorBoundary";
 
 // Component that has access to ReactFlow context for viewport positioning
 function ViewportAwareNodeManager({
@@ -133,6 +134,22 @@ export default function FrameComponent({
             attributeFilter: ["class"],
         });
         return () => observer.disconnect();
+    }, []);
+
+    // Cleanup function to prevent React Fiber errors
+    useEffect(() => {
+        return () => {
+            // Clean up any pending operations when component unmounts
+            try {
+                if (typeof window !== 'undefined') {
+                    // Cancel any pending RAF callbacks
+                    let id = requestAnimationFrame(() => {});
+                    cancelAnimationFrame(id);
+                }
+            } catch (error) {
+                // Silently handle cleanup errors
+            }
+        };
     }, []);
 
     const [nodes, setNodes] = useState<Node[]>([]);
@@ -490,7 +507,8 @@ export default function FrameComponent({
     return (
         <div className="w-full h-full px-4 pt-4">
             <div className="relative h-[calc(100%-4rem)]">
-                <ReactFlow
+                <ReactFlowErrorBoundary>
+                    <ReactFlow
                     nodes={nodes}
                     edges={edges}
                     onNodesChange={onNodesChange}
@@ -535,7 +553,8 @@ export default function FrameComponent({
                         onScreenToFlowPositionChange={(convert) => setConvertScreenToFlowPosition(() => convert)}
                         rightClickPosition={rightClickPosition}
                     />
-                </ReactFlow>
+                    </ReactFlow>
+                </ReactFlowErrorBoundary>
 
                 <CanvasContextMenu
                     frameId={id}

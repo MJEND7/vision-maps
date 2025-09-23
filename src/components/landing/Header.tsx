@@ -305,7 +305,7 @@ export function Header() {
     const router = useRouter();
 
     return (
-        <ReactFlowProvider>
+        <>
             <motion.section
                 ref={headlineRef}
                 initial={{ opacity: 0 }}
@@ -378,7 +378,9 @@ export function Header() {
                 </motion.div>
             </motion.section>
 
-            <FramePreview headlineRef={headlineRef} />
-        </ReactFlowProvider>
+            <ReactFlowProvider>
+                <FramePreview headlineRef={headlineRef} />
+            </ReactFlowProvider>
+        </>
     );
 }
