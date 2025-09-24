@@ -19,7 +19,6 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "convex/react";
 import { cn } from "@/lib/utils"; // Assuming you have this utility
 import { motion } from "motion/react"
-import { ROUTES } from "@/lib/constants";
 import Logo from "@/icons/logo";
 import Link from "next/link";
 import ThemeSwitcher from "../ThemeSwitcher";

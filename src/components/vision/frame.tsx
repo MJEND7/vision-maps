@@ -136,22 +136,6 @@ export default function FrameComponent({
         return () => observer.disconnect();
     }, []);
 
-    // Cleanup function to prevent React Fiber errors
-    useEffect(() => {
-        return () => {
-            // Clean up any pending operations when component unmounts
-            try {
-                if (typeof window !== 'undefined') {
-                    // Cancel any pending RAF callbacks
-                    let id = requestAnimationFrame(() => {});
-                    cancelAnimationFrame(id);
-                }
-            } catch (error) {
-                // Silently handle cleanup errors
-            }
-        };
-    }, []);
-
     const [nodes, setNodes] = useState<Node[]>([]);
     const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
     const [selectedEdges, setSelectedEdges] = useState<string[]>([]);

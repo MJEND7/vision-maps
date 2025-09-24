@@ -4,7 +4,7 @@ import { motion } from "motion/react"
 import LandingNav from "@/components/landing/LandingNav";
 import LandingFooter from "@/components/landing/LandingFooter";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Zap, Users, Palette, Video, Globe, Upload, Brain } from "lucide-react";
+import { CheckCircle, Users, Palette, Globe, Upload, Brain } from "lucide-react";
 import { Authenticated, Unauthenticated } from "convex/react";
 import LightRays from "@/backgrounds/LightRays/LightRays";
 import { ROUTES } from "@/lib/constants";
@@ -54,7 +54,7 @@ export default function Home() {
     );
 }
 
-export function Features() {
+function Features() {
     const features = [
         {
             label: "Paste Bin",
@@ -268,9 +268,12 @@ export function Features() {
                                 </div>
                             )}
 
-                            {!feature.image && !feature.component && !feature.emoji && (
+                            {!feature.image && !feature.component && !feature.emoji && feature.icon && (
                                 <div className="absolute right-3 bottom-3 opacity-10 pointer-events-none">
-                                    <feature.icon className="w-15 h-15 md:w-28 md:h-28 text-foreground" />
+                                    {(() => {
+                                        const Icon = feature.icon;
+                                        return <Icon className="w-15 h-15 md:w-28 md:h-28 text-foreground" />;
+                                    })()}
                                 </div>
                             )}
                         </motion.div>
