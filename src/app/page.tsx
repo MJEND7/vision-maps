@@ -4,12 +4,14 @@ import { motion } from "motion/react"
 import LandingNav from "@/components/landing/LandingNav";
 import LandingFooter from "@/components/landing/LandingFooter";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Zap, Users, Palette, Video, Globe, Upload } from "lucide-react";
+import { CheckCircle, Zap, Users, Palette, Video, Globe, Upload, Brain } from "lucide-react";
 import { Authenticated, Unauthenticated } from "convex/react";
 import LightRays from "@/backgrounds/LightRays/LightRays";
 import { ROUTES } from "@/lib/constants";
 import { Header } from "@/components/landing/Header";
 import { About } from "@/components/landing/About";
+import { DemoPasteBin } from "@/components/landing/DemoPasteBin";
+import Image from "next/image";
 
 export default function Home() {
     return (
@@ -55,51 +57,52 @@ export default function Home() {
 export function Features() {
     const features = [
         {
-            label: "Accounts",
-            tag: "EUR & GBP Soon",
-            title: "Multi-currency accounts",
+            label: "Paste Bin",
+            tag: "Live Feature",
+            title: "Creative Platform Integration",
             description:
-                "Hold and manage multiple currencies in one place and swap between them instantly.",
+                "Simply paste your idea snippets and diverse media into the platform and share them in channels. Build context for a \"channel\" of ideation",
             icon: Palette,
-            bullets: ["Pay in any currency", "Unlimited accounts", "Instant swaps"],
+            component: "pastebin-preview",
+            bullets: ["Paste any content type", "Organize in ideation into channels", "Share with team and invision together"],
             size: "md:col-span-2 md:row-span-2", // big feature card
         },
         {
-            label: "Cards",
-            title: "Virtual cards",
+            label: "Collaborate",
+            title: "Collaborate and build a vision",
             description:
-                "Create virtual cards to spend online or in-store. Securely, in any currency and in any place.",
-            icon: Video,
-            bullets: ["Pay in any currency", "Unlimited cards", "Spending limits"],
+                "Easily and quickly describe you idea's to others and get notified when others commit ideas",
+            icon: Users,
+            emoji: "/landing/White_Guy_Thinking.png",
+            bullets: ["Comment and disscues", "Ideate in realtime", "Get notified on ideation", "Invite and manage members"],
             size: "md:col-span-1 md:row-span-1",
         },
         {
-            label: "Pay-ins",
-            tag: "Soon",
-            title: "Invoices",
+            label: "DataFlow",
+            title: "Export and Import",
             description:
-                "Easily send professional invoices to your contacts and get paid directly into your account.",
+                "Shareing context between platforms and LLM's is very import, with vision maps you can do that easily",
             icon: Upload,
-            bullets: ["Product catalogue", "Custom branding", "Multiple payment methods"],
+            bullets: ["Export CSV, JSON, LLM spesific", "Export to LLM's and App builders"],
             size: "md:col-span-1",
         },
         {
-            label: "Pay-ins",
+            label: "Sessions",
             tag: "Soon",
-            title: "Receive",
+            title: "Ideation Sessions & Tracking",
             description:
-                "Easily request payments from anyone. Share a link or generate an invoice to get paid instantly.",
+                "Create an Ideation session for recording, researching and discussions",
             icon: Globe,
-            bullets: ["Local currency support", "QR payment links", "Instant settlement"],
+            bullets: ["Audio and Voice Notes", "Transcribe Audio", "Environment for tracking research movment"],
             size: "md:col-span-1",
         },
         {
-            label: "Payouts",
-            title: "Send",
+            label: "Frame",
+            title: "Build ideation maps in a frame",
             description:
-                "Send money across borders. Fast, secure, and with support for multiple currencies and assets.",
-            icon: Users,
-            bullets: ["Cross-border support", "Low FX fees", "Fast payment rails"],
+                "Build ideation flows, describe how to come to a conculstion through a group of priors.",
+            image: "/landing/Frame.png",
+            bullets: ["Build knowlage maps", "Connect nodes and use them to prompt AI", "Export frames for usage as context"],
             size: "md:col-span-2  md:row-span-2",
         },
         {
@@ -107,8 +110,8 @@ export function Features() {
             title: "AI Assistant",
             description:
                 "Get real-time help ideating, researching, and structuring your projects using our AI.",
-            icon: Zap,
-            bullets: ["Brainstorm with AI", "Context-aware help", "Export structured outputs"],
+            icon: Brain,
+            bullets: ["Brainstorm with GPT-5", "Context-aware help", "Export structured outputs"],
             size: "md:col-span-1",
         },
     ];
@@ -120,7 +123,7 @@ export function Features() {
             whileInView={{ opacity: 1 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
-            className="py-20 px-6 bg-background relative"
+            className="py-20 px-2 sm:px-6 bg-background relative"
         >
             <div className="max-w-7xl mx-auto space-y-16">
                 {/* Section Header */}
@@ -131,17 +134,19 @@ export function Features() {
                     viewport={{ once: true }}
                     className="text-center"
                 >
-                    <h2 className="text-4xl md:text-5xl font-display font-bold mb-4 text-foreground">
+                    <h2 className="text-2xl sm:text-4xl md:text-5xl font-display font-bold mb-4 text-foreground">
                         The Place for ideation and Shareing
                     </h2>
-                    <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-                        Quickly input any form of media, keep track of all your ideations and have ideations sessions with you team.
-                        Collaborate, share and build with a single visions at any scale.
+                    <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
+                        This isn’t just a product—it’s a new way of communication. In a world where rapid, 
+                        clear ideation can determine success, Vision Maps removes the barriers between raw
+                        idea and executed vision. By streamlining the process and aligning creative priors, 
+                        we empower you to share your idea with clarity and impact.
                     </p>
                 </motion.div>
 
                 {/* Feature Grid */}
-                <div className="grid md:grid-cols-3 grid-cols-1 auto-rows-[220px] md:auto-rows-[280px] gap-6">
+                <div className="space-y-2 sm:grid md:grid-cols-3 grid-cols-1 auto-rows-[220px] md:auto-rows-[280px] gap-6">
                     {features.map((feature, index) => (
                         <motion.div
                             key={index}
@@ -160,7 +165,7 @@ export function Features() {
                                     {feature.label}
                                 </span>
                                 {feature.tag && (
-                                    <span className="px-2 py-0.5 rounded-full bg-green-600/20 text-green-500 text-[11px]">
+                                    <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-700 text-[11px]">
                                         {feature.tag}
                                     </span>
                                 )}
@@ -178,7 +183,7 @@ export function Features() {
 
                             {/* Bullets */}
                             {feature.bullets && (
-                                <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
+                                <ul className="mt-3 z-[15] space-y-1 text-sm text-muted-foreground">
                                     {feature.bullets.map((item, i) => (
                                         <li key={i} className="flex items-center gap-2">
                                             <span className="w-1.5 h-1.5 rounded-full bg-primary" />
@@ -188,10 +193,86 @@ export function Features() {
                                 </ul>
                             )}
 
-                            {/* Decorative background icon */}
-                            <div className="absolute right-3 bottom-3 opacity-10 pointer-events-none">
-                                <feature.icon className="w-20 h-20 md:w-28 md:h-28 text-foreground" />
-                            </div>
+                            {feature.emoji && (
+                                <div>
+                                    <div className="absolute right-3 bottom-15 pointer-events-none">
+                                        <Image
+                                            className="w-17 h-17"
+                                            width={30}
+                                            height={30}
+                                            quality={100}
+                                            unoptimized
+                                            src={"/landing/Olive_Wipper_Snapper.png"}
+                                            alt=""
+                                        />
+                                    </div>
+                                    <div className="absolute right-23 bottom-15 pointer-events-none">
+                                        <Image
+                                            className="w-17 h-17"
+                                            width={30}
+                                            height={30}
+                                            quality={100}
+                                            unoptimized
+                                            src={feature.emoji}
+                                            alt=""
+                                        />
+                                    </div>
+                                    <div className="absolute right-13 bottom-3 pointer-events-none">
+                                        <Image
+                                            className="w-17 h-17"
+                                            width={30}
+                                            height={30}
+                                            quality={100}
+                                            unoptimized
+                                            src={"/landing/Black_Chick_Happy.png"}
+                                            alt=""
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {feature.component === "pastebin-preview" && (
+                                <div className="sm:absolute w-full opacity-90 -bottom-3 scale-90 -right-35 z-[10]  pointer-events-none">
+                                    <DemoPasteBin />
+                                </div>
+                            )}
+
+                            {feature.image && (
+                                <div className="sm:inline sm:absolute w-full opacity-90 -bottom-3 scale-90 -right-35 z-[10] pointer-events-none">
+                                    <Image
+                                        className="w-full"
+                                        width={850}
+                                        height={620}
+                                        quality={100}
+                                        unoptimized
+                                        src={feature.image}
+                                        alt=""
+                                        style={{
+                                            WebkitMaskImage: `
+      radial-gradient(circle, rgba(0,0,0,1) 25%, rgba(0,0,0,0) 85%),
+      linear-gradient(to bottom, rgba(0,0,0,0) 3%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)
+    `,
+                                            WebkitMaskComposite: "destination-in",
+                                            WebkitMaskRepeat: "no-repeat",
+                                            WebkitMaskSize: "100% 100%",
+
+                                            maskImage: `
+      radial-gradient(circle, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 85%),
+      linear-gradient(to bottom, rgba(0,0,0,0) 5%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)
+    `,
+                                            maskComposite: "intersect", // fallback
+                                            maskRepeat: "no-repeat",
+                                            maskSize: "100% 100%",
+                                        }}
+                                    />
+                                </div>
+                            )}
+
+                            {!feature.image && !feature.component && !feature.emoji && (
+                                <div className="absolute right-3 bottom-3 opacity-10 pointer-events-none">
+                                    <feature.icon className="w-15 h-15 md:w-28 md:h-28 text-foreground" />
+                                </div>
+                            )}
                         </motion.div>
                     ))}
                 </div>
