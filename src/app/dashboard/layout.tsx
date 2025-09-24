@@ -21,6 +21,8 @@ export default function ProfileLayout({
         }
     }, [isLoaded, isSignedIn, router]);
 
+    if (!isLoaded || !isSignedIn) return null;
+
     return (
         <ProfileUserProvider user={user}>
             <OrgSwitchProvider>

@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Eye, EyeOff } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import EmailVerification from "./EmailVerification";
 import { toast } from "sonner";
 import { ROUTES } from "@/lib/constants";
@@ -29,6 +29,8 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
     const [pendingVerification, setPendingVerification] = useState(false);
 
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const returnUrl = searchParams.get('returnUrl');
 
     const isSignIn = variant === "signin";
     const isLoaded = isSignIn ? signInLoaded : signUpLoaded;
@@ -49,7 +51,8 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
 
                 if (result.status === "complete") {
                     await setSignInActive({ session: result.createdSessionId });
-                    router.push(ROUTES.HOME);
+                    const redirectUrl = returnUrl || ROUTES.HOME;
+                    router.push(redirectUrl);
                 } else {
                     const errorMessage = "Sign in failed. Please try again.";
                     setError(errorMessage);
@@ -81,17 +84,18 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
 
         setIsLoading(true);
         try {
+            const redirectUrl = returnUrl || ROUTES.PROFILE.VISIONS;
             if (isSignIn && signIn) {
                 await signIn.authenticateWithRedirect({
                     strategy,
-                    redirectUrl: ROUTES.PROFILE.VISIONS,
-                    redirectUrlComplete: ROUTES.PROFILE.VISIONS,
+                    redirectUrl: redirectUrl,
+                    redirectUrlComplete: redirectUrl,
                 });
             } else if (signUp) {
                 await signUp.authenticateWithRedirect({
                     strategy,
                     redirectUrl: ROUTES.SSO_CALLBACK,
-                    redirectUrlComplete: ROUTES.PROFILE.VISIONS,
+                    redirectUrlComplete: redirectUrl,
                 });
             } else {
                 throw new Error("Failed to get a version of this component (oauth)")
@@ -106,7 +110,7 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
     };
 
     if (!isSignIn && pendingVerification && signUp) {
-        return <EmailVerification email={email} signUp={signUp} setActive={setSignUpActive} />;
+        return <EmailVerification email={email} signUp={signUp} setActive={setSignUpActive} returnUrl={returnUrl} />;
     }
 
     return (

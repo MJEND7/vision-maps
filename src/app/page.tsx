@@ -12,6 +12,8 @@ import { Header } from "@/components/landing/Header";
 import { About } from "@/components/landing/About";
 import { DemoPasteBin } from "@/components/landing/DemoPasteBin";
 import Image from "next/image";
+import { PricingComponent } from "@/components/landing/PricingPage";
+import { ClerkLoaded } from "@clerk/clerk-react";
 
 export default function Home() {
     return (
@@ -47,6 +49,9 @@ export default function Home() {
 
                 <About />
                 <Features />
+                <ClerkLoaded>
+                    <PricingComponent />
+                </ClerkLoaded>
                 <CallToAction />
                 <LandingFooter />
             </motion.div>
@@ -93,7 +98,7 @@ function Features() {
             description:
                 "Create an Ideation session for recording, researching and discussions",
             icon: Globe,
-            bullets: ["Audio and Voice Notes", "Transcribe Audio", "Environment for tracking research movment"],
+            bullets: ["Audio and Voice Notes", "Transcribe Audio", "Environment for tracking research"],
             size: "md:col-span-1",
         },
         {
@@ -138,9 +143,9 @@ function Features() {
                         The Place for ideation and Shareing
                     </h2>
                     <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
-                        This isn’t just a product—it’s a new way of communication. In a world where rapid, 
+                        This isn’t just a product—it’s a new way of communication. In a world where rapid,
                         clear ideation can determine success, Vision Maps removes the barriers between raw
-                        idea and executed vision. By streamlining the process and aligning creative priors, 
+                        idea and executed vision. By streamlining the process and aligning creative priors,
                         we empower you to share your idea with clarity and impact.
                     </p>
                 </motion.div>
@@ -232,7 +237,7 @@ function Features() {
                             )}
 
                             {feature.component === "pastebin-preview" && (
-                                <div className="sm:absolute w-full opacity-90 -bottom-3 scale-90 -right-35 z-[10]  pointer-events-none">
+                                <div className="sm:absolute w-full opacity-90 -bottom-3 scale-90 flex justify-end z-[10]  pointer-events-none">
                                     <DemoPasteBin />
                                 </div>
                             )}

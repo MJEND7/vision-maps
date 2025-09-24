@@ -45,7 +45,7 @@ export default function LandingNav({
     }, [menuOpen]);
 
     return (
-        <div className="flex gap-1 items-center justify-center w-full p-2 fixed top-0 z-[40]">
+        <div className="flex gap-1 items-center justify-center w-full p-2 fixed top-0 z-[20]">
             <motion.header
                 initial={{ y: -50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -98,19 +98,9 @@ export default function LandingNav({
                 <div className="flex">
                     {/* Auth / Buttons - Hide UserButton on mobile when showLandingSections is true */}
                     <div className="hidden sm:flex items-center gap-2">
-                        <Unauthenticated>
-                            <Link href={ROUTES.SIGNUP}>
-                                <Button size="lg">Sign up</Button>
-                            </Link>
-                            <Link href={ROUTES.SIGNIN}>
-                                <Button variant={"outline"} size="lg">Login</Button>
-                            </Link>
-                        </Unauthenticated>
-                        <Authenticated>
-                            <Link href={ROUTES.PROFILE.VISIONS}>
-                                <Button size="lg">Dashboard</Button>
-                            </Link>
-                        </Authenticated>
+                        <Link href={ROUTES.PROFILE.VISIONS}>
+                            <Button size="lg">Dashboard</Button>
+                        </Link>
                     </div>
 
                     {/* Mobile Menu Toggle */}

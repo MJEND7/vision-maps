@@ -51,13 +51,6 @@ export default memo(function TextNode(props: NodeProps & { data: any }) {
 
   // Listen for external edit requests from frame component
   useEffect(() => {
-    console.log('TextNode useEffect:', {
-      editingNodeId: props.data.editingNodeId,
-      nodeId: props.id,
-      isEditing,
-      shouldEdit: props.data.editingNodeId === props.id
-    });
-    
     if (props.data.editingNodeId === props.id && !isEditing) {
       console.log('Starting edit mode for node:', props.id);
       setIsEditing(true);

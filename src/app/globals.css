@@ -349,3 +349,7 @@
 .frame-preview .react-flow__renderer {
   touch-action: pan-y pan-x !important;
 }
+
+.cl-drawerRoot {
+    z-index: 100
+}

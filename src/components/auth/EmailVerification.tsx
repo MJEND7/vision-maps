@@ -14,9 +14,10 @@ interface EmailVerificationProps {
   email: string;
   signUp: SignUpResource;
   setActive: SetActive;
+  returnUrl?: string | null;
 }
 
-export default function EmailVerification({ email, signUp, setActive }: EmailVerificationProps) {
+export default function EmailVerification({ email, signUp, setActive, returnUrl }: EmailVerificationProps) {
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -76,7 +77,8 @@ export default function EmailVerification({ email, signUp, setActive }: EmailVer
 
       if (completeSignUp.status === "complete") {
         await setActive({ session: completeSignUp.createdSessionId! });
-        router.push(ROUTES.HOME);
+        const redirectUrl = returnUrl || ROUTES.HOME;
+        router.push(redirectUrl);
       } else {
         const errorMessage = "Verification failed. Please try again.";
         setError(errorMessage);
