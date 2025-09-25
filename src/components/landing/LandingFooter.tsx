@@ -7,17 +7,7 @@ import { ROUTES } from "@/lib/constants";
 
 export default function LandingFooter() {
     return (
-        <motion.footer
-            initial={{ y: 200, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1 }}
-            transition={{
-                duration: 0.8,
-                type: "spring",
-                stiffness: 100,
-                damping: 20,
-                ease: "easeOut"
-            }}
-            viewport={{ once: true, margin: "-100px" }}
+        <footer
             className="bg-background border-t"
         >
             <div className="max-w-6xl mx-auto px-6 py-16">
@@ -73,6 +63,6 @@ export default function LandingFooter() {
                     </p>
                 </div>
             </div>
-        </motion.footer >
+        </footer >
     );
 }

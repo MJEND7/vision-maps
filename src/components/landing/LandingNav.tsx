@@ -79,9 +79,9 @@ export default function LandingNav({
                     </Link>
                     <div className="sm:flex hidden justify-center gap-2">
                         {[
-                            { name: "Features", href: ROUTES.LANDING.FEATURES },
                             { name: "About", href: ROUTES.LANDING.ABOUT },
-                            { name: "Pricing", href: ROUTES.LANDING.PRICING },
+                            { name: "Features", href: ROUTES.LANDING.FEATURES },
+                            { name: "Pricing", href: ROUTES.PRICING },
                         ].map((item) => (
                             <Link
                                 key={item.name}
@@ -144,7 +144,7 @@ export default function LandingNav({
                                 {[
                                     { name: "Features", href: ROUTES.LANDING.FEATURES },
                                     { name: "About", href: ROUTES.LANDING.ABOUT },
-                                    { name: "Pricing", href: ROUTES.LANDING.PRICING },
+                                    { name: "Pricing", href: ROUTES.PRICING },
                                 ].map((item) => (
                                     <Link
                                         key={item.name}

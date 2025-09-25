@@ -26,6 +26,7 @@ export const ASSETS = {
 export const ROUTES = {
   // Main pages
   HOME: '/',
+  PRICING: '/pricing',
   
   // Auth routes
   SIGNIN: '/auth/signin',
@@ -43,10 +44,9 @@ export const ROUTES = {
   
   // Landing page sections (hash routes)
   LANDING: {
-    HOME: '#home',
-    FEATURES: '#features', 
-    ABOUT: '#about',
-    PRICING: '#pricing',
+    HOME: '/#home',
+    FEATURES: '/#features', 
+    ABOUT: '/#about',
   },
   
   // External links

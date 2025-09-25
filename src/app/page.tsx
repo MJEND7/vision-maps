@@ -12,10 +12,9 @@ import { Header } from "@/components/landing/Header";
 import { About } from "@/components/landing/About";
 import { DemoPasteBin } from "@/components/landing/DemoPasteBin";
 import Image from "next/image";
-import { PricingComponent } from "@/components/landing/PricingPage";
-import { ClerkLoaded } from "@clerk/clerk-react";
 
 export default function Home() {
+
     return (
         <>
             <motion.div
@@ -49,9 +48,6 @@ export default function Home() {
 
                 <About />
                 <Features />
-                <ClerkLoaded>
-                    <PricingComponent />
-                </ClerkLoaded>
                 <CallToAction />
                 <LandingFooter />
             </motion.div>
