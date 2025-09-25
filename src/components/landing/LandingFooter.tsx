@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "motion/react";
 import Logo from "@/icons/logo";
 import Link from "next/link";
 import { ROUTES } from "@/lib/constants";

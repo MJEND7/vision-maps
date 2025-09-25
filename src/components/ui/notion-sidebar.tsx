@@ -10,6 +10,12 @@ import {
     LogOut,
     HelpCircle,
     ChevronsUpDown,
+    Clock,
+    Users,
+    ArrowRight,
+    Zap,
+    Star,
+    DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -51,13 +57,13 @@ export function NotionSidebar() {
     const pathname = usePathname(); // Get current pathname
     const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
     const [orgSettingsOpen, setOrgSettingsOpen] = useState(false);
+    const [userPlan, setUserPlan] = useState<string>("free");
+    const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
 
     const notificationCount = useQuery(
         api.notifications.getUnreadCount,
         (isOrgSwitching) ? "skip" : {}
     ) ?? 0;
-
-    // Add error handling for the component
 
     // Helper function to check if a route is active
     const isActiveRoute = (route: string) => {
@@ -81,9 +87,7 @@ export function NotionSidebar() {
         }
     }, [organization?.id, orgListLoaded, isOrgSwitching, setIsOrgSwitching]);
 
-    // Monitor Clerk's auth state to detect org switching
     useEffect(() => {
-        // If we're not signed in but we were before (during org switch), show skeleton
         if (!isSignedIn && user && !isOrgSwitching) {
             console.log("Detected org switch via auth state change");
             setIsOrgSwitching(true);
@@ -95,12 +99,29 @@ export function NotionSidebar() {
         }
     }, [isSignedIn, user, isOrgSwitching, setIsOrgSwitching]);
 
+    // Fetch user plan data
+    useEffect(() => {
+        if (isSignedIn && !isOrgSwitching) {
+            fetch('/api/user-plan')
+                .then(res => res.json())
+                .then(data => {
+                    console.log('Fetched user plan data:', data);
+                    setUserPlan(data.plan || "free");
+                    setTrialDaysLeft(data.trialDaysLeft);
+                })
+                .catch(error => {
+                    console.error('Error fetching user plan:', error);
+                    setUserPlan("free");
+                    setTrialDaysLeft(null);
+                });
+        }
+    }, [isSignedIn, isOrgSwitching]);
+
     const handleProfileClick = () => {
         openUserProfile()
     };
 
     const handleSettingsClick = () => {
-        // Open our custom organization settings dialog
         setOrgSettingsOpen(true);
     };
 
@@ -131,6 +152,117 @@ export function NotionSidebar() {
         }
     };
 
+    const AdWidget = () => {
+        if (!isSignedIn) return null;
+
+        // Free user → Upgrade widget
+        if (userPlan == "free_user" || userPlan == "free_org") {
+            return (
+                <div
+                    className="relative rounded-2xl p-4 mt-2 
+        bg-gradient-to-br from-white/80 via-white/60 to-white/30 
+        dark:from-[#0a0f2a]/60 dark:via-[#111b3d]/40 dark:to-[#0a0f2a]/20
+        backdrop-blur-2xl border dark:border-white/10 
+        shadow-lg shadow-black/5 dark:shadow-black/30"
+                >
+                    <div className="flex items-center gap-2 mb-2">
+                        <Star className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            Upgrade
+                        </span>
+                    </div>
+                    <p className="text-xs text-gray-700 dark:text-gray-300 mb-6">
+                        See pricing and build better with vision maps
+                    </p>
+                    <Button
+                        size="sm"
+                        className="w-full text-xs bg-gradient-to-r from-blue-500 to-indigo-500 
+                     hover:from-blue-600 hover:to-indigo-600 
+                     text-white shadow-md rounded-xl"
+                        onClick={() => router.push("/pricing")}
+                    >
+                        <Zap className="w-3 h-3 mr-1" />
+                        Upgrade Now
+                    </Button>
+                </div>
+            );
+        }
+
+        // Active trial
+        if (
+            (userPlan !== "free" && userPlan !== "free_org") &&
+            trialDaysLeft !== null &&
+            trialDaysLeft > 0
+        ) {
+            return (
+                <div
+                    className="relative rounded-2xl p-4 mt-2 
+        bg-gradient-to-br from-white/80 via-white/60 to-white/30 
+        dark:from-[#0a0f2a]/60 dark:via-[#111b3d]/40 dark:to-[#0a0f2a]/20
+        backdrop-blur-2xl border dark:border-white/10 
+        shadow-lg shadow-black/5 dark:shadow-black/30"
+                >
+                    <div className="flex items-center gap-2 mb-2">
+                        <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            Free Trial
+                        </span>
+                    </div>
+
+                    <p className="text-xs text-gray-700 dark:text-gray-300 mb-6">
+                        {trialDaysLeft} day{trialDaysLeft !== 1 ? "s" : ""} left in your trial
+                    </p>
+
+                    <Button
+                        size="sm"
+                        className="w-full text-xs bg-gradient-to-r from-blue-500 to-indigo-500 
+                     hover:from-blue-600 hover:to-indigo-600 
+                     text-white shadow-md rounded-xl"
+                        onClick={() => router.push("/pricing")}
+                    >
+                        <DollarSign className="w-3 h-3" />
+                        Pricing
+                    </Button>
+                </div>
+            );
+        }
+
+        // Pro user → Encourage team upgrade
+        if (userPlan === "pro" && !organization) {
+            return (
+                <div
+                    className="relative rounded-2xl p-4 mt-2 
+        bg-gradient-to-br from-white/80 via-white/60 to-white/30 
+        dark:from-[#0a0f2a]/60 dark:via-[#111b3d]/40 dark:to-[#0a0f2a]/20
+        backdrop-blur-2xl border dark:border-white/10 
+        shadow-lg shadow-black/5 dark:shadow-black/30"
+                >
+                    <div className="flex items-center gap-2 mb-2">
+                        <Users className="w-4 h-4 text-green-600 dark:text-green-400" />
+                        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            Team Up!
+                        </span>
+                    </div>
+                    <p className="text-xs text-gray-700 dark:text-gray-300 mb-6">
+                        Collaborate with your team on Vision Maps
+                    </p>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full text-xs border border-green-400/70 text-green-700 dark:text-green-300 
+                     hover:bg-green-50/50 dark:hover:bg-green-900/20 
+                     rounded-xl shadow-sm"
+                        onClick={() => router.push("/pricing?plan=teams")}
+                    >
+                        Upgrade to Teams
+                        <ArrowRight className="w-3 h-3 ml-1" />
+                    </Button>
+                </div>
+            );
+        }
+
+        return null;
+    };
 
     return (
         <div className="w-64 h-full bg-card border-r border-border flex flex-col">
@@ -233,6 +365,8 @@ export function NotionSidebar() {
 
                 {/* Bottom Actions */}
                 <div className="space-y-2">
+                    {/* Ad Widget */}
+                    <AdWidget />
                     <Button
                         variant="ghost"
                         className={cn(

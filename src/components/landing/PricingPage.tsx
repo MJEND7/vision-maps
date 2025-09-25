@@ -9,9 +9,8 @@ import { CheckCircle } from "lucide-react";
 import { Unauthenticated } from "convex/react";
 import { Button } from "../ui/button";
 import { ROUTES } from "@/lib/constants";
-import { SignedIn, useUser, useOrganization, useOrganizationList, useClerk } from "@clerk/clerk-react";
+import { SignedIn, useOrganization, useOrganizationList, useClerk } from "@clerk/clerk-react";
 import AutoCheckout from "./AutoCheckout";
-import { CustomOrgPopup } from "../ui/custom-org-popup";
 import {
     Dialog,
     DialogContent,
@@ -98,7 +97,6 @@ export function PricingComponent() {
     const [newOrgName, setNewOrgName] = useState("");
     const [isCreatingOrg, setIsCreatingOrg] = useState(false);
 
-    const { isLoaded, isSignedIn, user } = useUser();
     const { organization } = useOrganization();
     const { userMemberships, isLoaded: orgListLoaded, setActive } = useOrganizationList({
         userMemberships: { infinite: true },
@@ -107,28 +105,24 @@ export function PricingComponent() {
 
     // Fetch current user plan from API
     useEffect(() => {
-        if (isLoaded && isSignedIn) {
-            fetch('/api/user-plan')
-                .then(res => res.json())
-                .then(data => {
-                    console.log('Initial plan fetch:', data)
-                    setCurrentPlan(data.plan || "free");
-                    // Set proAlreadyOwned if user has pro plan and is in an organization
-                    if (data.plan === 'pro' && organization) {
-                        setProAlreadyOwned(true);
-                        console.log('Setting proAlreadyOwned to true on initial load');
-                    }
-                    setIsLoadingPlan(false);
-                })
-                .catch(error => {
-                    console.error('Error fetching user plan:', error);
-                    setCurrentPlan("free");
-                    setIsLoadingPlan(false);
-                });
-        } else if (isLoaded && !isSignedIn) {
-            setIsLoadingPlan(false);
-        }
-    }, [isLoaded, isSignedIn, organization]);
+        fetch('/api/user-plan')
+            .then(res => res.json())
+            .then(data => {
+                console.log('Initial plan fetch:', data)
+                setCurrentPlan(data.plan || "free");
+                // Set proAlreadyOwned if user has pro plan and is in an organization
+                if (data.plan === 'pro' && organization) {
+                    setProAlreadyOwned(true);
+                    console.log('Setting proAlreadyOwned to true on initial load');
+                }
+                setIsLoadingPlan(false);
+            })
+            .catch(error => {
+                console.error('Error fetching user plan:', error);
+                setCurrentPlan("free");
+                setIsLoadingPlan(false);
+            });
+    }, [organization]);
 
     // Update proAlreadyOwned state when organization changes
     useEffect(() => {
@@ -140,14 +134,14 @@ export function PricingComponent() {
             setProAlreadyOwned(true);
             console.log('Setting proAlreadyOwned to true because user has pro and switched to org');
         }
-    }, [organization?.id, currentPlan]);
+    }, [organization, currentPlan, ]);
 
     // Preselect checkout if coming with query params
     useEffect(() => {
         const selectedPlan = searchParams.get("plan");
         const selectedPeriod = searchParams.get("period");
 
-        if (selectedPlan && selectedPeriod && isSignedIn && !isLoadingPlan) {
+        if (selectedPlan && selectedPeriod && !isLoadingPlan) {
             const wasAnnual = selectedPeriod === "annual";
             setIsAnnual(wasAnnual);
             const planIndex = plans.findIndex(
@@ -163,7 +157,7 @@ export function PricingComponent() {
                 setShowCheckOut(true);
             }
         }
-    }, [isSignedIn, isLoadingPlan, searchParams]);
+    }, [isLoadingPlan, searchParams]);
 
     // Helper function to get button text based on current plan
     const getButtonText = (planKey: string) => {
@@ -266,20 +260,20 @@ export function PricingComponent() {
     // Handle organization creation
     const handleCreateOrganization = async () => {
         if (!newOrgName.trim()) return;
-        
+
         setIsCreatingOrg(true);
-        
+
         try {
             const org = await createOrganization({ name: newOrgName.trim() });
             if (org) {
                 toast.success("Organization created successfully!");
-                
+
                 // Refresh the memberships list to include the new org
                 userMemberships.revalidate?.();
-                
+
                 setShowCreateOrg(false);
                 setNewOrgName("");
-                
+
                 // Go directly to checkout with the newly created org
                 setTimeout(() => {
                     handleOrgSelection(org.id, org.name);
@@ -293,20 +287,7 @@ export function PricingComponent() {
         }
     };
 
-    if (!isLoaded) {
-        return (
-            <section id="pricing" className="py-20 px-6">
-                <div className="max-w-6xl mx-auto text-center">
-                    <div className="animate-pulse">
-                        <div className="h-8 bg-muted rounded mb-4 max-w-md mx-auto"></div>
-                        <div className="h-4 bg-muted rounded mb-8 max-w-lg mx-auto"></div>
-                    </div>
-                </div>
-            </section>
-        );
-    }
-
-    if (isSignedIn && isLoadingPlan) {
+    if (isLoadingPlan) {
         return (
             <section id="pricing" className="py-20 px-6">
                 <div className="max-w-6xl mx-auto text-center">
@@ -621,7 +602,7 @@ export function PricingComponent() {
                             Enter a name for your new organization to continue with the Teams plan.
                         </DialogDescription>
                     </DialogHeader>
-                    
+
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="org-name">Organization Name</Label>
@@ -636,10 +617,10 @@ export function PricingComponent() {
                                 disabled={isCreatingOrg}
                             />
                         </div>
-                        
+
                         <div className="flex justify-end gap-2">
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 onClick={() => {
                                     setShowCreateOrg(false);
                                     setShowOrgSelector(true);
@@ -648,7 +629,7 @@ export function PricingComponent() {
                             >
                                 Back
                             </Button>
-                            <Button 
+                            <Button
                                 onClick={handleCreateOrganization}
                                 disabled={!newOrgName.trim() || isCreatingOrg}
                             >

@@ -98,9 +98,19 @@ export default function LandingNav({
                 <div className="flex">
                     {/* Auth / Buttons - Hide UserButton on mobile when showLandingSections is true */}
                     <div className="hidden sm:flex items-center gap-2">
+                    <Unauthenticated>
+                        <Link href={ROUTES.SIGNUP}>
+                            <Button size="lg">Sign Up</Button>
+                        </Link>
+                        <Link href={ROUTES.SIGNIN}>
+                            <Button variant="outline" size="lg">Login</Button>
+                        </Link>
+                    </Unauthenticated>
+                    <Authenticated>
                         <Link href={ROUTES.PROFILE.VISIONS}>
                             <Button size="lg">Dashboard</Button>
                         </Link>
+                    </Authenticated>
                     </div>
 
                     {/* Mobile Menu Toggle */}

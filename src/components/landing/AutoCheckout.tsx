@@ -1,7 +1,7 @@
 import {
     CheckoutButton,
 } from "@clerk/clerk-react/experimental";
-import { CommercePlanResource, ForPayerType } from "@clerk/types";
+import { ForPayerType } from "@clerk/types";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { useAuth, useOrganizationList } from "@clerk/nextjs";
@@ -13,7 +13,7 @@ export default function AutoCheckout({
     isAnnual,
     selectedOrg,
 }: {
-    data: CommercePlanResource[];
+    data: any[];
     currentIndex: number;
     forWho: ForPayerType;
     isAnnual: boolean;

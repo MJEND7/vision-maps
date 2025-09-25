@@ -30,7 +30,7 @@ export default function AuthComponent({ variant, onSwitchVariant }: AuthComponen
 
     const router = useRouter();
     const searchParams = useSearchParams();
-    const returnUrl = `${searchParams.get('returnUrl')}?plan=${searchParams.get('plan')}&period=${searchParams.get('period')}`;
+    const returnUrl = searchParams.get('returnUrl') ? `${searchParams.get('returnUrl')}?plan=${searchParams.get('plan')}&period=${searchParams.get('period')}` : undefined;
 
     const isSignIn = variant === "signin";
     const isLoaded = isSignIn ? signInLoaded : signUpLoaded;
