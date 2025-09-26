@@ -4,7 +4,11 @@ import React, { createContext, useContext, ReactNode, useCallback, useMemo } fro
 
 interface SidebarContextType {
   openChat: (chatId: string) => void;
-  rightSidebarContentRef: React.RefObject<{ openChat: (chatId: string) => void } | null>;
+  rightSidebarContentRef: React.RefObject<{ 
+    openChat: (chatId: string) => void;
+    openNodeComments: (nodeId: string) => void;
+    openCommentChat: (chatId: string) => void;
+  } | null>;
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
@@ -12,7 +16,11 @@ const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 interface SidebarProviderProps {
   children: ReactNode;
   onOpenChat: (chatId: string) => void;
-  rightSidebarContentRef: React.RefObject<{ openChat: (chatId: string) => void } | null>;
+  rightSidebarContentRef: React.RefObject<{ 
+    openChat: (chatId: string) => void;
+    openNodeComments: (nodeId: string) => void;
+    openCommentChat: (chatId: string) => void;
+  } | null>;
 }
 
 export function SidebarProvider({ 

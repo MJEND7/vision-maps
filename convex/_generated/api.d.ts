@@ -10,6 +10,7 @@
 
 import type * as channels from "../channels.js";
 import type * as chats from "../chats.js";
+import type * as comments from "../comments.js";
 import type * as edges from "../edges.js";
 import type * as frames from "../frames.js";
 import type * as http from "../http.js";
@@ -56,6 +57,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   channels: typeof channels;
   chats: typeof chats;
+  comments: typeof comments;
   edges: typeof edges;
   frames: typeof frames;
   http: typeof http;

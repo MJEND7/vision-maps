@@ -8,7 +8,7 @@ export default memo(function AINode(props: NodeProps & { data: any }) {
   
   return (
     <div 
-      className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20 bg-card border border-purple-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-purple-500/10"
+      className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20 bg-card border border-purple-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-purple-500/10 group relative"
       onContextMenu={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -48,6 +48,7 @@ export default memo(function AINode(props: NodeProps & { data: any }) {
         </div>
         {renderNodeContent(node, props.data.onOpenChat)}
       </div>
+      
       
       <Handle 
         type="source" 
