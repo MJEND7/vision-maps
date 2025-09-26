@@ -6,7 +6,7 @@ import { api } from '../../../convex/_generated/api';
 import { useUser } from '@clerk/nextjs';
 import Image from 'next/image';
 import { Id } from '../../../convex/_generated/dataModel';
-import { Send, User, MoreHorizontal, Edit2, Trash2, Reply } from 'lucide-react';
+import { Send, User, MoreHorizontal, Edit2, Trash2, Reply, CornerUpLeft, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
 // Simple utility to format time ago
@@ -30,6 +30,9 @@ import {
 interface CommentChatProps {
   chatId: string;
   className?: string;
+  onClose?: () => void;
+  localCommentData?: {chatId: string, nodeId: string} | null;
+  visionId?: string;
 }
 
 interface Comment {
@@ -51,30 +54,98 @@ interface Comment {
   } | null;
 }
 
-export function CommentChat({ chatId, className }: CommentChatProps) {
+export function CommentChat({ chatId, className, onClose, localCommentData, visionId }: CommentChatProps) {
   const { user } = useUser();
   const [newComment, setNewComment] = useState('');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [editingComment, setEditingComment] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null);
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
+  const [tempMessage, setTempMessage] = useState<string>('');
+  const [realChatId, setRealChatId] = useState<string | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const commentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Mutations
-  const createComment = useMutation(api.comments.createComment);
-  const updateComment = useMutation(api.comments.updateComment);
-  const deleteComment = useMutation(api.comments.deleteComment);
+  const closeCommentChat = useMutation(api.comments.closeCommentChat);
+  const createCommentChat = useMutation(api.comments.createCommentChat);
 
-  // Get chat details
-  const chat = useQuery(api.chats.getChat, { chatId: chatId as Id<"chats"> });
+  // Check if this is a local comment chat
+  const isLocalChat = chatId?.startsWith('local-comment-');
+  
+  // For existing chats, set realChatId immediately
+  React.useEffect(() => {
+    if (!isLocalChat && chatId && !realChatId) {
+      setRealChatId(chatId);
+    }
+  }, [isLocalChat, chatId, realChatId]);
+  
+  // Use real chat ID if available, otherwise use the provided chatId
+  const effectiveChatId = realChatId || chatId;
+  
+  // Get chat details (skip for local chats that don't have real chat ID yet)
+  const chat = useQuery(api.chats.getChat, 
+    realChatId ? { chatId: realChatId as Id<"chats"> } : "skip"
+  );
 
-  // Get comments for the node
-  const comments = useQuery(
-    api.comments.getNodeComments,
-    chat?.nodeId && chat?.visionId
-      ? { nodeId: chat.nodeId, visionId: chat.visionId }
-      : "skip"
-  ) as Comment[] | undefined;
+  // Get messages for this specific chat (skip for local chats without real ID)
+  const messagesResult = useQuery(
+    api.messages.listMessagesByChat,
+    chat && realChatId ? {
+      chatId: chat._id,
+      paginationOpts: {
+        numItems: 50,
+        cursor: null
+      }
+    } : "skip"
+  );
+
+  // Get unique user IDs from messages
+  const userIds = React.useMemo(() => {
+    if (!messagesResult?.page) return [];
+    const ids = messagesResult.page.map((message: any) => message.userId).filter(Boolean);
+    return [...new Set(ids)];
+  }, [messagesResult]);
+
+  // Get user data for all message authors
+  const users = useQuery(
+    api.user.getUsersByExternalIds,
+    userIds.length > 0 ? { externalIds: userIds } : "skip"
+  );
+
+  // Convert messages to comment-like structure for display
+  const comments = React.useMemo(() => {
+    if (!messagesResult?.page || !chat) return [];
+    
+    return messagesResult.page.map((message: any) => {
+      const author = users?.find((user: any) => user.externalId === message.userId);
+      return {
+        _id: message._id as any,
+        content: message.content,
+        authorId: message.userId || chat.userId,
+        nodeId: chat.nodeId,
+        visionId: chat.visionId,
+        parentCommentId: message.replyToMessageId, // Use the replyToMessageId for threading
+        mentions: [],
+        createdAt: new Date(message._creationTime).toISOString(),
+        updatedAt: new Date(message._creationTime).toISOString(),
+        isDeleted: false,
+        author: author ? {
+          _id: author._id,
+          name: author.name || 'Unknown User',
+          picture: author.picture,
+          email: author.email || ''
+        } : {
+          _id: message._id as any,
+          name: 'Unknown User',
+          picture: undefined,
+          email: ''
+        }
+      };
+    }) as Comment[];
+  }, [messagesResult, chat, users]);
 
   // Auto-scroll to bottom when new comments are added
   useEffect(() => {
@@ -90,49 +161,70 @@ export function CommentChat({ chatId, className }: CommentChatProps) {
     }
   }, [replyingTo, editingComment]);
 
+  const sendMessage = useMutation(api.messages.sendMessage);
+
   const handleSendComment = async () => {
-    if (!newComment.trim() || !chat?.nodeId || !chat?.visionId) return;
+    if (!newComment.trim()) return;
 
     try {
-      await createComment({
-        content: newComment.trim(),
-        nodeId: chat.nodeId,
-        visionId: chat.visionId,
-        parentCommentId: replyingTo ? (replyingTo as Id<"comments">) : undefined,
-        mentions: [] // TODO: Extract mentions from content
-      });
+      let targetChatId = chat?._id;
+      
+      // If this is a local chat, create the actual chat first
+      if (isLocalChat && localCommentData && visionId) {
+        setIsCreatingChat(true);
+        setTempMessage(newComment.trim()); // Store the message to show temporarily
+        const result = await createCommentChat({
+          nodeId: localCommentData.nodeId as Id<"nodes">,
+          visionId: visionId as Id<"visions">,
+          initialComment: newComment.trim(),
+          title: `Comment thread`
+        });
+        
+        if (result.success && result.chatId) {
+          // Clear the input immediately to show responsiveness
+          setNewComment('');
+          setReplyingTo(null);
+          
+          // Store the real chat ID but don't notify parent to switch
+          // This will make the queries start fetching real data
+          setRealChatId(result.chatId);
+          setIsCreatingChat(false);
+          setTempMessage('');
+          return; // Exit early for local chat creation
+        } else {
+          console.error('Failed to create comment chat');
+          setIsCreatingChat(false);
+          setTempMessage('');
+          return;
+        }
+      } else if (!chat) {
+        return;
+      } else {
+        // Send message to existing chat
+        await sendMessage({
+          chatId: chat._id,
+          content: newComment.trim(),
+          replyToMessageId: replyingTo ? (replyingTo as any) : undefined
+        });
+      }
 
       setNewComment('');
       setReplyingTo(null);
     } catch (error) {
-      console.error('Failed to send comment:', error);
+      console.error('Failed to send message:', error);
+      setIsCreatingChat(false);
     }
   };
 
+  // For now, disable editing and deleting messages in comment chats
   const handleEditComment = async () => {
-    if (!editContent.trim() || !editingComment) return;
-
-    try {
-      await updateComment({
-        commentId: editingComment as Id<"comments">,
-        content: editContent.trim()
-      });
-
-      setEditingComment(null);
-      setEditContent('');
-    } catch (error) {
-      console.error('Failed to edit comment:', error);
-    }
+    console.log('Message editing not yet implemented for comment chats');
+    setEditingComment(null);
+    setEditContent('');
   };
 
-  const handleDeleteComment = async (commentId: string) => {
-    try {
-      await deleteComment({
-        commentId: commentId as Id<"comments">
-      });
-    } catch (error) {
-      console.error('Failed to delete comment:', error);
-    }
+  const handleDeleteComment = async () => {
+    console.log('Message deletion not yet implemented for comment chats');
   };
 
   const startEditing = (comment: Comment) => {
@@ -157,6 +249,23 @@ export function CommentChat({ chatId, className }: CommentChatProps) {
     setNewComment('');
   };
 
+  const scrollToComment = (commentId: string) => {
+    const commentElement = commentRefs.current.get(commentId);
+    if (commentElement && scrollAreaRef.current) {
+      commentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedCommentId(commentId);
+      setTimeout(() => setHighlightedCommentId(null), 2000);
+    }
+  };
+
+  const setCommentRef = (commentId: string, element: HTMLDivElement | null) => {
+    if (element) {
+      commentRefs.current.set(commentId, element);
+    } else {
+      commentRefs.current.delete(commentId);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -174,31 +283,46 @@ export function CommentChat({ chatId, className }: CommentChatProps) {
     }
   };
 
-  // Group comments by thread (replies under parent comments)
-  const threadedComments = React.useMemo(() => {
-    if (!comments) return [];
-
-    const parentComments = comments.filter(c => !c.parentCommentId && !c.isDeleted);
-    const repliesMap = new Map<string, Comment[]>();
-
-    // Group replies by parent
-    comments.forEach(comment => {
-      if (comment.parentCommentId && !comment.isDeleted) {
-        const parentId = comment.parentCommentId;
-        if (!repliesMap.has(parentId)) {
-          repliesMap.set(parentId, []);
+  // Show all comments in chronological order with reply references
+  const allComments = React.useMemo(() => {
+    let displayComments = comments?.filter(c => !c.isDeleted) || [];
+    
+    // If we're creating a chat and there's a temp message, show it as a temporary comment
+    if (isCreatingChat && tempMessage) {
+      const tempComment = {
+        _id: 'temp-comment' as any,
+        content: tempMessage,
+        authorId: user?.id || '',
+        nodeId: localCommentData?.nodeId,
+        visionId: visionId,
+        parentCommentId: undefined,
+        mentions: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isDeleted: false,
+        author: {
+          _id: 'temp-user' as any,
+          name: user?.fullName || user?.firstName || 'You',
+          picture: user?.imageUrl,
+          email: user?.primaryEmailAddress?.emailAddress || ''
         }
-        repliesMap.get(parentId)!.push(comment);
-      }
-    });
+      };
+      displayComments = [...displayComments, tempComment];
+    }
+    
+    return displayComments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }, [comments, isCreatingChat, tempMessage, localCommentData, user, visionId]);
 
-    return parentComments.map(parent => ({
-      parent,
-      replies: repliesMap.get(parent._id) || []
-    }));
+  // Create a map for quick parent lookup
+  const commentMap = React.useMemo(() => {
+    const map = new Map<string, Comment>();
+    comments?.forEach(comment => {
+      map.set(comment._id, comment);
+    });
+    return map;
   }, [comments]);
 
-  if (!chat) {
+  if (!chat && !isLocalChat) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
         Loading chat...
@@ -206,65 +330,104 @@ export function CommentChat({ chatId, className }: CommentChatProps) {
     );
   }
 
+  // For local chats, create a temporary chat object
+  const displayChat = chat || (isLocalChat ? {
+    _id: chatId,
+    title: 'New Comment Thread',
+    nodeId: localCommentData?.nodeId,
+    visionId: visionId
+  } : null);
+
+  if (!displayChat) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        Loading...
+      </div>
+    );
+  }
+
   return (
     <div className={`flex flex-col h-full ${className || ''}`}>
       {/* Header */}
-      <div className="p-4 border-b">
-        <h3 className="font-medium text-sm">{chat.title}</h3>
-        <p className="text-xs text-muted-foreground">
-          {comments?.length || 0} comment{(comments?.length || 0) !== 1 ? 's' : ''}
-        </p>
+      <div className="p-4 border-b flex items-center justify-between bg-muted/10">
+        <div>
+          <h3 className="font-medium text-sm">{displayChat.title}</h3>
+          <p className="text-xs text-muted-foreground">
+{allComments?.length || 0} message{(allComments?.length || 0) !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            try {
+              if (realChatId && chat) {
+                await closeCommentChat({ chatId: chat._id });
+              }
+              onClose?.();
+            } catch (error) {
+              console.error('Failed to close chat:', error);
+            }
+          }}
+          className="h-8 px-3 text-muted-foreground hover:text-foreground bg-background hover:bg-muted/60 transition-colors"
+          title="Close this comment chat"
+        >
+          <X className="w-3 h-3 mr-1" />
+          <span className="text-xs">Close Chat</span>
+        </Button>
       </div>
 
       {/* Comments */}
       <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
-        <div className="space-y-4">
-          {threadedComments.length === 0 ? (
+        <div className="space-y-3">
+          {allComments.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               <p>No comments yet. Start the conversation!</p>
             </div>
           ) : (
-            threadedComments.map(({ parent, replies }) => (
-              <div key={parent._id} className="space-y-2">
-                {/* Parent Comment */}
-                <CommentItem
-                  comment={parent}
-                  currentUserId={user?.id}
-                  isEditing={editingComment === parent._id}
-                  editContent={editContent}
-                  onEditContent={setEditContent}
-                  onStartEditing={() => startEditing(parent)}
-                  onStartReplying={() => startReplying(parent._id)}
-                  onSaveEdit={handleEditComment}
-                  onCancelEdit={cancelEditing}
-                  onDelete={() => handleDeleteComment(parent._id)}
-                  onKeyPress={handleKeyPress}
-                />
-
-                {/* Replies */}
-                {replies.length > 0 && (
-                  <div className="ml-8 space-y-2 border-l-2 border-muted pl-4">
-                    {replies.map(reply => (
-                      <CommentItem
-                        key={reply._id}
-                        comment={reply}
-                        currentUserId={user?.id}
-                        isEditing={editingComment === reply._id}
-                        editContent={editContent}
-                        onEditContent={setEditContent}
-                        onStartEditing={() => startEditing(reply)}
-                        onStartReplying={() => startReplying(parent._id)} // Reply to parent
-                        onSaveEdit={handleEditComment}
-                        onCancelEdit={cancelEditing}
-                        onDelete={() => handleDeleteComment(reply._id)}
-                        onKeyPress={handleKeyPress}
-                        isReply={true}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))
+            allComments.map((comment) => {
+              const parentComment = comment.parentCommentId ? commentMap.get(comment.parentCommentId) : null;
+              return (
+                <div
+                  key={comment._id}
+                  ref={(el) => setCommentRef(comment._id, el)}
+                  className={`transition-all duration-500 ${highlightedCommentId === comment._id ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-2' : ''}`}
+                >
+                  {/* Reply Reference */}
+                  {parentComment && (
+                    <div className="mb-2 pl-4 border-l-2 border-muted">
+                      <button
+                        onClick={() => scrollToComment(parentComment._id)}
+                        className="flex items-start gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors group w-full text-left"
+                      >
+                        <CornerUpLeft className="w-3 h-3 mt-0.5 flex-shrink-0 group-hover:text-blue-500" />
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium">{parentComment.author?.name || 'Unknown User'}</span>
+                          <p className="line-clamp-1 opacity-75 group-hover:opacity-100">
+                            {parentComment.content}
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Comment */}
+                  <CommentItem
+                    comment={comment}
+                    currentUserId={user?.id}
+                    isEditing={editingComment === comment._id}
+                    editContent={editContent}
+                    onEditContent={setEditContent}
+                    onStartEditing={() => startEditing(comment)}
+                    onStartReplying={() => startReplying(comment._id)}
+                    onSaveEdit={handleEditComment}
+                    onCancelEdit={cancelEditing}
+                    onDelete={handleDeleteComment}
+                    onKeyPress={handleKeyPress}
+                  />
+                </div>
+              );
+            })
           )}
         </div>
       </ScrollArea>
@@ -272,17 +435,29 @@ export function CommentChat({ chatId, className }: CommentChatProps) {
       {/* Input */}
       <div className="p-4 border-t">
         {replyingTo && (
-          <div className="mb-2 text-xs text-muted-foreground flex items-center gap-2">
-            <Reply className="w-3 h-3" />
-            Replying to comment
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={cancelReplying}
-              className="h-4 px-2 text-xs"
-            >
-              Cancel
-            </Button>
+          <div className="mb-2 p-2 bg-muted/50 rounded border-l-2 border-blue-500">
+            <div className="text-xs text-muted-foreground flex items-center gap-2 mb-1">
+              <Reply className="w-3 h-3" />
+              <span>Replying to:</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={cancelReplying}
+                className="h-4 px-2 text-xs ml-auto"
+              >
+                Cancel
+              </Button>
+            </div>
+            {commentMap.get(replyingTo) && (
+              <div className="text-xs opacity-75">
+                <span className="font-medium">
+                  {commentMap.get(replyingTo)?.author?.name || 'Unknown User'}:
+                </span>
+                <span className="ml-1 line-clamp-1">
+                  {commentMap.get(replyingTo)?.content}
+                </span>
+              </div>
+            )}
           </div>
         )}
         
@@ -332,7 +507,6 @@ interface CommentItemProps {
   onCancelEdit: () => void;
   onDelete: () => void;
   onKeyPress: (e: React.KeyboardEvent) => void;
-  isReply?: boolean;
 }
 
 function CommentItem({
@@ -346,8 +520,7 @@ function CommentItem({
   onSaveEdit,
   onCancelEdit,
   onDelete,
-  onKeyPress,
-  isReply = false
+  onKeyPress
 }: CommentItemProps) {
   const isOwnComment = currentUserId === comment.authorId;
 
@@ -373,14 +546,58 @@ function CommentItem({
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-medium text-sm">
-              {comment.author?.name || 'Unknown User'}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {formatTimeAgo(new Date(comment.createdAt))}
-              {comment.updatedAt !== comment.createdAt && ' (edited)'}
-            </span>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-sm">
+                {comment.author?.name || 'Unknown User'}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {formatTimeAgo(new Date(comment.createdAt))}
+                {comment.updatedAt !== comment.createdAt && ' (edited)'}
+              </span>
+            </div>
+            
+            {/* Inline Actions */}
+            <div className="flex items-center gap-1 opacity-100 transition-opacity">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onStartReplying}
+                className="h-7 px-2 text-xs bg-muted/50 hover:bg-muted"
+                title="Reply to this message"
+              >
+                <Reply className="w-3 h-3 mr-1" />
+                <span className="hidden sm:inline">Reply</span>
+              </Button>
+              
+              {isOwnComment && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 bg-muted/50 hover:bg-muted"
+                      title="More actions"
+                    >
+                      <MoreHorizontal className="w-3 h-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={onStartEditing}>
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={onDelete}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
           </div>
 
           {isEditing ? (
@@ -406,48 +623,6 @@ function CommentItem({
               <p className="text-sm text-foreground whitespace-pre-wrap">
                 {comment.content}
               </p>
-              
-              {/* Actions */}
-              <div className="flex items-center gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                {!isReply && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onStartReplying}
-                    className="h-6 px-2 text-xs"
-                  >
-                    <Reply className="w-3 h-3 mr-1" />
-                    Reply
-                  </Button>
-                )}
-
-                {isOwnComment && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0"
-                      >
-                        <MoreHorizontal className="w-3 h-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={onStartEditing}>
-                        <Edit2 className="w-4 h-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={onDelete}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
             </div>
           )}
         </div>

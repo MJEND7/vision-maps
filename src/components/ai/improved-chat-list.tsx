@@ -247,8 +247,9 @@ export function ImprovedChatList({ visionId, selectedChatId, onChatSelect, onNew
     const updateChatTitle = useMutation(api.chats.updateChatTitle);
     const deleteChat = useMutation(api.chats.deleteChat);
 
-    // Combine all chats from all pages
+    // Combine all chats from all pages and filter out comment chats
     const allChats = chatsPage?.flatMap(page => page) || [];
+    const filteredChats = allChats.filter((chat: any) => !chat.isCommentChat);
 
     const handleUpdateTitle = async (chatId: string, title: string) => {
         try {
@@ -301,7 +302,7 @@ export function ImprovedChatList({ visionId, selectedChatId, onChatSelect, onNew
                 <div>
                     <h3 className="text-lg font-semibold">AI Chats</h3>
                     <p className="text-sm text-muted-foreground">
-                        {allChats.length} conversation{allChats.length !== 1 ? 's' : ''}
+                        {filteredChats.length} conversation{filteredChats.length !== 1 ? 's' : ''}
                     </p>
                 </div>
                 <Button
@@ -316,7 +317,7 @@ export function ImprovedChatList({ visionId, selectedChatId, onChatSelect, onNew
 
             {/* Chat List */}
             <div className="flex-1 overflow-hidden">
-                {allChats.length === 0 ? (
+                {filteredChats.length === 0 ? (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -334,7 +335,7 @@ export function ImprovedChatList({ visionId, selectedChatId, onChatSelect, onNew
                         style={{ overflowAnchor: 'none' }}
                     >
                         <InfiniteScroll
-                            dataLength={allChats.length}
+                            dataLength={filteredChats.length}
                             next={() => loadMore(5)}
                             hasMore={status === "CanLoadMore"}
                             loader={
@@ -350,7 +351,7 @@ export function ImprovedChatList({ visionId, selectedChatId, onChatSelect, onNew
                             className="space-y-3 p-4"
                         >
                             <AnimatePresence mode="popLayout">
-                                {allChats.map((chat) => (
+                                {filteredChats.map((chat) => (
                                     <ChatWidget
                                         key={chat._id}
                                         chat={chat}

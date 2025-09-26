@@ -42,6 +42,19 @@ const getNodeCommentChatsArgs = v.object({
     visionId: v.id("visions")
 });
 
+const getInactiveCommentChatsArgs = v.object({
+    nodeId: v.id("nodes"),
+    visionId: v.id("visions")
+});
+
+const getAllInactiveCommentChatsArgs = v.object({
+    visionId: v.id("visions")
+});
+
+const closeCommentChatArgs = v.object({
+    chatId: v.id("chats")
+});
+
 export const createComment = mutation({
     args: createCommentArgs,
     handler: async (ctx, args) => {
@@ -244,7 +257,8 @@ export const createCommentChat = mutation({
             visionId: args.visionId,
             channelId: node.channel,
             isCommentChat: true,
-            rootCommentId: rootCommentId
+            rootCommentId: rootCommentId,
+            isActive: true
         });
 
         // Create the initial message in the chat using the comment content
@@ -310,6 +324,7 @@ export const getNodeCommentChats = query({
             .query("chats")
             .withIndex("by_nodeId", (q) => q.eq("nodeId", args.nodeId))
             .filter((q) => q.eq(q.field("isCommentChat"), true))
+            .filter((q) => q.neq(q.field("isActive"), false))
             .order("desc")
             .collect();
 
@@ -363,6 +378,178 @@ export const getNodeCommentChats = query({
     }
 });
 
+export const closeCommentChat = mutation({
+    args: closeCommentChatArgs,
+    handler: async (ctx, args) => {
+        const identity = await requireAuth(ctx);
+        
+        if (!identity?.userId) {
+            throw new Error("Failed to get the user Id");
+        }
+
+        const chat = await ctx.db.get(args.chatId);
+        if (!chat) {
+            throw new Error("Chat not found");
+        }
+
+        // Only the chat owner can close it
+        if (chat.userId !== identity.userId.toString()) {
+            throw new Error("You can only close your own chats");
+        }
+
+        // Mark chat as inactive
+        await ctx.db.patch(args.chatId, {
+            isActive: false
+        });
+
+        return { success: true };
+    }
+});
+
+export const getInactiveCommentChats = query({
+    args: getInactiveCommentChatsArgs,
+    handler: async (ctx, args) => {
+        // Verify access to vision
+        await requireVisionAccess(ctx, args.visionId);
+
+        // Get all inactive comment chats for the node
+        const chats = await ctx.db
+            .query("chats")
+            .withIndex("by_nodeId", (q) => q.eq("nodeId", args.nodeId))
+            .filter((q) => q.eq(q.field("isCommentChat"), true))
+            .filter((q) => q.eq(q.field("isActive"), false))
+            .order("desc")
+            .collect();
+
+        // Enrich with comment and message information
+        const enrichedChats = await Promise.all(
+            chats.map(async (chat) => {
+                // Get the root comment
+                const rootComment = chat.rootCommentId ? await ctx.db.get(chat.rootCommentId) : null;
+                
+                // Get the latest message for preview
+                const latestMessage = await ctx.db
+                    .query("messages")
+                    .withIndex("by_chatId", (q) => q.eq("chatId", chat._id))
+                    .order("desc")
+                    .first();
+
+                // Get message count
+                const messageCount = await ctx.db
+                    .query("messages")
+                    .withIndex("by_chatId", (q) => q.eq("chatId", chat._id))
+                    .collect()
+                    .then(messages => messages.length);
+
+                // Get comment author if root comment exists
+                let commentAuthor = null;
+                if (rootComment) {
+                    commentAuthor = await ctx.db
+                        .query("users")
+                        .filter((q) => q.eq(q.field("externalId"), rootComment.authorId))
+                        .first();
+                }
+
+                return {
+                    ...chat,
+                    rootComment: rootComment ? {
+                        ...rootComment,
+                        author: commentAuthor ? {
+                            _id: commentAuthor._id,
+                            name: commentAuthor.name,
+                            picture: commentAuthor.picture
+                        } : null
+                    } : null,
+                    lastMessage: latestMessage?.content || null,
+                    lastMessageAt: latestMessage?._creationTime || chat._creationTime,
+                    messageCount
+                };
+            })
+        );
+
+        return enrichedChats;
+    }
+});
+
+export const getAllInactiveCommentChats = query({
+    args: getAllInactiveCommentChatsArgs,
+    handler: async (ctx, args) => {
+        // Verify access to vision
+        await requireVisionAccess(ctx, args.visionId);
+
+        // Get all inactive comment chats for the vision
+        const chats = await ctx.db
+            .query("chats")
+            .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
+            .filter((q) => q.eq(q.field("isCommentChat"), true))
+            .filter((q) => q.eq(q.field("isActive"), false))
+            .order("desc")
+            .collect();
+
+        // Enrich with comment and message information
+        const enrichedChats = await Promise.all(
+            chats.map(async (chat) => {
+                // Get the root comment
+                const rootComment = chat.rootCommentId ? await ctx.db.get(chat.rootCommentId) : null;
+                
+                // Get the latest message for preview
+                const latestMessage = await ctx.db
+                    .query("messages")
+                    .withIndex("by_chatId", (q) => q.eq("chatId", chat._id))
+                    .order("desc")
+                    .first();
+
+                // Get message count
+                const messageCount = await ctx.db
+                    .query("messages")
+                    .withIndex("by_chatId", (q) => q.eq("chatId", chat._id))
+                    .collect()
+                    .then(messages => messages.length);
+
+                // Get comment author if root comment exists
+                let commentAuthor = null;
+                if (rootComment) {
+                    commentAuthor = await ctx.db
+                        .query("users")
+                        .filter((q) => q.eq(q.field("externalId"), rootComment.authorId))
+                        .first();
+                }
+
+                // Get node information if nodeId exists
+                let nodeInfo = null;
+                if (chat.nodeId) {
+                    const node = await ctx.db.get(chat.nodeId);
+                    if (node) {
+                        nodeInfo = {
+                            _id: node._id,
+                            title: node.title,
+                            channelId: node.channel
+                        };
+                    }
+                }
+
+                return {
+                    ...chat,
+                    node: nodeInfo,
+                    rootComment: rootComment ? {
+                        ...rootComment,
+                        author: commentAuthor ? {
+                            _id: commentAuthor._id,
+                            name: commentAuthor.name,
+                            picture: commentAuthor.picture
+                        } : null
+                    } : null,
+                    lastMessage: latestMessage?.content || null,
+                    lastMessageAt: latestMessage?._creationTime || chat._creationTime,
+                    messageCount
+                };
+            })
+        );
+
+        return enrichedChats;
+    }
+});
+
 // Type exports
 export type CreateCommentArgs = Infer<typeof createCommentArgs>;
 export type UpdateCommentArgs = Infer<typeof updateCommentArgs>;
@@ -371,3 +558,6 @@ export type GetNodeCommentsArgs = Infer<typeof getNodeCommentsArgs>;
 export type GetCommentChatArgs = Infer<typeof getCommentChatArgs>;
 export type CreateCommentChatArgs = Infer<typeof createCommentChatArgs>;
 export type GetNodeCommentChatsArgs = Infer<typeof getNodeCommentChatsArgs>;
+export type GetInactiveCommentChatsArgs = Infer<typeof getInactiveCommentChatsArgs>;
+export type GetAllInactiveCommentChatsArgs = Infer<typeof getAllInactiveCommentChatsArgs>;
+export type CloseCommentChatArgs = Infer<typeof closeCommentChatArgs>;

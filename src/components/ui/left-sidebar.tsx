@@ -21,7 +21,7 @@ interface LeftSidebarContentProps {
 export interface LeftSidebarContentRef {
     openChat: (chatId: string) => void;
     openNodeComments: (nodeId: string) => void;
-    openCommentChat: (chatId: string) => void;
+    openCommentChat: (chatId: string, nodeId?: string) => void;
 }
 
 export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarContentProps>(
@@ -30,6 +30,7 @@ export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarC
         const [selectedChatId, setSelectedChatId] = useState<string>();
         const [selectedNodeForComments, setSelectedNodeForComments] = useState<string>();
         const [drivenMessageIds, setDrivenMessageIds] = useState(new Set<string>());
+        const [localCommentData, setLocalCommentData] = useState<{chatId: string, nodeId: string} | null>(null);
 
 
         // Mutations for chat operations
@@ -82,29 +83,69 @@ export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarC
                 setSelectedNodeForComments(nodeId);
                 setSelectedChatId(undefined);
             },
-            openCommentChat: (chatId: string) => {
+            openCommentChat: (chatId: string, nodeId?: string) => {
                 setSelectedTab("comments");
                 setSelectedChatId(chatId);
                 setSelectedNodeForComments(undefined);
+                
+                // Handle local comment chat creation
+                if (chatId.startsWith('local-comment-') && nodeId) {
+                    setLocalCommentData({ chatId, nodeId });
+                } else {
+                    setLocalCommentData(null);
+                }
             }
         }), []);
 
         return (
-            <div className="h-full flex flex-col">
-                <Tabs defaultValue="ai" value={selectedTab} onValueChange={setSelectedTab} className="h-full flex flex-col">
-                    <TabsList className="flex-shrink-0">
-                        <TabsTrigger value="ai">
-                            <Bot className="w-4 h-4 mr-2" />
-                            AI Chats
-                        </TabsTrigger>
-                        <TabsTrigger value="comments">
-                            <MessageSquare className="w-4 h-4 mr-2" />
-                            Comments
-                        </TabsTrigger>
-                    </TabsList>
-                    
-                    <TabsContent value="ai" className="flex-1 flex flex-col mt-0 min-h-0">
-                        {!selectedChatId ? (
+            <div className="h-full flex flex-col bg-background">
+                {/* Header with bubble tabs */}
+                <div className="p-4 border-b bg-muted/30">
+                    <div className="flex items-center justify-center">
+                        <div className="inline-flex items-center justify-center rounded-full bg-muted p-1 space-x-1">
+                            <button
+                                onClick={() => {
+                                    if (selectedTab !== "ai") {
+                                        setSelectedChatId(undefined);
+                                        setSelectedNodeForComments(undefined);
+                                    }
+                                    setSelectedTab("ai");
+                                }}
+                                className={`inline-flex items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                                    selectedTab === "ai" 
+                                        ? "bg-background text-foreground shadow-sm" 
+                                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                                }`}
+                            >
+                                <Bot className="w-4 h-4 mr-2" />
+                                AI Chats
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (selectedTab !== "comments") {
+                                        setSelectedChatId(undefined);
+                                        setSelectedNodeForComments(undefined);
+                                    }
+                                    setSelectedTab("comments");
+                                }}
+                                className={`inline-flex items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                                    selectedTab === "comments" 
+                                        ? "bg-background text-foreground shadow-sm" 
+                                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                                }`}
+                            >
+                                <MessageSquare className="w-4 h-4 mr-2" />
+                                Comments
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex-1 flex flex-col min-h-0">
+                    {/* AI Tab Content */}
+                    {selectedTab === "ai" && (
+                        <div className="flex-1 flex flex-col min-h-0">
+                            {!selectedChatId ? (
                             <ImprovedChatList
                                 visionId={visionId}
                                 selectedChatId={selectedChatId}
@@ -127,23 +168,28 @@ export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarC
                                     </span>
                                 </div>
 
-                                <div className="flex-1 p-4 min-h-0">
-                                    <ChatCard
-                                        chatId={selectedChatId}
-                                        drivenIds={drivenMessageIds}
-                                        onFocusInput={handleFocusInput}
-                                    />
+                                    <div className="flex-1 p-4 min-h-0 bg-background">
+                                        <ChatCard
+                                            chatId={selectedChatId}
+                                            drivenIds={drivenMessageIds}
+                                            onFocusInput={handleFocusInput}
+                                        />
+                                    </div>
+
+                                    <div className="flex-shrink-0 p-4 border-t bg-muted/10">
+                                        <ChatInput
+                                            onSendMessage={handleSendMessage}
+                                            placeholder="Ask AI about this vision..."
+                                        />
+                                    </div>
                                 </div>
+                            )}
+                        </div>
+                    )}
 
-                                <ChatInput
-                                    onSendMessage={handleSendMessage}
-                                    placeholder="Ask AI about this vision..."
-                                />
-                            </div>
-                        )}
-                    </TabsContent>
-
-                    <TabsContent value="comments" className="flex-1 flex flex-col mt-0 min-h-0">
+                    {/* Comments Tab Content */}
+                    {selectedTab === "comments" && (
+                        <div className="flex-1 flex flex-col min-h-0">
                         {!selectedChatId ? (
                             <CommentChatList
                                 visionId={visionId}
@@ -168,16 +214,23 @@ export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarC
                                     </span>
                                 </div>
 
-                                <div className="flex-1 min-h-0">
-                                    <CommentChat
-                                        chatId={selectedChatId}
-                                        className="h-full"
-                                    />
+                                    <div className="flex-1 min-h-0 bg-background">
+                                        <CommentChat
+                                            chatId={selectedChatId}
+                                            className="h-full"
+                                            onClose={() => {
+                                                setSelectedChatId(undefined);
+                                                setLocalCommentData(null);
+                                            }}
+                                            localCommentData={localCommentData}
+                                            visionId={visionId}
+                                        />
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-                    </TabsContent>
-                </Tabs>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
         );
     });

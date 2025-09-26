@@ -61,10 +61,12 @@ export default function Channel({
     channelId,
     onOpenChat,
     onChannelNavigate,
+    onOpenCommentChat,
 }: {
     channelId: string;
     onOpenChat?: (chatId: string) => void;
     onChannelNavigate?: (channelId: string, nodeId?: string) => void;
+    onOpenCommentChat?: (chatId: string, nodeId?: string) => void;
 }) {
     const [searchQuery, setSearchQuery] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -103,6 +105,7 @@ export default function Channel({
     const updateChannel = useMutation(api.channels.update);
     const deleteNode = useMutation(api.nodes.remove);
     const updateChatNodeId = useMutation(api.chats.updateChatNodeId);
+    const createCommentChat = useMutation(api.comments.createCommentChat);
 
     // Memoize callback functions to prevent unnecessary re-renders
     const showDeleteConfirmation = useCallback((node: any) => {
@@ -115,9 +118,21 @@ export default function Channel({
         setNodeToDelete(node);
         setShowMobileDrawer(true);
     }, []);
+
     const channel = useQuery(api.channels.get, {
         id: channelId as Id<"channels">,
     });
+
+    const handleCommentOnNode = useCallback(async (nodeId: string) => {
+        if (!channel?.vision) return;
+        
+        // Create a local comment chat identifier and open it immediately
+        // The actual chat will be created when the first message is sent
+        const localChatId = `local-comment-${nodeId}-${Date.now()}`;
+        
+        // Pass both the local chat ID and the node ID to handle local state
+        onOpenCommentChat?.(localChatId, nodeId);
+    }, [channel?.vision, onOpenCommentChat]);
 
     const isChannelLoading = channel == undefined;
 
@@ -660,6 +675,7 @@ export default function Channel({
                                                 onChannelNavigate={onChannelNavigate}
                                                 onShowDeleteDialog={() => showDeleteConfirmation(node)}
                                                 onShowMobileDrawer={() => showMobileDrawerForNode(node)}
+                                                onCommentOnNode={handleCommentOnNode}
                                                 isMobile={isMobile}
                                             />
                                         </div>

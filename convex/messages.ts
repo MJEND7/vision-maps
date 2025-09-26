@@ -24,6 +24,7 @@ const clearMessagesArgs = v.object({
 const sendMessageArgs = v.object({
     chatId: v.id("chats"),
     content: v.string(),
+    replyToMessageId: v.optional(v.id("messages")),
 });
 
 const getChatHistoryArgs = v.object({
@@ -125,6 +126,7 @@ export const sendMessage = mutation({
             userId: identity.userId?.toString(),
             role: "user",
             streamId: streamId.toString(),
+            replyToMessageId: args.replyToMessageId,
         });
 
         // If this is the first message, trigger chat naming action

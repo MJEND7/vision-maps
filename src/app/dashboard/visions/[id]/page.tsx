@@ -477,7 +477,7 @@ function VisionDetailPageContent() {
                     >
                         {tab.type === ViewMode.CHANNEL && user && (
                             <SidebarProvider onOpenChat={handleOpenChat} rightSidebarContentRef={rightSidebarContentRef}>
-                                <Channel key={tab.id} channelId={tab.id} onOpenChat={handleOpenChat} onChannelNavigate={handleChannelNavigate} />
+                                <Channel key={tab.id} channelId={tab.id} onOpenChat={handleOpenChat} onChannelNavigate={handleChannelNavigate} onOpenCommentChat={handleOpenCommentChat} />
                             </SidebarProvider>
                         )}
                         {tab.type === ViewMode.FRAME && user?.id && (
@@ -697,6 +697,20 @@ function VisionDetailPageContent() {
 
         setTimeout(() => {
             rightSidebarContentRef.current?.openChat(chatId);
+        }, 500)
+    }, [isMobile]);
+
+    const handleOpenCommentChat = useCallback((chatId: string, nodeId?: string) => {
+        // Open right sidebar if it's collapsed
+        setSidebarState(prev => ({
+            ...prev,
+            rightCollapsed: false,
+            rightOpen: isMobile ? true : prev.rightOpen
+        }));
+        
+        // Open the comment chat via ref, pass both chatId and nodeId for local state
+        setTimeout(() => {
+            rightSidebarContentRef.current?.openCommentChat(chatId, nodeId);
         }, 500)
     }, [isMobile]);
 

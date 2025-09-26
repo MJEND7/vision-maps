@@ -16,7 +16,9 @@ export class Chats {
         // Comment chat support - indicates this chat is for node comments
         isCommentChat: v.optional(v.boolean()),
         // Store the initial comment ID that started this chat
-        rootCommentId: v.optional(v.id("comments"))
+        rootCommentId: v.optional(v.id("comments")),
+        // Track if comment chat is active (default true)
+        isActive: v.optional(v.boolean())
     }).index("by_userId", ["userId"])
       .index("by_visionId", ["visionId"])
       .index("by_channelId", ["channelId"])

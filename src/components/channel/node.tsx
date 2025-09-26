@@ -4,7 +4,7 @@ import { NodeWithFrame } from "../../../convex/channels";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { timeSinceFromDateString } from "@/utils/date";
 import { NodeVariants } from "../../../convex/tables/nodes";
-import { Edit2, Trash2, Check, X, Link2, Eye } from "lucide-react";
+import { Edit2, Trash2, Check, X, Link2, Eye, MessageSquare } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -21,6 +21,7 @@ function ChannelNode({
     onChannelNavigate,
     onShowDeleteDialog,
     onShowMobileDrawer,
+    onCommentOnNode,
     isMobile
 }: {
     node: NodeWithFrame,
@@ -29,6 +30,7 @@ function ChannelNode({
     onChannelNavigate?: (channelId: string, nodeId?: string) => void,
     onShowDeleteDialog?: () => void,
     onShowMobileDrawer?: () => void,
+    onCommentOnNode?: (nodeId: string) => void,
     isMobile?: boolean
 }) {
     const [isEditing, setIsEditing] = useState(false);
@@ -238,6 +240,15 @@ function ChannelNode({
                                     <Edit2 size={12} />
                                 </Button>
                             )}
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => onCommentOnNode?.(node._id)}
+                                title="Comment on node"
+                            >
+                                <MessageSquare size={12} />
+                            </Button>
                             <Button
                                 size="sm"
                                 variant="ghost"

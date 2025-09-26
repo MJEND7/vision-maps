@@ -9,7 +9,10 @@ export class Messages {
         role: v.union(v.literal("user"), v.literal("assistant")),
         userId: v.string(),
         streamId: v.string(),
+        // Reply threading support
+        replyToMessageId: v.optional(v.id("messages")),
     }).index("by_chatId", ["chatId"])
-    .index("by_userId", ["userId"]);
+    .index("by_userId", ["userId"])
+    .index("by_replyTo", ["replyToMessageId"]);
 }
 

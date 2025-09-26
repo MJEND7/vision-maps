@@ -181,11 +181,12 @@ export const listChannelChats = query({
             throw new Error("Failed to get the user Id");
         }
 
-        // Get chats for the specific channel
+        // Get chats for the specific channel (excluding comment chats)
         return await ctx.db
             .query("chats")
             .withIndex("by_channelId", (q) => q.eq("channelId", args.channelId))
             .filter((q) => q.eq(q.field("userId"), userId.toString()))
+            .filter((q) => q.neq(q.field("isCommentChat"), true))
             .collect();
     },
 });
@@ -200,11 +201,12 @@ export const listVisionChatsPaginated = query({
             throw new Error("Failed to get the user Id");
         }
 
-        // Get paginated chats for the specific vision, ordered by most recent
+        // Get paginated chats for the specific vision, ordered by most recent (excluding comment chats)
         const result = await ctx.db
             .query("chats")
             .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
             .filter((q) => q.eq(q.field("userId"), userId.toString()))
+            .filter((q) => q.neq(q.field("isCommentChat"), true))
             .order("desc")
             .paginate(args.paginationOpts);
 
