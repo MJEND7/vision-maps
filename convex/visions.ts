@@ -280,7 +280,7 @@ export const remove = mutation({
     // 4. Delete all notifications related to this vision
     const notifications = await ctx.db
       .query("notifications")
-      .withIndex("by_visionId", (q) => q.eq("visionId", args.id))
+      .withIndex("by_vision", (q) => q.eq("visionId", args.id))
       .collect();
     for (const notification of notifications) {
       await ctx.db.delete(notification._id);
