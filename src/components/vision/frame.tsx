@@ -594,6 +594,7 @@ export default function FrameComponent({
                         closeContextMenu();
                     }}
                     isOpen={contextMenu.show}
+                    onClose={closeContextMenu}
                     position={{ x: contextMenu.x, y: contextMenu.y }}
                 />
             </div>
