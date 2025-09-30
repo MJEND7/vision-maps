@@ -4,16 +4,24 @@ import { mutation, query } from "./_generated/server";
 import { rfEdge } from "./tables/edges";
 import { addEdge, applyEdgeChanges } from "@xyflow/react";
 import { Id } from "./_generated/dataModel";
+import { requireVisionAccess } from "./utils/auth";
 
 export const get = query({
     args: { frameId: v.id("frames") },
     handler: async (ctx, args) => {
-        // Do access checks here
+        // Verify access to the frame's vision
+        const frame = await ctx.db.get(args.frameId);
+        if (!frame) {
+            throw new Error("Frame not found");
+        }
+        if (frame.vision) {
+            await requireVisionAccess(ctx, frame.vision);
+        }
+
         const all = await ctx.db
             .query("edges")
             .withIndex("frame", (q) => q.eq("frameId", args.frameId as Id<"frames">))
             .collect();
-        // Modify data returned, join it, etc. here
         return all.map((edge) => edge.edge);
     },
 });
@@ -24,7 +32,15 @@ export const update = mutation({
         changes: v.array(edgeChangeValidator(rfEdge)),
     },
     handler: async (ctx, args) => {
-        // Do access checks here
+        // Verify access to the frame's vision
+        const frame = await ctx.db.get(args.frameId as Id<"frames">);
+        if (!frame) {
+            throw new Error("Frame not found");
+        }
+        if (frame.vision) {
+            await requireVisionAccess(ctx, frame.vision);
+        }
+
         // Get the ids of the edges that are being changed
         const ids = args.changes.flatMap((change) =>
             change.type === "add" && change.item
@@ -105,7 +121,15 @@ export const deleteEdge = mutation({
         edgeId: v.string(),
     },
     handler: async (ctx, args) => {
-        // Do access checks here
+        // Verify access to the frame's vision
+        const frame = await ctx.db.get(args.frameId);
+        if (!frame) {
+            throw new Error("Frame not found");
+        }
+        if (frame.vision) {
+            await requireVisionAccess(ctx, frame.vision);
+        }
+
         const edges = await ctx.db
             .query("edges")
             .withIndex("frame", (q) => q.eq("frameId", args.frameId))
@@ -128,7 +152,15 @@ export const connect = mutation({
         connection: connectionValidator,
     },
     handler: async (ctx, args) => {
-        // Do access checks here
+        // Verify access to the frame's vision
+        const frame = await ctx.db.get(args.frameId as Id<"frames">);
+        if (!frame) {
+            throw new Error("Frame not found");
+        }
+        if (frame.vision) {
+            await requireVisionAccess(ctx, frame.vision);
+        }
+
         const { source, target, sourceHandle, targetHandle } = args.connection;
         if (!source || !target) {
             throw new Error("Source or target not specified");
