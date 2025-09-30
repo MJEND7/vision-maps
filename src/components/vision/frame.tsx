@@ -585,7 +585,8 @@ export default function FrameComponent({
                         if (selectedNodes.length === 1) {
                             const selectedNode = selectedNodes.map((nodeId) => {
                                 const node = nodes.find((n) => n.id === nodeId);
-                                return node?.data?.node?._id;
+                                if (!node?.data?.node || typeof node.data.node !== 'object') return null;
+                                return (node.data.node as { _id: Id<"nodes"> })._id;
                             }).filter(Boolean)[0];
                             if (selectedNode) {
                                 rightSidebarContentRef?.current?.openNodeComments?.(selectedNode);
