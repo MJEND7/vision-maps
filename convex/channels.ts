@@ -124,15 +124,43 @@ export const remove = mutation({
       .collect();
 
     for (const frame of frames) {
+      // Delete all framed_node entries for this frame
+      const framedNodes = await ctx.db
+        .query("framed_node")
+        .withIndex("by_frame", (q) => q.eq("frameId", frame._id))
+        .collect();
+      for (const fn of framedNodes) {
+        await ctx.db.delete(fn._id);
+      }
+
+      // Delete all frame_positions entries for this frame
+      const framePositions = await ctx.db
+        .query("frame_positions")
+        .withIndex("by_frame", (q) => q.eq("frameId", frame._id))
+        .collect();
+      for (const fp of framePositions) {
+        await ctx.db.delete(fp._id);
+      }
+
+      // Delete all edges in this frame
+      const edges = await ctx.db
+        .query("edges")
+        .withIndex("frame", (q) => q.eq("frameId", frame._id))
+        .collect();
+      for (const edge of edges) {
+        await ctx.db.delete(edge._id);
+      }
+
+      // Delete all nodes in this frame
       const nodes = await ctx.db
         .query("nodes")
         .withIndex("by_frame", (q) => q.eq("frame", frame._id))
         .collect();
-
       for (const node of nodes) {
         await ctx.db.delete(node._id);
       }
 
+      // Delete the frame itself
       await ctx.db.delete(frame._id);
     }
 
