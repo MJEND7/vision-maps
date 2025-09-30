@@ -271,7 +271,7 @@ export const remove = mutation({
     // 3. Delete all comments related to this vision
     const comments = await ctx.db
       .query("comments")
-      .withIndex("by_visionId", (q) => q.eq("visionId", args.id))
+      .withIndex("by_vision", (q) => q.eq("visionId", args.id))
       .collect();
     for (const comment of comments) {
       await ctx.db.delete(comment._id);
