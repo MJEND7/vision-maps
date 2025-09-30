@@ -119,7 +119,6 @@ export const getTrialInfo = query({
           .first();
 
     if (!trial) {
-      console.log('No active trial found');
       return null;
     }
 

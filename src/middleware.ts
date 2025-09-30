@@ -32,7 +32,8 @@ export default clerkMiddleware(
                     "https://challenges.cloudflare.com",
                     "https://*.cloudflare.com",
                     "https://*.convex.cloud",
-                    "wss://*.convex.cloud"
+                    "wss://*.convex.cloud",
+                    "wss://*.assemblyai.com"
                 ],
                 "frame-src": [
                     "'self'",

@@ -353,3 +353,13 @@
 .cl-drawerRoot {
     z-index: 100
 }
+
+/* Add this in your global CSS file (e.g., globals.css) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE & Edge */
+  scrollbar-width: none; /* Firefox */
+}

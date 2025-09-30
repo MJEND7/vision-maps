@@ -20,6 +20,7 @@ export enum NodeVariants {
     AI = "AI",
     Loom = "Loom",
     Excalidraw = "Excalidraw",
+    Transcription = "Transcription",
 }
 
 export class Nodes {

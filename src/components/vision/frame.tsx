@@ -206,6 +206,25 @@ export default function FrameComponent({
         });
     }, []);
 
+    // Function to create node from selected text
+    const handleCreateNodeFromSelection = useCallback(async (text: string, position: { x: number; y: number }) => {
+        if (!frame) throw new Error("Failed to get a frame");
+
+        await createNode({
+            title: "Extracted Text",
+            variant: "Text",
+            value: text,
+            channel: frame.channel,
+            frameId: frame._id,
+            position: {
+                id: crypto.randomUUID(),
+                position: position,
+                type: "Text",
+                data: "",
+            },
+        });
+    }, [frame, createNode]);
+
     // === Node data transformation ===
     useEffect(() => {
         if (!framedNodes) return;
@@ -248,6 +267,7 @@ export default function FrameComponent({
                         onEditComplete: () => updateEditingNodeId(null),
                         onUpdateNodeContent: updateNodeContent,
                         onOpenChat: openChat,
+                        onCreateNodeFromSelection: handleCreateNodeFromSelection,
                         onComment: () => {
                             // Handler for creating a new comment (from context menu)
                             // Need to pass the actual database node ID, not the ReactFlow ID
@@ -275,7 +295,7 @@ export default function FrameComponent({
             setNodesMap(newMap);
             return nextNodes;
         });
-    }, [framedNodes, setNodesMap, id, openChat, updateEditingNodeId, updateNodeContent, rightSidebarContentRef, frame?.vision]);
+    }, [framedNodes, setNodesMap, id, openChat, updateEditingNodeId, updateNodeContent, handleCreateNodeFromSelection, rightSidebarContentRef, frame?.vision]);
 
     const onNodesChange = useCallback(
         (changes: NodeChange[]) => {

@@ -8,7 +8,7 @@ import { AudioPlayer } from "./audio-player";
 import { VideoPlayer } from "./video-player";
 import { FilePreview } from "./file-preview";
 import { useUploadThing } from "@/utils/uploadthing";
-import { X, FileText, Send, Brain } from "lucide-react";
+import { X, FileText, Send, Brain, Mic, Square, Headphones, Monitor } from "lucide-react";
 import Image from "next/image";
 import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard, SkeletonCard, ChatCard, LinkMetadata, GitHubMetadata, FigmaMetadata, YouTubeMetadata, TwitterMetadata, NotionMetadata, LoomMetadata, SpotifyMetadata, AppleMusicMetadata, WebsiteMetadata } from "./metadata";
 import { Textarea } from "../ui/textarea";
@@ -22,6 +22,8 @@ import { useOGMetadataWithCache } from "@/utils/ogMetadata";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Permission } from "@/lib/permissions";
 import { UpgradeDialog } from "../ui/upgrade-dialog";
+import { useRealtimeTranscription } from "@/hooks/useRealtimeTranscription";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 // Paste-bin mode enum
 export enum PasteBinMode {
@@ -29,7 +31,8 @@ export enum PasteBinMode {
     TEXT = 'text',
     AI = 'ai',
     MEDIA = 'media',
-    EMBED = 'embed'
+    EMBED = 'embed',
+    TRANSCRIPTION = 'transcription'
 }
 
 // Data interfaces
@@ -148,6 +151,24 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     const createChat = useMutation(api.chats.createChat);
     const sendMessage = useMutation(api.messages.sendMessage);
     const deleteChat = useMutation(api.chats.deleteChat);
+
+    // Real-time transcription hook
+    const {
+        isRecording,
+        isConnecting,
+        transcript,
+        transcriptArr,
+        startRecording,
+        stopRecording,
+        clearTranscript,
+    } = useRealtimeTranscription({
+        onTranscript: (text) => {
+            console.log(text);
+        },
+        onError: (error) => {
+            console.error('Transcription error:', error);
+        },
+    });
     
     // Use the reusable OG metadata hook
     const { fetchWithCache } = useOGMetadataWithCache();
@@ -156,6 +177,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     const animationValues = useMemo(() => ({
         containerWidth: mode !== PasteBinMode.IDLE || isDragOver ? "100%" : "10rem",
         containerHeight: mode === PasteBinMode.AI ? "400px" :
+            mode === PasteBinMode.TRANSCRIPTION ? "300px" :
             mode !== PasteBinMode.IDLE ? "auto" :
                 isDragOver ? "8rem" : "2rem",
         containerPadding: mode !== PasteBinMode.IDLE || isDragOver ? "0px" : "4px",
@@ -664,7 +686,18 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         }
     }, [mode, textContent, newChat, handleSendMessage, updateIsAiMode, canUseAI]);
 
+    const handleStopRecording = useCallback(async () => {
+        await stopRecording();
+        // Keep the transcription mode to show the final transcript
+        // User can then create node or clear
+    }, [stopRecording]);
+
     const clearMedia = useCallback(async (deleteUnusedChat = true) => {
+        // Stop recording if active
+        if (isRecording) {
+            await stopRecording();
+        }
+
         // Delete any uploaded media files if not clearing after successful creation
         if (media && media.uploadedUrl && deleteUnusedChat) {
             try {
@@ -693,6 +726,9 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                 console.error("Failed to delete unused chat:", error);
             }
         }
+
+        // Clear transcription
+        clearTranscript();
 
         updateMedia(null);
         setTextContent("");
@@ -727,7 +763,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
-    }, [actions, updateMedia, updateChatId, updateIsAiMode, chatId, isAiMode, deleteChat, media]);
+    }, [actions, updateMedia, updateChatId, updateIsAiMode, chatId, isAiMode, deleteChat, media, isRecording, stopRecording, clearTranscript]);
 
     const handleCreate = useCallback(async () => {
         const node = () => {
@@ -785,6 +821,17 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                 }
             }
 
+            // Handle transcription mode
+            if (mode === PasteBinMode.TRANSCRIPTION && transcript) {
+                onCreateNode({
+                    title: "Transcription",
+                    variant: NodeVariants.Transcription,
+                    value: transcript,
+                    thought: "",
+                })
+                return;
+            }
+
             // Handle text mode without media
             if (isTextMode || isAiMode) {
                 let value;
@@ -805,9 +852,14 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         // Clear all data and localStorage after successful creation (don't delete chat)
         node();
         await clearMedia(false);
-    }, [media, clearMedia, onCreateNode, textContent, isTextMode, isAiMode, chatId, isUploading]);
+    }, [media, clearMedia, onCreateNode, textContent, isTextMode, isAiMode, chatId, isUploading, mode, transcript]);
 
     const isValidForCreation = useCallback(() => {
+        // Transcription mode validation
+        if (mode === PasteBinMode.TRANSCRIPTION) {
+            return !isRecording && !!transcript && transcript.trim().length > 0;
+        }
+
         if (media) {
             if (media.type === NodeVariants.Text || media.type === NodeVariants.AI) {
                 return !!media.customName || !!media.title;
@@ -820,7 +872,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             }
         }
         return (isTextMode || isAiMode) && !!textContent.trim();
-    }, [media, isLoadingLinkMeta, isTextMode, isAiMode, textContent, isUploading]);
+    }, [media, isLoadingLinkMeta, isTextMode, isAiMode, textContent, isUploading, mode, isRecording, transcript]);
 
     return (
         <div
@@ -1026,6 +1078,45 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                                     </div>
                                 )}
 
+                                {mode === PasteBinMode.TRANSCRIPTION && (
+                                    <motion.div
+                                        key="transcription"
+                                        className="w-full h-[300px] overflow-hidden"
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "300px", opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{
+                                            type: "spring",
+                                            stiffness: 280,
+                                            damping: 30,
+                                            mass: 1.0,
+                                        }}
+                                    >
+                                        <div className="h-full w-full p-4 flex flex-col gap-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className={`w-2 h-2 rounded-full ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-purple-500'}`}></div>
+                                                <span className="text-xs font-semibold text-purple-600 uppercase tracking-wider">
+                                                    {isConnecting ? 'Connecting...' : isRecording ? 'Recording' : 'Transcription Complete'}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex-1 overflow-y-auto bg-background/50 rounded-lg p-3 border border-purple-500/20">
+                                                <div className="text-sm whitespace-pre-wrap">
+                                                    {transcriptArr.length > 0 ? (
+                                                        transcriptArr.map((chunk, index) => (
+                                                            <span key={index}>{chunk}{' '}</span>
+                                                        ))
+                                                    ) : (
+                                                        <span className="text-muted-foreground">
+                                                            {isConnecting ? 'Connecting to transcription service...' : 'Start speaking...'}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+
                                 {isLoadingLinkMeta && (
                                     <motion.div
                                         key="loading"
@@ -1126,7 +1217,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                             ref={textareaRef}
                             className={`w-full dark:bg-background bg-background h-full resize-none transition-all duration-200 ${mode !== PasteBinMode.IDLE
                                 ? "pr-24 rounded-xl shadow-sm hover:shadow-lg focus:shadow-lg py-3 px-4"
-                                : "pr-16 rounded-3xl shadow-sm hover:shadow-lg focus:shadow-lg py-0 px-4 overflow-hidden"
+                                : "pr-24 rounded-3xl shadow-sm hover:shadow-lg focus:shadow-lg py-0 px-4 overflow-hidden"
                                 }`}
                             style={{
                                 lineHeight: mode !== PasteBinMode.IDLE ? "1.5" : "44px",
@@ -1164,11 +1255,48 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                             {/* Compact mode buttons */}
                             {mode === PasteBinMode.IDLE && (
                                 <motion.div
-                                    className="absolute right-3 top-1/2 -translate-y-1/2"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-2"
                                     initial={{ opacity: 1, scale: 1 }}
                                     exit={{ opacity: 0, scale: 0.8 }}
                                     transition={{ duration: 0.2 }}
                                 >
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-8 rounded-xl px-2 text-xs border-border/50 hover:border-border transition-colors"
+                                            >
+                                                <Mic size={12} />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={async () => {
+                                                try {
+                                                    await startRecording('microphone');
+                                                    setMode(PasteBinMode.TRANSCRIPTION);
+                                                    pasteBinStorage.save.mode(PasteBinMode.TRANSCRIPTION);
+                                                } catch (error) {
+                                                    console.error('Failed to start recording:', error);
+                                                }
+                                            }}>
+                                                <Headphones className="mr-2 h-4 w-4" />
+                                                Microphone
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={async () => {
+                                                try {
+                                                    await startRecording('system');
+                                                    setMode(PasteBinMode.TRANSCRIPTION);
+                                                    pasteBinStorage.save.mode(PasteBinMode.TRANSCRIPTION);
+                                                } catch (error) {
+                                                    console.error('Failed to start recording:', error);
+                                                }
+                                            }}>
+                                                <Monitor className="mr-2 h-4 w-4" />
+                                                System Audio
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                     <Button
                                         variant="outline"
                                         size="sm"
@@ -1215,24 +1343,37 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
 
                                     {/* Main action button */}
                                     <motion.div
+                                        key="send-button"
                                         initial={{ x: 30, opacity: 0 }}
                                         animate={{ x: 0, opacity: 1 }}
                                         exit={{ x: 30, opacity: 0 }}
                                         transition={{ delay: 0.15 }}
                                     >
-                                        <Button
-                                            size="sm"
-                                            onClick={async () => {
-                                                handleCreate();
-                                            }}
-                                            disabled={
-                                                (isUploading) &&
-                                                !isValidForCreation()
-                                            }
-                                            className="h-8 px-3 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50 transition-all duration-200"
-                                        >
-                                            <Send size={12} />
-                                        </Button>
+                                        {mode === PasteBinMode.TRANSCRIPTION && (isRecording || isConnecting) ? (
+                                            <Button
+                                                size="sm"
+                                                onClick={handleStopRecording}
+                                                disabled={isConnecting}
+                                                className="h-8 px-3 rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 transition-all duration-200"
+                                            >
+                                                <Square size={12} className="mr-1" />
+                                                Stop
+                                            </Button>
+                                        ) : (
+                                            <Button
+                                                size="sm"
+                                                onClick={async () => {
+                                                    handleCreate();
+                                                }}
+                                                disabled={
+                                                    (isUploading) &&
+                                                    !isValidForCreation()
+                                                }
+                                                className="h-8 px-3 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50 transition-all duration-200"
+                                            >
+                                                <Send size={12} />
+                                            </Button>
+                                        )}
                                     </motion.div>
                                 </motion.div>
                             )}

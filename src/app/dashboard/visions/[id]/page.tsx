@@ -1066,7 +1066,7 @@ function VisionDetailPageContent() {
                         />
                     </motion.div>
 
-                    <div className="flex-1 overflow-auto">
+                    <div className="no-scrollbar flex-1 overflow-auto">
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}

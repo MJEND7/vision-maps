@@ -6,6 +6,7 @@ import ImageNode from "./ImageNode";
 import VideoNode from "./VideoNode";
 import AudioNode from "./AudioNode";
 import LinkNode from "./LinkNode";
+import TranscriptionNode from "./TranscriptionNode";
 
 // Export all node components
 export {
@@ -16,6 +17,7 @@ export {
   VideoNode,
   AudioNode,
   LinkNode,
+  TranscriptionNode,
 };
 
 // Create nodeTypes configuration for React Flow
@@ -26,6 +28,7 @@ export const nodeTypes = {
   [NodeVariants.Video]: VideoNode,
   [NodeVariants.Audio]: AudioNode,
   [NodeVariants.Link]: LinkNode,
+  [NodeVariants.Transcription]: TranscriptionNode,
   [NodeVariants.YouTube]: LinkNode, // Use LinkNode for URL-based content
   [NodeVariants.Spotify]: LinkNode,
   [NodeVariants.AppleMusic]: LinkNode,
