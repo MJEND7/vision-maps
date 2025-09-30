@@ -194,18 +194,14 @@ export const connect = mutation({
             .withIndex("id", (q) => q.eq("node.id", source))
             .unique();
         if (!sourceNode) {
-            console.log("sourceNode doesn't exist", args.connection);
-            return;
+            throw new Error(`Source node with id ${source} not found`);
         }
-        const targetNode =
-            target &&
-            (await ctx.db
-                .query("framed_node")
-                .withIndex("id", (q) => q.eq("node.id", target))
-                .unique())
+        const targetNode = target && (await ctx.db
+            .query("framed_node")
+            .withIndex("id", (q) => q.eq("node.id", target))
+            .unique());
         if (!targetNode) {
-            console.log("targetNode doesn't exist", args.connection);
-            return;
+            throw new Error(`Target node with id ${target} not found`);
         }
         // Create edge with proper structure
         const newEdge = {
