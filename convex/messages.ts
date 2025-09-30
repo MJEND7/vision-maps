@@ -7,6 +7,8 @@ import { PaginationOptions, paginationOptsValidator } from "convex/server";
 import OpenAI from "openai";
 import { Id } from "./_generated/dataModel";
 import { YoutubeTranscript } from "youtube-transcript";
+import { getUserPlan } from "./auth";
+import { requirePermission, Permission } from "./permissions";
 
 // Args schemas
 const listMessagesByChatArgs = v.object({
@@ -24,6 +26,7 @@ const clearMessagesArgs = v.object({
 const sendMessageArgs = v.object({
     chatId: v.id("chats"),
     content: v.string(),
+    replyToMessageId: v.optional(v.id("messages")),
 });
 
 const getChatHistoryArgs = v.object({
@@ -109,6 +112,10 @@ export const sendMessage = mutation({
             throw new Error("Failed to get the user Id")
         }
 
+        // Check AI permission
+        const plan = await getUserPlan(ctx.auth);
+        requirePermission(plan, Permission.AI_NODES);
+
         // Check if this is the first user message in the chat
         const existingMessages = await ctx.db
             .query("messages")
@@ -125,6 +132,7 @@ export const sendMessage = mutation({
             userId: identity.userId?.toString(),
             role: "user",
             streamId: streamId.toString(),
+            replyToMessageId: args.replyToMessageId,
         });
 
         // If this is the first message, trigger chat naming action

@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { useUploadThing } from "@/utils/uploadthing";
-import { Camera, Search, MoreVertical, Crown, Edit2, UserPlus, X, Upload, ImageIcon, Trash2, Save, AlertTriangle, TableProperties, Frame, Filter, ChevronDown, Check } from "lucide-react";
+import { Camera, Search, MoreVertical, Crown, Edit2, UserPlus, X, Upload, ImageIcon, Trash2, Save, AlertTriangle, TableProperties, Frame, Filter, ChevronDown, Check, Lock, LogOut } from "lucide-react";
 import { VisionAccessRole } from "../../../convex/tables/visions";
 import { Textarea } from "../ui/textarea";
 import Image from "next/image";
@@ -19,6 +19,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { InviteUsersDialogue } from "../ui/invite-users-dialogue";
+import { usePermissions } from "@/contexts/PermissionsContext";
+import { UpgradeDialog } from "../ui/upgrade-dialog";
 
 interface SettingsComponentProps {
     id?: string;
@@ -44,16 +46,22 @@ export default function SettingsComponent({
     const [selectedFrames, setSelectedFrames] = useState<Set<string>>(new Set());
     const [selectedChannelFilter, setSelectedChannelFilter] = useState<string | null>(null);
     const [isChannelFilterOpen, setIsChannelFilterOpen] = useState(false);
+    const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+    const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const { canInviteToVision: checkCanInvite, collaborationLimit } = usePermissions();
 
     const visionId = id as Id<"visions">;
     const vision = useQuery(api.visions.get, visionId ? { id: visionId } : "skip");
     const members = useQuery(api.visions.getMembers, visionId ? { visionId } : "skip");
+    const userRole = useQuery(api.visions.getUserRole, visionId ? { visionId } : "skip");
     const channels = useQuery(api.channels.listByVision, visionId ? { visionId } : "skip");
     const allFrames = useQuery(api.frames.listByVision, visionId ? { visionId } : "skip");
     const updateVision = useMutation(api.visions.update);
     const updateMemberRole = useMutation(api.visions.updateMemberRole);
     const removeMember = useMutation(api.visions.removeMember);
+    const leaveVision = useMutation(api.visions.leaveVision);
     const deleteChannel = useMutation(api.channels.remove);
     const deleteFrame = useMutation(api.frames.remove);
 
@@ -294,6 +302,25 @@ export default function SettingsComponent({
 
     const selectedChannelData = channels?.find(c => c._id === selectedChannelFilter);
 
+    const memberCount = members?.length || 0;
+    const canInvite = checkCanInvite(memberCount);
+
+    const handleLeaveVision = async () => {
+        if (!visionId) return;
+        try {
+            await leaveVision({ visionId });
+            toast.success("Left vision successfully!");
+            setIsLeaveDialogOpen(false);
+            // Redirect to visions page
+            window.location.href = "/dashboard/visions";
+        } catch (error: any) {
+            toast.error(error.message || "Failed to leave vision");
+            console.error(error);
+        }
+    };
+
+    const isOwner = userRole === "owner";
+
     if (!vision) {
         return <div className="p-6">Loading...</div>;
     }
@@ -486,6 +513,18 @@ export default function SettingsComponent({
                         <Frame className="w-3 h-3" />
                         Frames
                     </button>
+                    {!isOwner && (
+                        <button
+                            onClick={() => setActiveTab("danger")}
+                            className={`flex items-center gap-1 px-3 py-2 rounded-md text-xs font-medium transition-colors ${activeTab === "danger"
+                                ? "bg-background text-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                                }`}
+                        >
+                            <AlertTriangle className="w-3 h-3" />
+                            Danger Zone
+                        </button>
+                    )}
                 </div>
                 <div className="space-y-3">
                     <div className="flex gap-3 items-center justify-between">
@@ -500,12 +539,30 @@ export default function SettingsComponent({
                             />
                         </div>
                         {activeTab === "users" && (
-                            <InviteUsersDialogue vision={id as Id<"visions">}>
-                                <Button className="h-9 text-xs" size="sm" variant="outline">
+                            canInvite ? (
+                                <InviteUsersDialogue vision={id as Id<"visions">}>
+                                    <Button
+                                        className="h-9 text-xs"
+                                        size="sm"
+                                        variant="outline"
+                                    >
+                                        <UserPlus className="w-4 h-4" />
+                                        <p className="hidden sm:inline">Invite User</p>
+                                    </Button>
+                                </InviteUsersDialogue>
+                            ) : (
+                                <Button
+                                    className="h-9 text-xs"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setShowUpgradeDialog(true)}
+                                    title={`Upgrade to invite more users (limit: ${collaborationLimit})`}
+                                >
+                                    <Lock className="w-4 h-4 mr-1" />
                                     <UserPlus className="w-4 h-4" />
                                     <p className="hidden sm:inline">Invite User</p>
                                 </Button>
-                            </InviteUsersDialogue>
+                            )
                         )}
                         {activeTab === "frames" && (
                             <div className="flex items-center gap-2">
@@ -984,6 +1041,33 @@ export default function SettingsComponent({
                             </div>
                         </>
                     )}
+
+                    {/* Danger Zone Tab */}
+                    {activeTab === "danger" && !isOwner && (
+                        <div className="p-6 space-y-6">
+                            <div className="border-2 border-red-200 rounded-lg p-6 space-y-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="p-2 bg-red-100 rounded-lg">
+                                        <AlertTriangle className="w-5 h-5 text-red-600" />
+                                    </div>
+                                    <div className="flex-1 space-y-2">
+                                        <h3 className="text-lg font-semibold text-red-900">Leave Vision</h3>
+                                        <p className="text-sm text-red-700">
+                                            Once you leave this vision, you will lose access to all content unless invited back by an owner.
+                                        </p>
+                                        <Button
+                                            variant="destructive"
+                                            onClick={() => setIsLeaveDialogOpen(true)}
+                                            className="mt-2"
+                                        >
+                                            <LogOut className="w-4 h-4 mr-2" />
+                                            Leave Vision
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -1075,6 +1159,57 @@ export default function SettingsComponent({
                         >
                             <Trash2 className="w-4 h-4 mr-2" />
                             Delete Frame{deleteFramesDialog.frames.length > 1 ? 's' : ''}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Upgrade Dialog */}
+            <UpgradeDialog
+                open={showUpgradeDialog}
+                onOpenChange={setShowUpgradeDialog}
+                reason="collaboration_limit"
+                currentLimit={collaborationLimit}
+            />
+
+            {/* Leave Vision Confirmation Dialog */}
+            <Dialog open={isLeaveDialogOpen} onOpenChange={setIsLeaveDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="w-5 h-5 text-red-500" />
+                            Leave Vision
+                        </DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to leave this vision? You will lose access to all content unless invited back by an owner.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <Alert className="border-red-200 bg-red-50">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <AlertDescription className="text-red-800">
+                            <strong>Warning:</strong> This action will immediately remove your access to:
+                            <ul className="list-disc list-inside mt-2 space-y-1">
+                                <li>All channels in this vision</li>
+                                <li>All frames and nodes</li>
+                                <li>All comments and discussions</li>
+                            </ul>
+                        </AlertDescription>
+                    </Alert>
+
+                    <DialogFooter className="gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsLeaveDialogOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleLeaveVision}
+                        >
+                            <LogOut className="w-4 h-4 mr-2" />
+                            Leave Vision
                         </Button>
                     </DialogFooter>
                 </DialogContent>

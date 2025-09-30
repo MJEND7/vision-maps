@@ -8,7 +8,7 @@ export default memo(function AudioNode(props: NodeProps & { data: any }) {
   
   return (
     <div 
-      className="bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-orange-950/20 dark:to-yellow-950/20 bg-card border border-orange-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-orange-500/10"
+      className="bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-orange-950/20 dark:to-yellow-950/20 bg-card border border-orange-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-orange-500/10 group relative"
       onContextMenu={(e) => {
         e.preventDefault();
         e.stopPropagation();

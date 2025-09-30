@@ -8,8 +8,10 @@
  * @module
  */
 
+import type * as auth from "../auth.js";
 import type * as channels from "../channels.js";
 import type * as chats from "../chats.js";
+import type * as comments from "../comments.js";
 import type * as edges from "../edges.js";
 import type * as frames from "../frames.js";
 import type * as http from "../http.js";
@@ -17,6 +19,7 @@ import type * as messages from "../messages.js";
 import type * as nodes from "../nodes.js";
 import type * as notifications from "../notifications.js";
 import type * as ogMetadata from "../ogMetadata.js";
+import type * as permissions from "../permissions.js";
 import type * as presence from "../presence.js";
 import type * as reactflow_types from "../reactflow/types.js";
 import type * as tables_channel from "../tables/channel.js";
@@ -54,8 +57,10 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
   channels: typeof channels;
   chats: typeof chats;
+  comments: typeof comments;
   edges: typeof edges;
   frames: typeof frames;
   http: typeof http;
@@ -63,6 +68,7 @@ declare const fullApi: ApiFromModules<{
   nodes: typeof nodes;
   notifications: typeof notifications;
   ogMetadata: typeof ogMetadata;
+  permissions: typeof permissions;
   presence: typeof presence;
   "reactflow/types": typeof reactflow_types;
   "tables/channel": typeof tables_channel;

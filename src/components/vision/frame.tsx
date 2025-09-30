@@ -102,7 +102,7 @@ export default function FrameComponent({
     id: Id<"frames">;
     userId: string;
 }) {
-    const { openChat } = useSidebar();
+    const { openChat, rightSidebarContentRef } = useSidebar();
     const [isDark, setIsDark] = useState(false);
     const [getViewportCenter, setGetViewportCenter] = useState<(() => { x: number; y: number }) | null>(null);
     const { cacheMetadataForUrl } = useMetadataCache();
@@ -163,6 +163,7 @@ export default function FrameComponent({
 
     const framedNodes = useQuery(api.frames.getFrameNodes, { frameId: id });
     const edges = useQuery(api.edges.get, { frameId: id });
+    
 
     // Movement queue
     const { setNodesMap, handleNodesChange } = useMovementQueue(
@@ -243,9 +244,15 @@ export default function FrameComponent({
                             } as any),
                         nodeUser: null,
                         frameId: id,
+                        visionId: frame?.vision,
                         onEditComplete: () => updateEditingNodeId(null),
                         onUpdateNodeContent: updateNodeContent,
                         onOpenChat: openChat,
+                        onComment: () => {
+                            // Handler for creating a new comment (from context menu)
+                            // Need to pass the actual database node ID, not the ReactFlow ID
+                            rightSidebarContentRef?.current?.openNodeComments?.(framedNode.node._id);
+                        },
                         onNodeRightClick: (nodeId: string, event: React.MouseEvent) => {
                             setSelectedNodes((sel) =>
                                 sel.includes(nodeId) ? sel : [nodeId]
@@ -268,7 +275,7 @@ export default function FrameComponent({
             setNodesMap(newMap);
             return nextNodes;
         });
-    }, [framedNodes, setNodesMap, id, openChat, updateEditingNodeId, updateNodeContent]);
+    }, [framedNodes, setNodesMap, id, openChat, updateEditingNodeId, updateNodeContent, rightSidebarContentRef, frame?.vision]);
 
     const onNodesChange = useCallback(
         (changes: NodeChange[]) => {
@@ -557,6 +564,7 @@ export default function FrameComponent({
                                 : null;
                         })
                         .filter(Boolean) as { id: string; type: string; data: any }[]}
+                    visionId={frame?.vision}
                     onDeleteSelected={() => {
                         // Clear selections after deletion
                         setSelectedNodes([]);
@@ -571,9 +579,22 @@ export default function FrameComponent({
                         updateEditingNodeId(nodeId);
                         closeContextMenu();
                     }}
+                    onComment={() => {
+                        // Handler for creating a new comment (from context menu)
+                        // Get the selected node and open comments for it
+                        if (selectedNodes.length === 1) {
+                            const selectedNode = selectedNodes.map((nodeId) => {
+                                const node = nodes.find((n) => n.id === nodeId);
+                                return node?.data?.node?._id;
+                            }).filter(Boolean)[0];
+                            if (selectedNode) {
+                                rightSidebarContentRef?.current?.openNodeComments?.(selectedNode);
+                            }
+                        }
+                        closeContextMenu();
+                    }}
                     isOpen={contextMenu.show}
                     position={{ x: contextMenu.x, y: contextMenu.y }}
-                    onClose={closeContextMenu}
                 />
             </div>
             <PasteBin

@@ -19,6 +19,9 @@ import { Id } from "../../../convex/_generated/dataModel";
 import { CreateNodeArgs } from "../../../convex/nodes";
 import { NodeVariants } from "../../../convex/tables/nodes";
 import { useOGMetadataWithCache } from "@/utils/ogMetadata";
+import { usePermissions } from "@/contexts/PermissionsContext";
+import { Permission } from "@/lib/permissions";
+import { UpgradeDialog } from "../ui/upgrade-dialog";
 
 // Paste-bin mode enum
 export enum PasteBinMode {
@@ -131,12 +134,16 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     const [media, setMedia] = useState<Media | null>(null);
     const [isTextMode, setIsTextMode] = useState(false);
     const [isAiMode, setIsAiMode] = useState(false);
+    const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const initialLoadRef = useRef(false);
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const emptyResetTimerRef = useRef<NodeJS.Timeout | null>(null);
     const textContentDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
+    const { hasPermission } = usePermissions();
+    const canUseAI = hasPermission(Permission.AI_NODES);
 
     const createChat = useMutation(api.chats.createChat);
     const sendMessage = useMutation(api.messages.sendMessage);
@@ -637,6 +644,12 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     }, [sendMessage, textContent]);
 
     const handleToggleAiMode = useCallback(async () => {
+        // Check if user has permission to use AI features
+        if (!canUseAI) {
+            setShowUpgradeDialog(true);
+            return;
+        }
+
         if (mode === PasteBinMode.TEXT) {
             if (textContent) {
                 const content = textContent;
@@ -649,7 +662,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             updateIsAiMode(true);
             pasteBinStorage.save.mode(PasteBinMode.AI);
         }
-    }, [mode, textContent, newChat, handleSendMessage, updateIsAiMode]);
+    }, [mode, textContent, newChat, handleSendMessage, updateIsAiMode, canUseAI]);
 
     const clearMedia = useCallback(async (deleteUnusedChat = true) => {
         // Delete any uploaded media files if not clearing after successful creation
@@ -1227,6 +1240,13 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                     </motion.div>
                 </motion.div>
             </div>
+
+            {/* Upgrade Dialog */}
+            <UpgradeDialog
+                open={showUpgradeDialog}
+                onOpenChange={setShowUpgradeDialog}
+                reason="ai"
+            />
         </div>
     );
 }

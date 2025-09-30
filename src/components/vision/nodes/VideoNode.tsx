@@ -8,7 +8,7 @@ export default memo(function VideoNode(props: NodeProps & { data: any }) {
   
   return (
     <div 
-      className="bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-950/20 dark:to-pink-950/20 bg-card border border-red-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-red-500/10"
+      className="bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-950/20 dark:to-pink-950/20 bg-card border border-red-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-red-500/10 group relative"
       onContextMenu={(e) => {
         e.preventDefault();
         e.stopPropagation();

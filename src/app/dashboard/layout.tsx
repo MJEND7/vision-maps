@@ -1,35 +1,46 @@
-"use client";
-
-import { useUser } from '@clerk/nextjs';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
 import { ROUTES } from '@/lib/constants';
-import { ProfileUserProvider } from '@/contexts/ProfileUserContext';
-import { OrgSwitchProvider } from '@/contexts/OrgSwitchContext';
+import { parsePlan } from '@/lib/permissions';
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "@/../convex/_generated/api";
+import DashboardLayoutClient from './layout-client';
 
-export default function ProfileLayout({
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+export default async function DashboardLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
 }>) {
-    const { isLoaded, isSignedIn, user } = useUser();
-    const router = useRouter();
+    const { userId, sessionClaims, orgId } = await auth();
 
-    useEffect(() => {
-        if (isLoaded && !isSignedIn) {
-            router.push(ROUTES.SIGNIN);
+    if (!userId || !sessionClaims) {
+        redirect(ROUTES.SIGNIN);
+    }
+
+    // Parse plan from session claims
+    const rawPlan = (sessionClaims.pla as string) || "free";
+    const plan = parsePlan(rawPlan);
+
+    // Get trial information from Convex
+    let trialDaysLeft = null;
+    try {
+        const trialInfo = await convex.query(api.userTrials.getTrialInfo, {
+            clerkUserId: userId,
+            organizationId: orgId || undefined,
+        });
+
+        if (trialInfo) {
+            trialDaysLeft = trialInfo.daysLeft;
         }
-    }, [isLoaded, isSignedIn, router]);
-
-    if (!isLoaded || !isSignedIn) return null;
+    } catch (error) {
+        console.error("Error fetching trial info:", error);
+    }
 
     return (
-        <ProfileUserProvider user={user}>
-            <OrgSwitchProvider>
-                <div className="h-full min-h-screen">
-                    {children}
-                </div>
-            </OrgSwitchProvider>
-        </ProfileUserProvider>
+        <DashboardLayoutClient plan={plan} trialDaysLeft={trialDaysLeft}>
+            {children}
+        </DashboardLayoutClient>
     );
 }

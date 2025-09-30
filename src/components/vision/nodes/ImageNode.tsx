@@ -8,7 +8,7 @@ export default memo(function ImageNode(props: NodeProps & { data: any }) {
   
   return (
     <div 
-      className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 bg-card border border-blue-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-blue-500/10"
+      className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 bg-card border border-blue-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-blue-500/10 group relative"
       onContextMenu={(e) => {
         e.preventDefault();
         e.stopPropagation();

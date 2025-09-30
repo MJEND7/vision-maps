@@ -8,7 +8,7 @@ export default memo(function LinkNode(props: NodeProps & { data: any }) {
 
     return (
         <div 
-            className="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20 bg-card border border-gray-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-gray-500/10"
+            className="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20 bg-card border border-gray-500/20 rounded-lg shadow-sm min-w-[300px] max-w-[500px] ring-1 ring-gray-500/10 group relative"
             onContextMenu={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -50,7 +50,7 @@ export default memo(function LinkNode(props: NodeProps & { data: any }) {
                 </div>
                 {renderNodeContent(node, props.data.onOpenChat)}
             </div>
-
+            
             <Handle
                 type="source"
                 position={Position.Bottom}

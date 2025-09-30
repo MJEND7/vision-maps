@@ -45,7 +45,7 @@ export default function LandingNav({
     }, [menuOpen]);
 
     return (
-        <div className="flex gap-1 items-center justify-center w-full p-2 fixed top-0 z-[20]">
+        <div className="flex gap-1 items-center justify-center w-full p-2 fixed top-0 z-[25]">
             <motion.header
                 initial={{ y: -50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -188,7 +188,7 @@ export default function LandingNav({
                                     )}
                                     {/* Theme Switcher in Mobile Menu */}
                                     {isLoaded && (
-                                        <ThemeSwitcher size="sm" />
+                                        <ThemeSwitcher size="lg" />
                                     )}
                                 </div>
                                 <Link href={ROUTES.SIGNUP}>

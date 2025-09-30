@@ -2,6 +2,8 @@ import { mutation, query } from "./_generated/server";
 import { v, Infer } from "convex/values";
 import { requireAuth, getUserByIdenityId } from "./utils/auth";
 import { paginationOptsValidator } from "convex/server";
+import { getUserPlan } from "./auth";
+import { requirePermission, Permission } from "./permissions";
 
 // Args schemas
 const createChatArgs = v.object({
@@ -59,6 +61,10 @@ export const createChat = mutation({
         if (!identity?.userId) {
             throw new Error("Failed to get the user Id")
         }
+
+        // Check AI permission
+        const plan = await getUserPlan(ctx.auth);
+        requirePermission(plan, Permission.AI_NODES);
 
         const id = await ctx.db.insert("chats", {
             title: args.title,
@@ -181,11 +187,12 @@ export const listChannelChats = query({
             throw new Error("Failed to get the user Id");
         }
 
-        // Get chats for the specific channel
+        // Get chats for the specific channel (excluding comment chats)
         return await ctx.db
             .query("chats")
             .withIndex("by_channelId", (q) => q.eq("channelId", args.channelId))
             .filter((q) => q.eq(q.field("userId"), userId.toString()))
+            .filter((q) => q.neq(q.field("isCommentChat"), true))
             .collect();
     },
 });
@@ -200,11 +207,12 @@ export const listVisionChatsPaginated = query({
             throw new Error("Failed to get the user Id");
         }
 
-        // Get paginated chats for the specific vision, ordered by most recent
+        // Get paginated chats for the specific vision, ordered by most recent (excluding comment chats)
         const result = await ctx.db
             .query("chats")
             .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
             .filter((q) => q.eq(q.field("userId"), userId.toString()))
+            .filter((q) => q.neq(q.field("isCommentChat"), true))
             .order("desc")
             .paginate(args.paginationOpts);
 
@@ -269,6 +277,10 @@ export const createChatWithNode = mutation({
         if (!identity?.userId) {
             throw new Error("Failed to get the user Id");
         }
+
+        // Check AI permission
+        const plan = await getUserPlan(ctx.auth);
+        requirePermission(plan, Permission.AI_NODES);
 
         const userId = (await getUserByIdenityId(ctx, identity.userId as string))?._id;
 

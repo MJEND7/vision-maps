@@ -68,6 +68,10 @@ const searchUsersByEmailArgs = v.object({
     limit: v.optional(v.number()),
 });
 
+const getUsersByExternalIdsArgs = v.object({
+    externalIds: v.array(v.string()),
+});
+
 // Add this query function using search index
 export const searchUsers = query({
     args: searchUsersArgs,
@@ -171,6 +175,24 @@ export const searchUsersByEmail = query({
     },
 });
 
+export const getUsersByExternalIds = query({
+    args: getUsersByExternalIdsArgs,
+    handler: async (ctx, { externalIds }) => {
+        if (!externalIds.length) return [];
+        
+        // Get users by their external IDs
+        const userPromises = externalIds.map(externalId =>
+            ctx.db
+                .query("users")
+                .withIndex("by_external_id", (q) => q.eq("externalId", externalId))
+                .unique()
+        );
+
+        const users = await Promise.all(userPromises);
+        return users.filter(user => user !== null);
+    },
+});
+
 export async function getCurrentUserOrThrow(ctx: QueryCtx) {
     const userRecord = await getCurrentUser(ctx);
     if (!userRecord) throw new Error("Can't get current user");
@@ -198,3 +220,4 @@ export type UpsertUserFromClerkArgs = Infer<typeof upsertFromClerkArgs>;
 export type DeleteUserFromClerkArgs = Infer<typeof deleteFromClerkArgs>;
 export type SearchUsersArgs = Infer<typeof searchUsersArgs>;
 export type SearchUsersByEmailArgs = Infer<typeof searchUsersByEmailArgs>;
+export type GetUsersByExternalIdsArgs = Infer<typeof getUsersByExternalIdsArgs>;

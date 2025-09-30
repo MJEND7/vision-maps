@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ROUTES } from '@/lib/constants';
 import { timeSinceFromDateString } from '@/utils/date';
 import { useState, useEffect } from 'react';
-import { Map, Scan, Search, Grid3X3, List, Plus, Trash2, MoreHorizontal, Download, Share, Filter, Menu } from 'lucide-react';
+import { Map, Scan, Search, Grid3X3, List, Plus, Trash2, MoreHorizontal, Download, Share, Filter, Menu, Lock, LogOut } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -21,11 +21,16 @@ import { VisionTableSkeleton, VisionGridSkeleton } from '@/components/vision-ske
 import { useOrganization } from '@clerk/nextjs';
 import { NotionSidebar } from '@/components/ui/notion-sidebar';
 import { useOrgSwitch } from '@/contexts/OrgSwitchContext';
+import { usePermissions } from '@/contexts/PermissionsContext';
+import { Plan } from '@/lib/permissions';
+import { UpgradeDialog } from '@/components/ui/upgrade-dialog';
 
 export default function SheetsPage() {
     const router = useRouter();
     const { organization } = useOrganization();
     const { isOrgSwitching } = useOrgSwitch();
+    const { canCreateVision: checkCanCreateVision, visionLimit, plan } = usePermissions();
+    const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
     const LOCAL_VIEW_MODE = "visions-view-mode";
 
@@ -35,6 +40,8 @@ export default function SheetsPage() {
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [visionToDelete, setVisionToDelete] = useState<Id<"visions"> | null>(null);
+    const [isLeaveOpen, setIsLeaveOpen] = useState(false);
+    const [visionToLeave, setVisionToLeave] = useState<Id<"visions"> | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // Initialize view mode from localStorage with mobile-first grid default
@@ -94,8 +101,27 @@ export default function SheetsPage() {
 
     const createVision = useMutation(api.visions.create);
     const deleteVision = useMutation(api.visions.remove);
+    const leaveVision = useMutation(api.visions.leaveVision);
+
+    const visions = visionsData?.visions || [];
+    const visionCount = visions.length;
+    const canCreate = checkCanCreateVision(visionCount);
+
+    // Check if user is in org but doesn't have Teams tier
+    const isInOrgWithoutTeams = organization && plan !== Plan.TEAMS;
 
     const newVision = async () => {
+        // If in org without Teams tier, show upgrade prompt
+        if (isInOrgWithoutTeams) {
+            setShowUpgradeDialog(true);
+            return;
+        }
+
+        if (!canCreate) {
+            setShowUpgradeDialog(true);
+            return;
+        }
+
         const id = await createVision({
             organizationId: organization?.id
         });
@@ -105,6 +131,11 @@ export default function SheetsPage() {
     const handleDelete = (visionId: Id<"visions">) => {
         setVisionToDelete(visionId);
         setIsDeleteOpen(true);
+    };
+
+    const handleLeave = (visionId: Id<"visions">) => {
+        setVisionToLeave(visionId);
+        setIsLeaveOpen(true);
     };
 
     const handleExport = (visionId: Id<"visions">) => {
@@ -117,11 +148,58 @@ export default function SheetsPage() {
         toast.success("Share feature coming soon!");
     };
 
-    const visions = visionsData?.visions || [];
     const isLoading = visionsData === undefined;
+
+    // Determine if content should be grayed out (in org without Teams)
+    const shouldGrayOut = isInOrgWithoutTeams;
+
+    // Component for vision menu items with role awareness
+    const VisionMenuItems = ({ visionId }: { visionId: Id<"visions"> }) => {
+        const userRole = useQuery(api.visions.getUserRole, { visionId });
+        const isOwner = userRole === "owner";
+
+        return (
+            <>
+                <DropdownMenuItem onClick={() => handleShare(visionId)}>
+                    <Share className="w-4 h-4 mr-2" />
+                    Share
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport(visionId)}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Export
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {isOwner ? (
+                    <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => handleDelete(visionId)}
+                    >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete
+                    </DropdownMenuItem>
+                ) : (
+                    <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => handleLeave(visionId)}
+                    >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Leave Vision
+                    </DropdownMenuItem>
+                )}
+            </>
+        );
+    };
 
     return (
         <div className="flex h-screen bg-background relative">
+            {/* Upgrade Dialog */}
+            <UpgradeDialog
+                open={showUpgradeDialog}
+                onOpenChange={setShowUpgradeDialog}
+                reason={isInOrgWithoutTeams ? "teams" : "vision_limit"}
+                currentLimit={visionLimit}
+            />
+
             {/* Desktop Sidebar */}
             <div className="hidden lg:block">
                 <NotionSidebar />
@@ -156,8 +234,9 @@ export default function SheetsPage() {
                 </div>
 
                 <div className="max-w-7xl space-y-5 mx-auto px-4 sm:px-6 lg:px-8 pb-8 pt-8 lg:pt-16">
+
                     <div
-                        className="bg-card border border-border rounded-xl p-4 sm:p-6 lg:p-8 shadow-sm"
+                        className={`bg-card border border-border rounded-xl p-4 sm:p-6 lg:p-8 shadow-sm ${shouldGrayOut ? 'opacity-50 pointer-events-none' : ''}`}
                     >
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 lg:gap-6">
                             <div className="space-y-1">
@@ -171,14 +250,23 @@ export default function SheetsPage() {
                                     }
                                 </p>
                             </div>
-                            <Button size={"lg"} className="rounded-xl px-6 py-3 text-base font-medium" onClick={newVision}>
+                            <Button
+                                size={"lg"}
+                                className="rounded-xl px-6 py-3 text-base font-medium"
+                                onClick={newVision}
+                                title={
+                                    shouldGrayOut
+                                        ? "Upgrade to Teams to use organizations"
+                                        : (!canCreate ? `Upgrade to create more visions (limit: ${visionLimit})` : "")
+                                }
+                            >
                                 <Plus className="w-6 h-6" />
                                 New Vision
                             </Button>
                         </div>
                     </div>
 
-                    <div className="sm:w-auto sm:items-center sm:justify-end w-full flex gap-2">
+                    <div className={`sm:w-auto sm:items-center sm:justify-end w-full flex gap-2 ${shouldGrayOut ? 'opacity-50 pointer-events-none' : ''}`}>
                         <div className="relative w-full sm:w-[300px]">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
                             <Input
@@ -238,164 +326,86 @@ export default function SheetsPage() {
                     </div>
 
                     {/* Rest of your content remains the same */}
-                    {
-                        isLoading || isOrgSwitching ? (
-                            viewMode === "grid" ? <VisionGridSkeleton /> : <VisionTableSkeleton />
-                        ) : visions.length === 0 ? (
-                            <div className="text-center text-gray-500 py-10">
-                                No visions to display yet. Create one!
-                            </div>
-                        ) : viewMode === "grid" ? (
-                            <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3`}>
-                                {visions.map((vision) => (
-                                    <div
-                                        key={vision._id}
-                                        className="hover:shadow-xl transition-all ease-in-out shadow-lg flex flex-col justify-between rounded-3xl border"
-                                    >
-                                        {/* Banner / Header button */}
-                                        <button
-                                            onClick={() =>
-                                                router.push(`${ROUTES.PROFILE.VISIONS}/${vision._id}`)
-                                            }
-                                            style={{ backgroundImage: `url(${vision.banner})` }}
-                                            className="group relative flex h-[200px] items-center justify-center 
-       hover:shadow-inner rounded-t-3xl bg-cover bg-center"
-                                        >
-                                            {/* Scan button on hover */}
-                                            <div className="bg-background text-primary p-[5px] rounded-md absolute right-5 top-5 transition-all duration-300 ease-in-out opacity-0 invisible group-hover:opacity-100 group-hover:visible">
-                                                <Scan size={18} />
-                                            </div>
-                                            <h1 className={`${vision.banner ? "hidden" : ""} text-lg`}>
-                                                {vision.title || "Untitled Vision"}
-                                            </h1>
-                                        </button>
-
-                                        <hr />
-
-                                        {/* Content area */}
-                                        <div className="flex gap-3 items-start bg-accent rounded-b-3xl space-y-1 px-3 py-2 text-left text-xs">
-                                            <div className="text-white mt-1 rounded-md bg-blue-400 p-2">
-                                                <Map size={15} />
-                                            </div>
-
-                                            <div className="w-full min-w-0">
-                                                <div className="flex gap-2 items-start min-w-0">
-                                                    <p className="flex-1 truncate text-sm sm:text-md text-primary">
-                                                        {vision.title || "No description provided."}
-                                                    </p>
-
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.preventDefault();
-                                                                    e.stopPropagation();
-                                                                }}
-                                                                className="p-1 hover:bg-muted rounded transition-colors flex-shrink-0"
-                                                            >
-                                                                <MoreHorizontal className="w-4 h-4" />
-                                                            </button>
-                                                        </DropdownMenuTrigger>
-
-                                                        <DropdownMenuContent
-                                                            className="text-muted-foreground"
-                                                            align="end"
-                                                        >
-                                                            <DropdownMenuItem onClick={() => handleShare(vision._id)}>
-                                                                <Share className="hover:text-primary w-4 h-4 mr-2" />
-                                                                Share
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => handleExport(vision._id)}>
-                                                                <Download className="hover:text-primary w-4 h-4 mr-2" />
-                                                                Export
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
-                                                            <DropdownMenuItem
-                                                                variant="destructive"
-                                                                onClick={() => handleDelete(vision._id)}
-                                                            >
-                                                                <Trash2 className="w-4 h-4 mr-2" />
-                                                                Delete
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </div>
-
-                                                <p className="truncate text-xs text-muted-foreground w-full">
-                                                    {vision.description || "No description provided."}
-                                                </p>
-
-                                                <div className="flex items-center justify-between">
-                                                    <p className="text-xs text-primary/30">
-                                                        Updated{" "}
-                                                        {timeSinceFromDateString(
-                                                            new Date(vision.updatedAt) || new Date()
-                                                        )}
-                                                    </p>
-                                                    <StaticFacePile visionId={vision._id} />
-                                                </div>
-                                            </div>
+                    <div className="relative">
+                        {/* Teams Upgrade Banner - Centered on Screen */}
+                        {shouldGrayOut && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="mt-30 flex items-center justify-center z-50 pointer-events-none px-4"
+                            >
+                                <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border-2 border-primary/20 rounded-xl p-8 max-w-md w-full shadow-2xl bg-background/95 backdrop-blur-sm pointer-events-auto">
+                                    <div className="flex flex-col items-center text-center gap-4">
+                                        <div className="p-4 bg-primary/10 rounded-lg">
+                                            <Lock className="w-8 h-8 text-primary" />
                                         </div>
+                                        <div>
+                                            <h3 className="text-xl font-semibold mb-2">Teams Plan Required</h3>
+                                            <p className="text-sm text-muted-foreground">
+                                                You need the Teams tier to use organizations.
+                                                Upgrade this organization now for full collaboration features.
+                                            </p>
+                                        </div>
+                                        <Button
+                                            size="lg"
+                                            onClick={() => router.push('/pricing')}
+                                            className="w-full"
+                                        >
+                                            View Pricing
+                                        </Button>
                                     </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="space-y-2">
-                                {visions.map((vision) => (
-                                    <div
-                                        key={vision._id}
-                                        className="w-full group  hover:shadow-xl transition-all ease-in-out shadow-lg rounded-xl border bg-card"
-                                    >
-                                        <div className="flex flex-row">
-                                            <button
-                                                style={{ backgroundImage: `url(${vision.banner})` }}
-                                                onClick={() => router.push(`${ROUTES.PROFILE.VISIONS}/${vision._id}`)}
-                                                className="relative bg-cover rounded-l-xl flex w-[100px] sm:h-[100px] sm:w-[250px] items-center justify-center">
-                                                <div className="absolute left-2 top-2">
-                                                    <div className='rounded-sm text-white bg-blue-400 p-1'>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* Gray overlay only for visions list */}
+                        <div className={shouldGrayOut ? 'relative' : ''}>
+                            {
+                                isLoading || isOrgSwitching ? (
+                                    viewMode === "grid" ? <VisionGridSkeleton /> : <VisionTableSkeleton />
+                                ) : visions.length === 0 ? (
+                                    <div className={`${shouldGrayOut ? "hidden" : ""} text-center text-gray-500 py-10`}>
+                                        No visions to display yet. Create one!
+                                    </div>
+                                ) : viewMode === "grid" ? (
+                                    <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3`}>
+                                        {visions.map((vision) => (
+                                            <div
+                                                key={vision._id}
+                                                className="hover:shadow-xl transition-all ease-in-out shadow-lg flex flex-col justify-between rounded-3xl border"
+                                            >
+                                                {/* Banner / Header button */}
+                                                <button
+                                                    onClick={() =>
+                                                        router.push(`${ROUTES.PROFILE.VISIONS}/${vision._id}`)
+                                                    }
+                                                    style={{ backgroundImage: `url(${vision.banner})` }}
+                                                    className="group relative flex h-[200px] items-center justify-center 
+       hover:shadow-inner rounded-t-3xl bg-cover bg-center"
+                                                >
+                                                    {/* Scan button on hover */}
+                                                    <div className="bg-background text-primary p-[5px] rounded-md absolute right-5 top-5 transition-all duration-300 ease-in-out opacity-0 invisible group-hover:opacity-100 group-hover:visible">
+                                                        <Scan size={18} />
+                                                    </div>
+                                                    <h1 className={`${vision.banner ? "hidden" : ""} text-lg`}>
+                                                        {vision.title || "Untitled Vision"}
+                                                    </h1>
+                                                </button>
+
+                                                <hr />
+
+                                                {/* Content area */}
+                                                <div className="flex gap-3 items-start bg-accent rounded-b-3xl space-y-1 px-3 py-2 text-left text-xs">
+                                                    <div className="text-white mt-1 rounded-md bg-blue-400 p-2">
                                                         <Map size={15} />
                                                     </div>
-                                                </div>
-                                                <h1 className={`${vision.banner ? "hidden" : ""} text-lg`}>
-                                                    {vision.title || 'Untitled Vision'}
-                                                </h1>
-                                            </button>
-                                            <div className="flex-1 flex flex-col gap-2 bg-accent rounded-none rounded-r-xl px-3 py-2">
-                                                <div className="flex items-center justify-between">
-                                                    <p className="text-left text-sm sm:text-[1.1rem] text-primary">
-                                                        {vision.title || 'No description provided.'}
-                                                    </p>
-                                                    <div className="flex items-center ">
-                                                        <StaticFacePile visionId={vision._id} />
-                                                        {/* Desktop: Show inline buttons */}
-                                                        <div className="hidden sm:flex gap-3 items-center">
-                                                            <button
-                                                                onClick={() => handleShare(vision._id)}
-                                                                className="flex flex-col items-center text-xs p-1.5 hover:bg-muted rounded transition-colors"
-                                                                title="Share"
-                                                            >
-                                                                <Share className="w-4 h-4" />
-                                                                Share
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleExport(vision._id)}
-                                                                className="flex flex-col items-center text-xs p-1.5 hover:bg-muted rounded transition-colors"
-                                                                title="Export"
-                                                            >
-                                                                <Download className="w-4 h-4" />
-                                                                Export
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDelete(vision._id)}
-                                                                className="flex flex-col items-center text-xs p-1.5 hover:bg-destructive/10 text-destructive rounded transition-colors"
-                                                                title="Delete"
-                                                            >
-                                                                <Trash2 className="w-4 h-4" />
-                                                                Delete
-                                                            </button>
-                                                        </div>
-                                                        {/* Mobile: Show 3-dot menu */}
-                                                        <div className="sm:hidden">
+
+                                                    <div className="w-full min-w-0">
+                                                        <div className="flex gap-2 items-start min-w-0">
+                                                            <p className="flex-1 truncate text-sm sm:text-md text-primary">
+                                                                {vision.title || "No description provided."}
+                                                            </p>
+
                                                             <DropdownMenu>
                                                                 <DropdownMenuTrigger asChild>
                                                                     <button
@@ -403,48 +413,132 @@ export default function SheetsPage() {
                                                                             e.preventDefault();
                                                                             e.stopPropagation();
                                                                         }}
-                                                                        className="p-1.5 hover:bg-muted rounded transition-colors"
+                                                                        className="p-1 hover:bg-muted rounded transition-colors flex-shrink-0"
                                                                     >
                                                                         <MoreHorizontal className="w-4 h-4" />
                                                                     </button>
                                                                 </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end">
-                                                                    <DropdownMenuItem onClick={() => handleShare(vision._id)}>
-                                                                        <Share className="w-4 h-4 mr-2" />
-                                                                        Share
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuItem onClick={() => handleExport(vision._id)}>
-                                                                        <Download className="w-4 h-4 mr-2" />
-                                                                        Export
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuSeparator />
-                                                                    <DropdownMenuItem
-                                                                        variant="destructive"
-                                                                        onClick={() => handleDelete(vision._id)}
-                                                                    >
-                                                                        <Trash2 className="w-4 h-4" />
-                                                                        Delete
-                                                                    </DropdownMenuItem>
+
+                                                                <DropdownMenuContent
+                                                                    className="text-muted-foreground"
+                                                                    align="end"
+                                                                >
+                                                                    <VisionMenuItems visionId={vision._id} />
                                                                 </DropdownMenuContent>
                                                             </DropdownMenu>
                                                         </div>
+
+                                                        <p className="truncate text-xs text-muted-foreground w-full">
+                                                            {vision.description || "No description provided."}
+                                                        </p>
+
+                                                        <div className="flex items-center justify-between">
+                                                            <p className="text-xs text-primary/30">
+                                                                Updated{" "}
+                                                                {timeSinceFromDateString(
+                                                                    new Date(vision.updatedAt) || new Date()
+                                                                )}
+                                                            </p>
+                                                            <StaticFacePile visionId={vision._id} />
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div className="text-left space-y-1">
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {vision.description || 'No description provided.'}
-                                                    </p>
-                                                    <p className="text-primary/30 text-xs">
-                                                        Updated {timeSinceFromDateString(new Date(vision.updatedAt) || new Date())}
-                                                    </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {visions.map((vision) => (
+                                            <div
+                                                key={vision._id}
+                                                className="w-full group  hover:shadow-xl transition-all ease-in-out shadow-lg rounded-xl border bg-card"
+                                            >
+                                                <div className="flex flex-row">
+                                                    <button
+                                                        style={{ backgroundImage: `url(${vision.banner})` }}
+                                                        onClick={() => router.push(`${ROUTES.PROFILE.VISIONS}/${vision._id}`)}
+                                                        className="relative bg-cover rounded-l-xl flex w-[100px] sm:h-[100px] sm:w-[250px] items-center justify-center">
+                                                        <div className="absolute left-2 top-2">
+                                                            <div className='rounded-sm text-white bg-blue-400 p-1'>
+                                                                <Map size={15} />
+                                                            </div>
+                                                        </div>
+                                                        <h1 className={`${vision.banner ? "hidden" : ""} text-lg`}>
+                                                            {vision.title || 'Untitled Vision'}
+                                                        </h1>
+                                                    </button>
+                                                    <div className="flex-1 flex flex-col gap-2 bg-accent rounded-none rounded-r-xl px-3 py-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <p className="text-left text-sm sm:text-[1.1rem] text-primary">
+                                                                {vision.title || 'No description provided.'}
+                                                            </p>
+                                                            <div className="flex items-center ">
+                                                                <StaticFacePile visionId={vision._id} />
+                                                                {/* Desktop: Show inline buttons */}
+                                                                <div className="hidden sm:flex gap-3 items-center">
+                                                                    <button
+                                                                        onClick={() => handleShare(vision._id)}
+                                                                        className="flex flex-col items-center text-xs p-1.5 hover:bg-muted rounded transition-colors"
+                                                                        title="Share"
+                                                                    >
+                                                                        <Share className="w-4 h-4" />
+                                                                        Share
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleExport(vision._id)}
+                                                                        className="flex flex-col items-center text-xs p-1.5 hover:bg-muted rounded transition-colors"
+                                                                        title="Export"
+                                                                    >
+                                                                        <Download className="w-4 h-4" />
+                                                                        Export
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleDelete(vision._id)}
+                                                                        className="flex flex-col items-center text-xs p-1.5 hover:bg-destructive/10 text-destructive rounded transition-colors"
+                                                                        title="Delete"
+                                                                    >
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                        Delete
+                                                                    </button>
+                                                                </div>
+                                                                {/* Mobile: Show 3-dot menu */}
+                                                                <div className="sm:hidden">
+                                                                    <DropdownMenu>
+                                                                        <DropdownMenuTrigger asChild>
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.preventDefault();
+                                                                                    e.stopPropagation();
+                                                                                }}
+                                                                                className="p-1.5 hover:bg-muted rounded transition-colors"
+                                                                            >
+                                                                                <MoreHorizontal className="w-4 h-4" />
+                                                                            </button>
+                                                                        </DropdownMenuTrigger>
+                                                                        <DropdownMenuContent align="end">
+                                                                            <VisionMenuItems visionId={vision._id} />
+                                                                        </DropdownMenuContent>
+                                                                    </DropdownMenu>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-left space-y-1">
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {vision.description || 'No description provided.'}
+                                                            </p>
+                                                            <p className="text-primary/30 text-xs">
+                                                                Updated {timeSinceFromDateString(new Date(vision.updatedAt) || new Date())}
+                                                            </p>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
-                        )
-                    }
+                                )
+                            }
+                        </div>
+                    </div>
 
                     {/* Delete Confirmation Dialog */}
                     <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
@@ -473,6 +567,38 @@ export default function SheetsPage() {
                                     }}
                                 >
                                     Delete Vision
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
+                    {/* Leave Vision Confirmation Dialog */}
+                    <Dialog open={isLeaveOpen} onOpenChange={setIsLeaveOpen}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Leave Vision</DialogTitle>
+                                <DialogDescription>
+                                    Are you sure you want to leave this vision? You will lose access to all content unless invited back.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setIsLeaveOpen(false)}>Cancel</Button>
+                                <Button
+                                    variant="destructive"
+                                    onClick={async () => {
+                                        if (!visionToLeave) return;
+                                        try {
+                                            await leaveVision({ visionId: visionToLeave });
+                                            toast.success("Left vision successfully!");
+                                            setIsLeaveOpen(false);
+                                            setVisionToLeave(null);
+                                        } catch (error: any) {
+                                            toast.error(error.message || "Failed to leave vision");
+                                            console.error(error);
+                                        }
+                                    }}
+                                >
+                                    Leave Vision
                                 </Button>
                             </DialogFooter>
                         </DialogContent>
