@@ -288,8 +288,8 @@ export function CommentChat({ chatId, className, onClose, localCommentData, visi
         _id: 'temp-comment' as any,
         content: tempMessage,
         authorId: user?.id || '',
-        nodeId: localCommentData?.nodeId,
-        visionId: visionId,
+        nodeId: localCommentData?.nodeId as Id<"nodes"> | undefined,
+        visionId: visionId as Id<"visions"> | undefined,
         parentCommentId: undefined,
         mentions: [],
         createdAt: new Date().toISOString(),
@@ -301,7 +301,7 @@ export function CommentChat({ chatId, className, onClose, localCommentData, visi
           picture: user?.imageUrl,
           email: user?.primaryEmailAddress?.emailAddress || ''
         }
-      };
+      } as Comment;
       displayComments = [...displayComments, tempComment];
     }
     
