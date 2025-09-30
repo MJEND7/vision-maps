@@ -61,11 +61,22 @@ export const create = mutation({
     handler: async (ctx, args) => {
         const channel = await ctx.db.get(args.channel);
         if (!channel) {
-            throw new Error("Frame not found");
+            throw new Error("Channel not found");
         }
 
         if (channel.vision) {
             await requireVisionAccess(ctx, channel.vision);
+        }
+
+        // If frameId provided, verify it belongs to the same channel
+        if (args.frameId) {
+            const frame = await ctx.db.get(args.frameId);
+            if (!frame) {
+                throw new Error("Frame not found");
+            }
+            if (frame.channel !== args.channel) {
+                throw new Error("Frame does not belong to the specified channel");
+            }
         }
 
         const now = new Date().toISOString();
