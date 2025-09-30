@@ -190,42 +190,112 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     await requireVisionAccess(ctx, args.id, VisionAccessRole.Owner);
 
-    const visionUsers = await ctx.db
-      .query("vision_users")
-      .withIndex("by_visionId", (q) => q.eq("visionId", args.id))
-      .collect();
-
-    for (const visionUser of visionUsers) {
-      await ctx.db.delete(visionUser._id);
-    }
-
+    // 1. Delete all channels and their nested content
     const channels = await ctx.db
       .query("channels")
       .withIndex("by_vision", (q) => q.eq("vision", args.id))
       .collect();
 
     for (const channel of channels) {
+      // Get all frames in this channel
       const frames = await ctx.db
         .query("frames")
         .withIndex("by_channel", (q) => q.eq("channel", channel._id))
         .collect();
 
       for (const frame of frames) {
+        // Delete framed_node entries
+        const framedNodes = await ctx.db
+          .query("framed_node")
+          .withIndex("by_frame", (q) => q.eq("frameId", frame._id))
+          .collect();
+        for (const fn of framedNodes) {
+          await ctx.db.delete(fn._id);
+        }
+
+        // Delete frame_positions entries
+        const framePositions = await ctx.db
+          .query("frame_positions")
+          .withIndex("by_frame", (q) => q.eq("frameId", frame._id))
+          .collect();
+        for (const fp of framePositions) {
+          await ctx.db.delete(fp._id);
+        }
+
+        // Delete edges
+        const edges = await ctx.db
+          .query("edges")
+          .withIndex("frame", (q) => q.eq("frameId", frame._id))
+          .collect();
+        for (const edge of edges) {
+          await ctx.db.delete(edge._id);
+        }
+
+        // Delete nodes
         const nodes = await ctx.db
           .query("nodes")
           .withIndex("by_frame", (q) => q.eq("frame", frame._id))
           .collect();
-
         for (const node of nodes) {
           await ctx.db.delete(node._id);
         }
 
+        // Delete frame
         await ctx.db.delete(frame._id);
       }
 
+      // Delete channel
       await ctx.db.delete(channel._id);
     }
 
+    // 2. Delete all chats related to this vision
+    const chats = await ctx.db
+      .query("chats")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.id))
+      .collect();
+
+    for (const chat of chats) {
+      // Delete all messages in this chat
+      const messages = await ctx.db
+        .query("messages")
+        .withIndex("by_chatId", (q) => q.eq("chatId", chat._id))
+        .collect();
+      for (const message of messages) {
+        await ctx.db.delete(message._id);
+      }
+
+      // Delete the chat
+      await ctx.db.delete(chat._id);
+    }
+
+    // 3. Delete all comments related to this vision
+    const comments = await ctx.db
+      .query("comments")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.id))
+      .collect();
+    for (const comment of comments) {
+      await ctx.db.delete(comment._id);
+    }
+
+    // 4. Delete all notifications related to this vision
+    const notifications = await ctx.db
+      .query("notifications")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.id))
+      .collect();
+    for (const notification of notifications) {
+      await ctx.db.delete(notification._id);
+    }
+
+    // 5. Delete all vision_users
+    const visionUsers = await ctx.db
+      .query("vision_users")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.id))
+      .collect();
+    for (const visionUser of visionUsers) {
+      await ctx.db.delete(visionUser._id);
+    }
+
+    // 6. Finally delete the vision itself
     await ctx.db.delete(args.id);
   },
 });
