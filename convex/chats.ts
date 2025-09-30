@@ -2,6 +2,8 @@ import { mutation, query } from "./_generated/server";
 import { v, Infer } from "convex/values";
 import { requireAuth, getUserByIdenityId } from "./utils/auth";
 import { paginationOptsValidator } from "convex/server";
+import { getUserPlan } from "./auth";
+import { requirePermission, Permission } from "./permissions";
 
 // Args schemas
 const createChatArgs = v.object({
@@ -59,6 +61,10 @@ export const createChat = mutation({
         if (!identity?.userId) {
             throw new Error("Failed to get the user Id")
         }
+
+        // Check AI permission
+        const plan = await getUserPlan(ctx.auth);
+        requirePermission(plan, Permission.AI_NODES);
 
         const id = await ctx.db.insert("chats", {
             title: args.title,
@@ -271,6 +277,10 @@ export const createChatWithNode = mutation({
         if (!identity?.userId) {
             throw new Error("Failed to get the user Id");
         }
+
+        // Check AI permission
+        const plan = await getUserPlan(ctx.auth);
+        requirePermission(plan, Permission.AI_NODES);
 
         const userId = (await getUserByIdenityId(ctx, identity.userId as string))?._id;
 

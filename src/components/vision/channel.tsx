@@ -105,7 +105,6 @@ export default function Channel({
     const updateChannel = useMutation(api.channels.update);
     const deleteNode = useMutation(api.nodes.remove);
     const updateChatNodeId = useMutation(api.chats.updateChatNodeId);
-    const createCommentChat = useMutation(api.comments.createCommentChat);
 
     // Memoize callback functions to prevent unnecessary re-renders
     const showDeleteConfirmation = useCallback((node: any) => {

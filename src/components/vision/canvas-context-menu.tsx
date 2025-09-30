@@ -208,7 +208,7 @@ export function CanvasContextMenu({
         if (!isOpen || (contextType !== "node" && showCommentInput)) {
             setShowCommentInput(false)
         }
-    }, [isOpen, contextType])
+    }, [isOpen, contextType, showCommentInput])
 
     const mobileMenu = (
         <Drawer open={isOpen} onOpenChange={onClose}>

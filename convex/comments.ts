@@ -2,6 +2,8 @@ import { mutation, query } from "./_generated/server";
 import { v, Infer } from "convex/values";
 import { requireAuth, requireVisionAccess } from "./utils/auth";
 import { Id } from "./_generated/dataModel";
+import { getUserPlan } from "./auth";
+import { requirePermission, Permission } from "./permissions";
 
 // Args schemas
 const createCommentArgs = v.object({
@@ -59,10 +61,14 @@ export const createComment = mutation({
     args: createCommentArgs,
     handler: async (ctx, args) => {
         const identity = await requireAuth(ctx);
-        
+
         if (!identity?.userId) {
             throw new Error("Failed to get the user Id");
         }
+
+        // Check commenting permission
+        const plan = await getUserPlan(ctx.auth);
+        requirePermission(plan, Permission.COMMENTING);
 
         // Verify access to vision
         await requireVisionAccess(ctx, args.visionId);
@@ -219,10 +225,14 @@ export const createCommentChat = mutation({
     args: createCommentChatArgs,
     handler: async (ctx, args) => {
         const identity = await requireAuth(ctx);
-        
+
         if (!identity?.userId) {
             throw new Error("Failed to get the user Id");
         }
+
+        // Check commenting permission
+        const plan = await getUserPlan(ctx.auth);
+        requirePermission(plan, Permission.COMMENTING);
 
         // Verify access to vision
         await requireVisionAccess(ctx, args.visionId);

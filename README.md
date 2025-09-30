@@ -1,55 +1,143 @@
 # Vision Maps
 
-Vision maps is an application built for transporting the essence of an idea from one mind to an other. Either steel or fleshy. A problem I have faced is explaining the vision and the vibe to others with a high level of detail. Words alone don't cut it, verdant maps is not only a software product, it's a new format of thinking.
+## Features by Plan Tier
 
-## Convex + Next.js + Clerk app
+### 🆓 Free – $0/month
 
-This is a [Convex](https://convex.dev/) project created with [`npm create convex`](https://www.npmjs.com/package/create-convex).
+**Vision Management:**
+- ✅ 1 Vision (CRUD limited to 1)
+  - Location: `/src/app/dashboard/visions/page.tsx` (Vision list)
+  - Location: `/src/app/dashboard/visions/[id]/page.tsx` (Vision detail)
+  - Create mutation: `api.visions.create`
+  - Vision count check needed for permission
 
-After the initial setup (<2 minutes) you'll have a working full-stack app using:
+**Organization Management:**
+- ✅ Full CRUD Orgs
+  - Location: `/src/components/ui/org-settings-dialog.tsx`
+  - Location: `/src/components/ui/notion-sidebar.tsx` (org switcher)
 
-- Convex as your backend (database, server logic)
-- [React](https://react.dev/) as your frontend (web page interactivity)
-- [Next.js](https://nextjs.org/) for optimized web hosting and page routing
-- [Tailwind](https://tailwindcss.com/) for building great looking accessible UI
-- [Clerk](https://clerk.com/) for authentication
+**Channel Management:**
+- ✅ Full CRUD Channels
+  - Location: `/src/app/dashboard/visions/[id]/page.tsx` (channel creation)
+  - Location: `/src/components/vision/channel.tsx` (channel view)
+  - Location: `/src/components/vision/settings.tsx` (channel settings/deletion)
 
-## Get started
+**Frame Management:**
+- ✅ Full CRUD Frames
+  - Location: `/src/app/dashboard/visions/[id]/page.tsx` (frame creation)
+  - Location: `/src/components/vision/frame.tsx` (frame view/canvas)
+  - Location: `/src/components/vision/settings.tsx` (frame settings/deletion)
 
-If you just cloned this codebase and didn't use `npm create convex`, run:
+**Content Management:**
+- ✅ Channels for entering media
+  - Location: `/src/components/channel/paste-bin.tsx` (paste/upload content)
+  - Location: `/src/components/channel/metadata/` (various content type cards)
 
-```
-pnpm install
-pnpm run dev
-```
+**Canvas:**
+- ✅ Infinite canvas for working with media
+  - Location: `/src/components/vision/frame.tsx` (React Flow canvas)
+  - Location: `/src/components/vision/nodes/` (node components)
 
-If you're reading this README on GitHub and want to use this template, run:
+**Notifications:**
+- ✅ Notification system
+  - Location: `/src/app/dashboard/notifications/page.tsx`
+  - Location: `/src/components/ui/notifications-dropdown.tsx`
 
-```
-pnpm create convex@latest -- -t nextjs-clerk
-```
+**View Mode:**
+- ✅ View Mode for public tracking
+  - Location: Vision settings (public/private toggle expected)
 
-Then:
+**Export:**
+- ✅ Basic export options
+  - Location: Vision settings (export functionality planned)
 
-1. Open your app. There should be a "Claim your application" button from Clerk in the bottom right of your app.
-2. Follow the steps to claim your application and link it to this app.
-3. Follow step 3 in the [Convex Clerk onboarding guide](https://docs.convex.dev/auth/clerk#get-started) to create a Convex JWT template.
-4. Uncomment the Clerk provider in `convex/auth.config.ts`
-5. Paste the Issuer URL as `CLERK_JWT_ISSUER_DOMAIN` to your dev deployment environment variable settings on the Convex dashboard (see [docs](https://docs.convex.dev/auth/clerk#configuring-dev-and-prod-instances))
+**Limitations:**
+- ❌ No AI-based nodes for ideation
+- ❌ No AI linking and tree system for context mapping
+- ❌ No commenting system for team comms
+- ❌ No collaboration (solo only - 1 user per vision)
+- ❌ No advanced export
 
-If you want to sync Clerk user data via webhooks, check out this [example repo](https://github.com/thomasballinger/convex-clerk-users-table/).
+---
 
-## Learn more
+### 💡 Pro – $15/month (Most Popular, 3-day free trial)
 
-To learn more about developing your project with Convex, check out:
+**All Free Features Plus:**
 
-- The [Tour of Convex](https://docs.convex.dev/get-started) for a thorough introduction to Convex principles.
-- The rest of [Convex docs](https://docs.convex.dev/) to learn about all Convex features.
-- [Stack](https://stack.convex.dev/) for in-depth articles on advanced topics.
+**Vision Management:**
+- ✅ Unlimited visions (Full CRUD)
+  - No vision count limit
 
-## Join the community
+**AI Features:**
+- ✅ AI-based nodes for ideation
+  - Location: `/src/components/vision/nodes/AINode.tsx`
+  - Location: `/src/components/ai/chat-input.tsx`
+  - Location: `/src/components/ai/chat-list.tsx`
 
-Join thousands of developers building full-stack apps with Convex:
+- ✅ AI linking and tree system on frames for context mapping
+  - Location: `/src/components/vision/frame.tsx` (AI-powered node connections)
+  - Location: `/src/components/ai/improved-chat-list.tsx`
 
-- Join the [Convex Discord community](https://convex.dev/community) to get help in real-time.
-- Follow [Convex on GitHub](https://github.com/get-convex/), star and contribute to the open-source implementation of Convex.
+**Export:**
+- ✅ Advanced export options
+  - Location: Vision settings (enhanced export planned)
+
+**Collaboration:**
+- ✅ Invite up to 1 extra person per vision (light collaboration)
+  - Location: `/src/components/ui/invite-users-dialogue.tsx`
+  - Location: `/src/components/vision/settings.tsx` (user management)
+  - Max 2 users per vision (owner + 1 guest)
+
+**Support:**
+- ✅ Priority support
+
+**Limitations:**
+- ❌ No commenting system for team comms
+- ❌ No live canvas collaboration (no real-time multi-user editing)
+
+---
+
+### 👥 Teams – $50/month (3-day free trial, 1–20 users)
+
+**All Pro Features Plus:**
+
+**Enhanced Collaboration:**
+- ✅ Team collaboration features
+  - Full multi-user access for 1-20 users per vision
+  - Location: `/src/components/vision/settings.tsx` (user management)
+  - Location: `/src/components/ui/invite-users-dialogue.tsx`
+
+**Commenting System:**
+- ✅ Commenting system for team communication
+  - Location: `/src/components/comments/comment-chat.tsx`
+  - Location: `/src/components/comments/comment-chat-list.tsx`
+  - Location: `/src/components/comments/comment-indicator.tsx`
+  - Comments on channels and frames
+
+**Live Collaboration:**
+- ✅ Live canvas collaboration (real-time editing + comms)
+  - Location: `/src/components/vision/frame.tsx` (real-time presence)
+  - Location: `/src/components/ui/face-pile.tsx` (presence indicators)
+  - Real-time multi-user editing on canvas
+
+---
+
+## Feature Implementation Status
+
+### Implemented Features:
+- ✅ Vision CRUD
+- ✅ Organization CRUD
+- ✅ Channel CRUD
+- ✅ Frame CRUD
+- ✅ Infinite canvas (React Flow)
+- ✅ Notification system
+- ✅ AI nodes and chat
+- ✅ Commenting system
+- ✅ User invitations
+- ✅ Real-time collaboration
+- ✅ User presence indicators
+
+### Planned Features:
+- ⏳ Export functionality (basic & advanced)
+- ⏳ View mode (public tracking)
+

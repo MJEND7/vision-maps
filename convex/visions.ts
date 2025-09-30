@@ -3,6 +3,8 @@ import { v, Infer } from "convex/values";
 import { requireAuth, requireVisionAccess } from "./utils/auth";
 import { Vision, VisionAccessRole, VisionUserStatus } from "./tables/visions";
 import { createDefaultChannel } from "./utils/channel";
+import { getUserPlan, getOrganizationId } from "./auth";
+import { canCreateVision, canInviteToVision, requireTeamsForOrg, PermissionError, VISION_LIMITS, COLLABORATION_LIMITS } from "./permissions";
 
 // Args schemas
 const createArgs = v.object({
@@ -49,6 +51,10 @@ const removeMemberArgs = v.object({
   userId: v.string(),
 });
 
+const leaveVisionArgs = v.object({
+  visionId: v.id("visions"),
+});
+
 const updateMemberRoleArgs = v.object({
   visionId: v.id("visions"),
   userId: v.string(),
@@ -73,6 +79,10 @@ const getPendingRequestsArgs = v.object({
   visionId: v.id("visions"),
 });
 
+const getUserRoleArgs = v.object({
+  visionId: v.id("visions"),
+});
+
 export const create = mutation({
   args: createArgs,
   handler: async (ctx, args) => {
@@ -83,11 +93,47 @@ export const create = mutation({
         throw new Error("Failed to get userId")
     }
 
+    // Check permissions
+    const plan = await getUserPlan(ctx.auth);
+    const sessionOrgId = await getOrganizationId(ctx.auth);
+
+    // Validate organization membership - user can only create visions in orgs they belong to
+    // If args.organizationId is provided, it must match their session org
+    if (args.organizationId) {
+      if (args.organizationId !== sessionOrgId) {
+        throw new PermissionError(
+          "You can only create visions in organizations you are a member of."
+        );
+      }
+    }
+
+    const organizationId = args.organizationId || sessionOrgId;
+
+    // Require Teams tier if creating vision in organization
+    requireTeamsForOrg(plan, organizationId);
+
+    // Check vision count limit
+    const existingVisions = await ctx.db
+      .query("vision_users")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.userId!.toString()))
+      .collect();
+
+    const visionCount = existingVisions.filter(
+      (vu) => vu.role === VisionAccessRole.Owner
+    ).length;
+
+    if (!canCreateVision(plan, visionCount)) {
+      const limit = VISION_LIMITS[plan];
+      throw new PermissionError(
+        `You've reached your vision limit (${limit}). Upgrade to Pro or Teams to create unlimited visions.`
+      );
+    }
+
     const visionId = await ctx.db.insert("visions", {
       title: "Untitled",
       banner: "",
       description: "",
-      organization: args.organizationId || "",
+      organization: organizationId || "",
       updatedAt: now,
     });
 
@@ -109,6 +155,22 @@ export const update = mutation({
   args: updateArgs,
   handler: async (ctx, args) => {
     await requireVisionAccess(ctx, args.id, VisionAccessRole.Editor);
+
+    // If organizationId is being changed, validate membership and Teams tier
+    if (args.organizationId !== undefined) {
+      const plan = await getUserPlan(ctx.auth);
+      const sessionOrgId = await getOrganizationId(ctx.auth);
+
+      // Validate organization membership - user can only move visions to orgs they belong to
+      if (args.organizationId && args.organizationId !== sessionOrgId) {
+        throw new PermissionError(
+          "You can only move visions to organizations you are a member of."
+        );
+      }
+
+      // Require Teams tier if moving to organization
+      requireTeamsForOrg(plan, args.organizationId);
+    }
 
     const updates: any = {
       updatedAt: Date.now(),
@@ -350,6 +412,28 @@ export const addMember = mutation({
       throw new Error("Invalid role");
     }
 
+    // Check collaboration limit
+    const plan = await getUserPlan(ctx.auth);
+    const currentMembers = await ctx.db
+      .query("vision_users")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), VisionUserStatus.Approved),
+          q.eq(q.field("status"), undefined)
+        )
+      )
+      .collect();
+
+    const currentMemberCount = currentMembers.length;
+
+    if (!canInviteToVision(plan, currentMemberCount)) {
+      const limit = COLLABORATION_LIMITS[plan];
+      throw new PermissionError(
+        `You've reached your collaboration limit (${limit} users per vision). Upgrade to ${plan === "free" ? "Pro" : "Teams"} to invite more users.`
+      );
+    }
+
     await ctx.db.insert("vision_users", {
       userId: args.userId,
       role: args.role,
@@ -385,6 +469,47 @@ export const removeMember = mutation({
     }
 
     await ctx.db.delete(visionUser._id);
+  },
+});
+
+export const leaveVision = mutation({
+  args: leaveVisionArgs,
+  handler: async (ctx, args) => {
+    const identity = await requireAuth(ctx);
+
+    if (!identity.userId) {
+      throw new Error("Failed to get userId");
+    }
+
+    // Verify user has access to the vision
+    await requireVisionAccess(ctx, args.visionId);
+
+    const visionUser = await ctx.db
+      .query("vision_users")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
+      .filter((q) => q.eq(q.field("userId"), identity.userId!.toString()))
+      .first();
+
+    if (!visionUser) {
+      throw new Error("You are not a member of this vision");
+    }
+
+    // Check if user is the last owner
+    if (visionUser.role === VisionAccessRole.Owner) {
+      const remainingOwners = await ctx.db
+        .query("vision_users")
+        .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
+        .filter((q) => q.eq(q.field("role"), VisionAccessRole.Owner))
+        .collect();
+
+      if (remainingOwners.length === 1) {
+        throw new Error("Cannot leave vision as the last owner. Please transfer ownership or delete the vision.");
+      }
+    }
+
+    await ctx.db.delete(visionUser._id);
+
+    return { success: true };
   },
 });
 
@@ -496,7 +621,7 @@ export const approveJoinRequest = mutation({
     const pendingRequest = await ctx.db
       .query("vision_users")
       .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
-      .filter((q) => 
+      .filter((q) =>
         q.and(
           q.eq(q.field("userId"), args.userId),
           q.eq(q.field("status"), VisionUserStatus.Pending)
@@ -506,6 +631,28 @@ export const approveJoinRequest = mutation({
 
     if (!pendingRequest) {
       throw new Error("No pending request found for this user");
+    }
+
+    // Check collaboration limit before approving
+    const plan = await getUserPlan(ctx.auth);
+    const currentMembers = await ctx.db
+      .query("vision_users")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), VisionUserStatus.Approved),
+          q.eq(q.field("status"), undefined)
+        )
+      )
+      .collect();
+
+    const currentMemberCount = currentMembers.length;
+
+    if (!canInviteToVision(plan, currentMemberCount)) {
+      const limit = COLLABORATION_LIMITS[plan];
+      throw new PermissionError(
+        `You've reached your collaboration limit (${limit} users per vision). Upgrade to ${plan === "free" ? "Pro" : "Teams"} to invite more users.`
+      );
     }
 
     await ctx.db.patch(pendingRequest._id, {
@@ -615,6 +762,35 @@ export const getPendingRequests = query({
   },
 });
 
+export const getUserRole = query({
+  args: getUserRoleArgs,
+  handler: async (ctx, args) => {
+    const identity = await requireAuth(ctx);
+
+    if (!identity.userId) {
+      return null;
+    }
+
+    const visionUser = await ctx.db
+      .query("vision_users")
+      .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
+      .filter((q) => q.eq(q.field("userId"), identity.userId!.toString()))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), VisionUserStatus.Approved),
+          q.eq(q.field("status"), undefined)
+        )
+      )
+      .first();
+
+    if (!visionUser) {
+      return null;
+    }
+
+    return visionUser.role;
+  },
+});
+
 // TypeScript types
 export type CreateVisionArgs = Infer<typeof createArgs>;
 export type UpdateVisionArgs = Infer<typeof updateArgs>;
@@ -624,8 +800,10 @@ export type ListVisionsArgs = Infer<typeof listArgs>;
 export type GetVisionMembersArgs = Infer<typeof getMembersArgs>;
 export type AddVisionMemberArgs = Infer<typeof addMemberArgs>;
 export type RemoveVisionMemberArgs = Infer<typeof removeMemberArgs>;
+export type LeaveVisionArgs = Infer<typeof leaveVisionArgs>;
 export type UpdateVisionMemberRoleArgs = Infer<typeof updateMemberRoleArgs>;
 export type RequestToJoinArgs = Infer<typeof requestToJoinArgs>;
 export type ApproveJoinRequestArgs = Infer<typeof approveJoinRequestArgs>;
 export type RejectJoinRequestArgs = Infer<typeof rejectJoinRequestArgs>;
 export type GetPendingRequestsArgs = Infer<typeof getPendingRequestsArgs>;
+export type GetUserRoleArgs = Infer<typeof getUserRoleArgs>;

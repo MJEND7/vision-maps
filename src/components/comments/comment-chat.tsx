@@ -81,12 +81,9 @@ export function CommentChat({ chatId, className, onClose, localCommentData, visi
       setRealChatId(chatId);
     }
   }, [isLocalChat, chatId, realChatId]);
-  
-  // Use real chat ID if available, otherwise use the provided chatId
-  const effectiveChatId = realChatId || chatId;
-  
+
   // Get chat details (skip for local chats that don't have real chat ID yet)
-  const chat = useQuery(api.chats.getChat, 
+  const chat = useQuery(api.chats.getChat,
     realChatId ? { chatId: realChatId as Id<"chats"> } : "skip"
   );
 
@@ -167,8 +164,6 @@ export function CommentChat({ chatId, className, onClose, localCommentData, visi
     if (!newComment.trim()) return;
 
     try {
-      let targetChatId = chat?._id;
-      
       // If this is a local chat, create the actual chat first
       if (isLocalChat && localCommentData && visionId) {
         setIsCreatingChat(true);

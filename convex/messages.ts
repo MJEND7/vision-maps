@@ -7,6 +7,8 @@ import { PaginationOptions, paginationOptsValidator } from "convex/server";
 import OpenAI from "openai";
 import { Id } from "./_generated/dataModel";
 import { YoutubeTranscript } from "youtube-transcript";
+import { getUserPlan } from "./auth";
+import { requirePermission, Permission } from "./permissions";
 
 // Args schemas
 const listMessagesByChatArgs = v.object({
@@ -109,6 +111,10 @@ export const sendMessage = mutation({
         if (!identity?.userId) {
             throw new Error("Failed to get the user Id")
         }
+
+        // Check AI permission
+        const plan = await getUserPlan(ctx.auth);
+        requirePermission(plan, Permission.AI_NODES);
 
         // Check if this is the first user message in the chat
         const existingMessages = await ctx.db
