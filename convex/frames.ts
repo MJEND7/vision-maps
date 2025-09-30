@@ -228,9 +228,8 @@ export const batchMovment = mutation({
             throw new Error("Invalid frame");
         }
 
-        if (!requireVisionAccess(ctx, frame.vision)) {
-            throw new Error("Unauthorized");
-        }
+        // requireVisionAccess throws on failure, no need for conditional
+        await requireVisionAccess(ctx, frame.vision);
 
         // Create a shared timestamp for this batch
         const batchTimestamp = Date.now();
@@ -287,9 +286,8 @@ export const listMovments = query({
             throw new Error("Invalid frame");
         }
 
-        if (!requireVisionAccess(ctx, frame.vision)) {
-            throw new Error("Unauthorized");
-        }
+        // requireVisionAccess throws on failure, no need for conditional
+        await requireVisionAccess(ctx, frame.vision);
         
         const framePositions = await ctx.db.query("frame_positions").withIndex("by_frame", (q) => q.eq("frameId", args.frameId)).collect()
 
