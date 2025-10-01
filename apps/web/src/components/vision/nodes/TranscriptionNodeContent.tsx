@@ -99,7 +99,7 @@ export function TranscriptionNodeContent({
     wavesurfer?.playPause();
   };
 
-  const handleChunkClick = (chunk: TranscriptChunk, index: number) => {
+  const handleChunkClick = (chunk: TranscriptChunk) => {
     if (!wavesurfer || !isReady) return;
     const relTime = ((chunk.timestamp - startTime) / 1000) - 1;
     //setActiveChunkIndex(index);
@@ -156,7 +156,7 @@ export function TranscriptionNodeContent({
             <div
               key={i}
               data-chunk={i}
-              onClick={() => handleChunkClick(chunk, i)}
+              onClick={() => handleChunkClick(chunk)}
               className={`flex gap-3 cursor-pointer items-start p-3 rounded-lg border text-sm transition-all leading-relaxed
                 ${
                   isActive

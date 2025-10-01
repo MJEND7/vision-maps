@@ -17,7 +17,6 @@ const nextConfig: NextConfig = {
             },
         ],
     },
-    reactDevOverlay: false,
     async headers() {
         return [
             {

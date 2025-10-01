@@ -6,9 +6,9 @@ import { components, internal } from "./_generated/api";
 import { PaginationOptions, paginationOptsValidator } from "convex/server";
 import OpenAI from "openai";
 import { Id } from "./_generated/dataModel";
-import { YoutubeTranscript } from "youtube-transcript";
 import { getUserPlan } from "./auth";
 import { requirePermission, Permission } from "./permissions";
+import { fetchYoutubeTranscripts } from "./utils/youtube";
 
 // Args schemas
 const listMessagesByChatArgs = v.object({
@@ -44,10 +44,6 @@ const generateChatNameActionArgs = v.object({
 
 const getConnectedNodeContextArgs = v.object({
     chatId: v.id("chats"),
-});
-
-const fetchYoutubeTranscriptArgs = v.object({
-    url: v.string(),
 });
 
 export const persistentTextStreaming = new PersistentTextStreaming(
@@ -217,23 +213,11 @@ export const streamChat = httpAction(async (ctx, request) => {
         request,
         body.streamId as StreamId,
         async (ctx, _, __, append) => {
-            // Lets grab the history up to now so that the AI has some context
             const history = await ctx.runQuery(internal.messages.getChatHistory, { chatId: chatId as Id<"chats"> });
-
-            // Get connected node context for additional AI context
             const nodeContext = await ctx.runQuery(internal.messages.getConnectedNodeContext, { chatId: chatId as Id<"chats"> });
 
             // Fetch YouTube transcripts for connected YouTube nodes
-            const youtubeNodes = nodeContext.connectedNodes.filter(node => node.type === "YouTube");
-            const youtubeTranscripts = await Promise.all(
-                youtubeNodes.map(async (node) => {
-                    const transcriptResult = await ctx.runAction(internal.messages.fetchYoutubeTranscript, { url: node.value });
-                    return {
-                        ...node,
-                        transcript: transcriptResult.success ? transcriptResult.transcript : "Unable to fetch transcript"
-                    };
-                })
-            );
+            const youtubeTranscripts = await fetchYoutubeTranscripts(nodeContext);
 
             const openai = new OpenAI()
 
@@ -246,12 +230,12 @@ export const streamChat = httpAction(async (ctx, request) => {
             if (nodeContext.contextText || youtubeTranscripts.length > 0) {
                 systemContent += `IMPORTANT: Additional context from connected nodes in the visual workspace:
                 -----`;
-                
+
                 // Add regular node context
                 if (nodeContext.contextText) {
                     systemContent += `\n${nodeContext.contextText}`;
                 }
-                
+
                 // Add YouTube transcripts
                 if (youtubeTranscripts.length > 0) {
                     youtubeTranscripts.forEach(node => {
@@ -261,7 +245,7 @@ export const streamChat = httpAction(async (ctx, request) => {
                     });
                     systemContent += "END CONNECTED NODE CONTEXT\n\n";
                 }
-                
+
                 systemContent += `-----
                 Use this connected node context to inform your responses when relevant.
                 Please make sure you state the title of the node when you use it.`;
@@ -269,7 +253,7 @@ export const streamChat = httpAction(async (ctx, request) => {
 
             // Collect images and files from connected nodes for OpenAI vision/file support
             const mediaContent: any[] = [];
-            
+
             nodeContext.connectedNodes.forEach((node: any) => {
                 // Handle Image nodes directly
                 if (node.type === "Image") {
@@ -281,9 +265,9 @@ export const streamChat = httpAction(async (ctx, request) => {
                         }
                     });
                 }
-                
+
                 // Handle media nodes with image metadata (thumbnails, etc.)
-                if (node.ogMetadata?.image && 
+                if (node.ogMetadata?.image &&
                     (node.type === "YouTube" || node.type === "Link" || node.type === "Video")) {
                     mediaContent.push({
                         type: "image_url",
@@ -457,7 +441,7 @@ export const getConnectedNodeContext = internalQuery({
                         if (ogData) {
                             const now = new Date();
                             const expiresAt = new Date(ogData.expiresAt);
-                            
+
                             if (now <= expiresAt) {
                                 return {
                                     ...node,
@@ -493,7 +477,7 @@ export const getConnectedNodeContext = internalQuery({
             contextText = "CONNECTED NODE CONTEXT:\n\n";
             allNodesWithMetadata.forEach(node => {
                 contextText += `--- ${node.title} (${node.type}) ---\n`;
-                
+
                 // For Text nodes, include content and thought
                 if (node.type === "Text") {
                     contextText += `Content: ${node.value}\n`;
@@ -504,11 +488,11 @@ export const getConnectedNodeContext = internalQuery({
                 } else {
                     // For media nodes, include URL, thought, and metadata if available
                     contextText += `URL: ${node.value}\n`;
-                    
+
                     if (node.thought && node.thought.trim().length > 0) {
                         contextText += `Thought: ${node.thought}\n`;
                     }
-                    
+
                     if (node.ogMetadata) {
                         const meta = node.ogMetadata;
                         if (meta.title) contextText += `Title: ${meta.title}\n`;
@@ -584,25 +568,6 @@ export const generateChatNameAction = internalAction({
     },
 });
 
-export const fetchYoutubeTranscript = internalAction({
-    args: fetchYoutubeTranscriptArgs,
-    handler: async (ctx, args) => {
-        try {
-            const transcript = await YoutubeTranscript.fetchTranscript(args.url);
-            const transcriptText = transcript.map(item => item.text).join(' ');
-            return {
-                success: true,
-                transcript: transcriptText
-            };
-        } catch (error) {
-            console.error(`Failed to fetch YouTube transcript for ${args.url}:`, error);
-            return {
-                success: false,
-                error: String(error)
-            };
-        }
-    },
-});
 
 // Type exports
 export type ListMessagesByChatArgs = Infer<typeof listMessagesByChatArgs>;
@@ -612,6 +577,4 @@ export type GetChatHistoryArgs = Infer<typeof getChatHistoryArgs>;
 export type GetStreamBodyArgs = Infer<typeof getStreamBodyArgs>;
 export type GenerateChatNameActionArgs = Infer<typeof generateChatNameActionArgs>;
 export type GetConnectedNodeContextArgs = Infer<typeof getConnectedNodeContextArgs>;
-export type FetchYoutubeTranscriptArgs = Infer<typeof fetchYoutubeTranscriptArgs>;
-
 // Note: streamChat is an httpAction, not a mutation/query, so we don't export types for it
