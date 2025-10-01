@@ -8,12 +8,12 @@ import { AudioPlayer } from "./audio-player";
 import { VideoPlayer } from "./video-player";
 import { FilePreview } from "./file-preview";
 import { useUploadThing } from "@/utils/uploadthing";
-import { X, FileText, Send, Brain, Mic, Square, Headphones, Monitor } from "lucide-react";
+import { X, FileText, Send, Brain, Mic, Square } from "lucide-react";
 import Image from "next/image";
 import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard, SkeletonCard, ChatCard, LinkMetadata, GitHubMetadata, FigmaMetadata, YouTubeMetadata, TwitterMetadata, NotionMetadata, LoomMetadata, SpotifyMetadata, AppleMusicMetadata, WebsiteMetadata } from "./metadata";
 import { Textarea } from "../ui/textarea";
-import { usePasteBinState, pasteBinStorage, type StoredLinkMeta, type StoredMediaItem } from "@/lib/paste-bin-state";
-import { useMutation } from "convex/react";
+import { usePasteBinState } from "@/lib/paste-bin-state";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { CreateNodeArgs } from "../../../convex/nodes";
@@ -22,8 +22,9 @@ import { useOGMetadataWithCache } from "@/utils/ogMetadata";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Permission } from "@/lib/permissions";
 import { UpgradeDialog } from "../ui/upgrade-dialog";
-import { useRealtimeTranscription } from "@/hooks/useRealtimeTranscription";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useRealtimeTranscription, getAvailableAudioDevices } from "@/hooks/useRealtimeTranscription";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 
 // Paste-bin mode enum
 export enum PasteBinMode {
@@ -33,6 +34,172 @@ export enum PasteBinMode {
     MEDIA = 'media',
     EMBED = 'embed',
     TRANSCRIPTION = 'transcription'
+}
+
+// Helper function to stitch multiple audio blobs together
+async function stitchAudioBlobs(blobs: Blob[]): Promise<Blob> {
+    if (blobs.length === 0) {
+        throw new Error('No audio blobs to stitch');
+    }
+
+    if (blobs.length === 1) {
+        return blobs[0];
+    }
+
+    console.log('[Audio Stitching] Stitching', blobs.length, 'audio blobs');
+
+    // Decode all audio blobs
+    const audioContext = new AudioContext();
+    const audioBuffers: AudioBuffer[] = [];
+
+    for (const blob of blobs) {
+        const arrayBuffer = await blob.arrayBuffer();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        audioBuffers.push(audioBuffer);
+    }
+
+    // Calculate total length
+    const totalLength = audioBuffers.reduce((sum, buffer) => sum + buffer.length, 0);
+    const numberOfChannels = audioBuffers[0].numberOfChannels;
+    const sampleRate = audioBuffers[0].sampleRate;
+
+    // Create a new buffer to hold all audio
+    const stitchedBuffer = audioContext.createBuffer(numberOfChannels, totalLength, sampleRate);
+
+    // Copy all audio data into the stitched buffer
+    let offset = 0;
+    for (const buffer of audioBuffers) {
+        for (let channel = 0; channel < numberOfChannels; channel++) {
+            stitchedBuffer.getChannelData(channel).set(buffer.getChannelData(channel), offset);
+        }
+        offset += buffer.length;
+    }
+
+    // Convert to WebM blob using MediaRecorder
+    const mediaStream = audioContext.createMediaStreamDestination();
+    const source = audioContext.createBufferSource();
+    source.buffer = stitchedBuffer;
+    source.connect(mediaStream);
+
+    const mediaRecorder = new MediaRecorder(mediaStream.stream, {
+        mimeType: 'audio/webm;codecs=opus'
+    });
+
+    const chunks: Blob[] = [];
+    mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+            chunks.push(e.data);
+        }
+    };
+
+    const stitchedBlob = await new Promise<Blob>((resolve, reject) => {
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(chunks, { type: 'audio/webm' });
+            resolve(blob);
+        };
+        mediaRecorder.onerror = reject;
+
+        mediaRecorder.start();
+        source.start();
+
+        // Stop after the audio finishes playing
+        setTimeout(() => {
+            mediaRecorder.stop();
+            source.stop();
+        }, (totalLength / sampleRate) * 1000 + 100);
+    });
+
+    await audioContext.close();
+    console.log('[Audio Stitching] Stitched blob size:', stitchedBlob.size, 'bytes');
+
+    return stitchedBlob;
+}
+
+// Helper function to convert audio blob to WAV with timestamp metadata
+async function convertToWav(
+    audioBlob: Blob,
+): Promise<Blob> {
+    // Decode audio data - use high sample rate for better quality
+    const audioContext = new AudioContext({ sampleRate: 48000 });
+    const arrayBuffer = await audioBlob.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+    // Get audio data
+    const numberOfChannels = audioBuffer.numberOfChannels;
+    const sampleRate = audioBuffer.sampleRate;
+    const length = audioBuffer.length;
+
+    console.log('[WAV Conversion] Channels:', numberOfChannels, 'Sample Rate:', sampleRate, 'Length:', length);
+
+    // For mono recordings, use single channel. For stereo, interleave properly
+    let pcmData: Int16Array;
+
+    if (numberOfChannels === 1) {
+        // Mono - simpler and clearer
+        const channelData = audioBuffer.getChannelData(0);
+        pcmData = new Int16Array(length);
+        for (let i = 0; i < length; i++) {
+            const s = Math.max(-1, Math.min(1, channelData[i]));
+            pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+    } else {
+        // Stereo - interleave channels
+        const interleaved = new Float32Array(length * numberOfChannels);
+        for (let channel = 0; channel < numberOfChannels; channel++) {
+            const channelData = audioBuffer.getChannelData(channel);
+            for (let i = 0; i < length; i++) {
+                interleaved[i * numberOfChannels + channel] = channelData[i];
+            }
+        }
+
+        // Convert Float32 to Int16 with proper scaling
+        pcmData = new Int16Array(interleaved.length);
+        for (let i = 0; i < interleaved.length; i++) {
+            const s = Math.max(-1, Math.min(1, interleaved[i]));
+            pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+    }
+
+    // Create WAV file with proper headers
+    const wavBuffer = new ArrayBuffer(44 + pcmData.length * 2);
+    const view = new DataView(wavBuffer);
+
+    // WAV header
+    const writeString = (offset: number, string: string) => {
+        for (let i = 0; i < string.length; i++) {
+            view.setUint8(offset + i, string.charCodeAt(i));
+        }
+    };
+
+    const byteRate = sampleRate * numberOfChannels * 2;
+    const blockAlign = numberOfChannels * 2;
+    const dataSize = pcmData.length * 2;
+
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + dataSize, true); // ChunkSize
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
+    view.setUint16(20, 1, true); // AudioFormat (1 = PCM)
+    view.setUint16(22, numberOfChannels, true); // NumChannels
+    view.setUint32(24, sampleRate, true); // SampleRate
+    view.setUint32(28, byteRate, true); // ByteRate
+    view.setUint16(32, blockAlign, true); // BlockAlign
+    view.setUint16(34, 16, true); // BitsPerSample
+    writeString(36, 'data');
+    view.setUint32(40, dataSize, true); // Subchunk2Size
+
+    // Write PCM data with proper byte order (little endian)
+    let offset = 44;
+    for (let i = 0; i < pcmData.length; i++) {
+        view.setInt16(offset, pcmData[i], true); // true = little endian
+        offset += 2;
+    }
+
+    await audioContext.close();
+
+    console.log('[WAV Conversion] Created WAV file:', dataSize, 'bytes');
+    return new Blob([wavBuffer], { type: 'audio/wav' });
 }
 
 // Data interfaces
@@ -132,6 +299,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     const [textContent, setTextContent] = useState("");
     const [drivenMessageIds, setDrivenMessageIds] = useState<Set<string>>(new Set())
     const [chatId, setChatId] = useState<string | null>(null);
+    const [transcriptChunks, setTranscriptChunks] = useState<{ text: string; timestamp: number }[]>([]);
 
     // Unified media state
     const [media, setMedia] = useState<Media | null>(null);
@@ -140,7 +308,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const initialLoadRef = useRef(false);
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const emptyResetTimerRef = useRef<NodeJS.Timeout | null>(null);
     const textContentDebounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -152,18 +319,46 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     const sendMessage = useMutation(api.messages.sendMessage);
     const deleteChat = useMutation(api.chats.deleteChat);
 
+    // Convex mutations for paste bin persistence
+    const upsertPasteBin = useMutation(api.userPasteBin.upsert);
+    const clearPasteBin = useMutation(api.userPasteBin.clear);
+    const updateTranscriptArrayMutation = useMutation(api.userPasteBin.updateTranscriptArray);
+    const pasteBinData = useQuery(api.userPasteBin.get, { visionId: visionId as Id<"visions"> });
+    const pasteBinLoadedRef = useRef(false);
+
+    // Debounced save to database
+    const saveDebounceRef = useRef<NodeJS.Timeout | null>(null);
+    const savePasteBinToDb = useCallback((data: {
+        mode: string;
+        type?: string;
+        value?: string;
+        valueArray?: { text: string; timestamp: number }[];
+        textContent?: string;
+        chatId?: Id<"chats">;
+    }) => {
+        if (saveDebounceRef.current) {
+            clearTimeout(saveDebounceRef.current);
+        }
+        saveDebounceRef.current = setTimeout(() => {
+            upsertPasteBin({
+                visionId: visionId as Id<"visions">,
+                ...data,
+            });
+        }, 500);
+    }, [upsertPasteBin, visionId]);
+
     // Real-time transcription hook
     const {
         isRecording,
         isConnecting,
-        transcript,
-        transcriptArr,
         startRecording,
         stopRecording,
         clearTranscript,
     } = useRealtimeTranscription({
-        onTranscript: (text) => {
-            console.log(text);
+        onTranscript: (text, timestamp) => {
+            // Add new chunk with accurate timestamp from recording start
+            const newChunk = { text, timestamp };
+            setTranscriptChunks(prev => [...prev, newChunk]);
         },
         onError: (error) => {
             console.error('Transcription error:', error);
@@ -235,88 +430,63 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         } as LinkMetadata;
     }, []);
 
-    // Load saved data from localStorage on mount
+    // Load saved data from database on mount or when data changes
     useEffect(() => {
-        if (initialLoadRef.current) return;
-        initialLoadRef.current = true;
+        if (!pasteBinData) {
+            pasteBinLoadedRef.current = false;
+            return;
+        }
 
-        const savedData = pasteBinStorage.load();
+        // Restore text content
+        if (pasteBinData.textContent) {
+            setTextContent(pasteBinData.textContent);
+        }
 
-        setTextContent(savedData.textContent);
-
-        // Restore mode only if we have corresponding data
-        // Don't restore EMBED mode unless we have linkMeta data
-        if (savedData.mode && savedData.mode !== 'idle') {
-            if (savedData.mode === 'embed' && !savedData.linkMeta) {
-                // Reset to idle if EMBED mode has no data (interrupted loading)
-                setMode(PasteBinMode.IDLE);
-                // Clear all localStorage data when we detect a broken state
-                pasteBinStorage.clear();
-            } else {
-                setMode(savedData.mode as PasteBinMode);
-            }
+        // Restore mode
+        if (pasteBinData.mode && pasteBinData.mode !== 'idle') {
+            setMode(pasteBinData.mode as PasteBinMode);
         }
 
         // Restore chat state
-        if (savedData.chatId) {
-            setChatId(savedData.chatId);
+        if (pasteBinData.chatId) {
+            setChatId(pasteBinData.chatId);
         }
-        if (savedData.isAiMode) {
-            setIsAiMode(savedData.isAiMode);
-        }
+
+        // Transcription will be restored by displaying valueArray directly in the UI
 
         // Restore media if valid
-        if (savedData.mediaItem) {
-            const parsedMedia = savedData.mediaItem as StoredMediaItem;
-            // Don't restore File objects as they can't be serialized
-            if (parsedMedia.type !== NodeVariants.Link || parsedMedia.uploadedUrl) {
-                // Convert stored media item to unified Media format
-                const restoredMedia: Media = {
-                    type: parsedMedia.type as NodeVariants,
-                    url: parsedMedia.url,
-                    chatId: parsedMedia.chatId,
-                    uploadedUrl: parsedMedia.uploadedUrl,
-                    fileName: parsedMedia.fileName,
-                    fileSize: parsedMedia.fileSize,
-                    fileType: parsedMedia.fileType,
-                    customName: parsedMedia.customName,
-                };
-                setMedia(restoredMedia);
-                // Set image as loaded during initial load without causing re-renders
-                if (restoredMedia.type === NodeVariants.Image) {
-                    setTimeout(() => actions.setImageLoaded(true), 0);
-                }
-                // Set mode for text/AI items
-                switch (restoredMedia.type) {
-                    case NodeVariants.Text:
-                        setMode(PasteBinMode.TEXT);
-                        setIsTextMode(true);
-                    case NodeVariants.AI:
-                        setMode(PasteBinMode.AI);
-                        setIsAiMode(true);
-                    default:
-                        setMode(PasteBinMode.MEDIA);
-
-                }
+        if (pasteBinData.type && pasteBinData.value) {
+            const restoredMedia: Media = {
+                type: pasteBinData.type as NodeVariants,
+                url: pasteBinData.value,
+                chatId: pasteBinData.chatId,
+            };
+            setMedia(restoredMedia);
+            // Set image as loaded during initial load without causing re-renders
+            if (restoredMedia.type === NodeVariants.Image) {
+                setTimeout(() => actions.setImageLoaded(true), 0);
             }
         }
 
-        // Restore link meta if valid
-        if (savedData.linkMeta) {
-            const storedMeta = savedData.linkMeta as StoredLinkMeta;
-            // Convert StoredLinkMeta to unified Media format
-            const restoredMedia: Media = {
-                type: storedMeta.type as NodeVariants,
-                title: storedMeta.title || 'Untitled Link',
-                description: storedMeta.description,
-                url: storedMeta.url,
-                image: storedMeta.image,
-                siteName: storedMeta.siteName,
-            };
-            setMedia(restoredMedia);
-            setMode(PasteBinMode.EMBED);
+        // Set mode flags based on mode
+        if (pasteBinData.mode === 'text') {
+            setIsTextMode(true);
+        } else if (pasteBinData.mode === 'ai') {
+            setIsAiMode(true);
         }
-    }, [actions]);
+
+        pasteBinLoadedRef.current = true;
+    }, [pasteBinData, actions]);
+
+    // Save transcription updates to database in real-time
+    useEffect(() => {
+        if (mode === PasteBinMode.TRANSCRIPTION && transcriptChunks.length > 0) {
+            updateTranscriptArrayMutation({
+                visionId: visionId as Id<"visions">,
+                valueArray: transcriptChunks,
+            });
+        }
+    }, [transcriptChunks, mode, visionId, updateTranscriptArrayMutation]);
 
     // Cleanup timers on unmount
     useEffect(() => {
@@ -329,6 +499,9 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             }
             if (textContentDebounceRef.current) {
                 clearTimeout(textContentDebounceRef.current);
+            }
+            if (saveDebounceRef.current) {
+                clearTimeout(saveDebounceRef.current);
             }
         };
     }, []);
@@ -353,11 +526,11 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             }
 
             // Only start timer if we're in text mode with empty content
-            emptyResetTimerRef.current = setTimeout(() => {
+            emptyResetTimerRef.current = setTimeout(async () => {
                 setMode(PasteBinMode.IDLE);
                 setIsTextMode(false);
                 setTextContent("");
-                pasteBinStorage.save.textContent("");
+                await clearPasteBin({ visionId: visionId as Id<"visions"> });
             }, 1500);
 
             return () => {
@@ -367,12 +540,20 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                 }
             };
         }
-    }, [mode, media, textContent]);
+    }, [mode, media, textContent, clearPasteBin, visionId]);
 
     const updateMedia = useCallback((mediaItem: Media | null) => {
         setMedia(mediaItem);
-        pasteBinStorage.save.mediaItem(mediaItem);
-    }, []);
+        // Save to database
+        if (mediaItem) {
+            savePasteBinToDb({
+                mode: mode,
+                type: mediaItem.type,
+                value: mediaItem.uploadedUrl || mediaItem.url,
+                chatId: mediaItem.chatId ? (mediaItem.chatId as Id<"chats">) : undefined,
+            });
+        }
+    }, [mode, savePasteBinToDb]);
 
     // Debounced text content update
     const updateTextContent = useCallback((content: string) => {
@@ -383,16 +564,22 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             clearTimeout(textContentDebounceRef.current);
         }
 
-        // Set debounced localStorage save
+        // Set debounced database save
         textContentDebounceRef.current = setTimeout(() => {
-            pasteBinStorage.save.textContent(content);
+            savePasteBinToDb({
+                mode: mode,
+                textContent: content,
+            });
         }, 300);
-    }, []);
+    }, [mode, savePasteBinToDb]);
 
     const updateChatId = useCallback((chatIdValue: string | null) => {
         setChatId(chatIdValue);
-        pasteBinStorage.save.chatId(chatIdValue);
-    }, []);
+        savePasteBinToDb({
+            mode: mode,
+            chatId: chatIdValue ? (chatIdValue as Id<"chats">) : undefined,
+        });
+    }, [mode, savePasteBinToDb]);
 
     const newChat = useCallback(async (title: string) => {
         const chatId = await createChat({
@@ -408,8 +595,10 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
 
     const updateIsAiMode = useCallback((aiModeValue: boolean) => {
         setIsAiMode(aiModeValue);
-        pasteBinStorage.save.isAiMode(aiModeValue);
-    }, []);
+        savePasteBinToDb({
+            mode: aiModeValue ? 'ai' : mode,
+        });
+    }, [mode, savePasteBinToDb]);
 
     const { startUpload, isUploading } = useUploadThing("mediaUploader", {
         onClientUploadComplete: (res) => {
@@ -421,13 +610,18 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                         if (currentMedia.url && currentMedia.url.startsWith('blob:')) {
                             URL.revokeObjectURL(currentMedia.url);
                         }
-                        const updatedMedia = { 
-                            ...currentMedia, 
+                        const updatedMedia = {
+                            ...currentMedia,
                             uploadedUrl: res[0].ufsUrl,
                             url: res[0].ufsUrl, // Update the url to the uploaded version
-                            isUploading: false 
+                            isUploading: false
                         };
-                        pasteBinStorage.save.mediaItem(updatedMedia);
+                        // Save to database
+                        savePasteBinToDb({
+                            mode: mode,
+                            type: updatedMedia.type,
+                            value: updatedMedia.uploadedUrl,
+                        });
                         return updatedMedia;
                     }
                     return currentMedia;
@@ -439,7 +633,12 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             setMedia(currentMedia => {
                 if (currentMedia) {
                     const updatedMedia = { ...currentMedia, isUploading: false };
-                    pasteBinStorage.save.mediaItem(updatedMedia);
+                    // Save to database
+                    savePasteBinToDb({
+                        mode: mode,
+                        type: updatedMedia.type,
+                        value: updatedMedia.url,
+                    });
                     return updatedMedia;
                 }
                 return currentMedia;
@@ -539,7 +738,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
 
         setMode(PasteBinMode.MEDIA);
         updateMedia(newMedia);
-        pasteBinStorage.save.mode(PasteBinMode.MEDIA);
         actions.setImageLoaded(false);
 
         // Start upload immediately
@@ -562,7 +760,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         }
 
         setMode(PasteBinMode.EMBED);
-        pasteBinStorage.save.mode(PasteBinMode.EMBED);
         actions.setLoadingLinkMeta(true);
 
         try {
@@ -624,11 +821,11 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                 if (mode === PasteBinMode.IDLE) {
                     setMode(PasteBinMode.TEXT);
                     setIsTextMode(true);
-                    pasteBinStorage.save.mode(PasteBinMode.TEXT);
+                    savePasteBinToDb({ mode: PasteBinMode.TEXT });
                 }
             }, 500);
         }
-    }, [handleLinkPaste, updateTextContent, mode]);
+    }, [handleLinkPaste, updateTextContent, mode, savePasteBinToDb]);
 
     const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && textContent && typeof textContent === 'string' && textContent.trim()) {
@@ -682,18 +879,70 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             setMode(PasteBinMode.AI);
             setIsAiMode(true);
             updateIsAiMode(true);
-            pasteBinStorage.save.mode(PasteBinMode.AI);
         }
     }, [mode, textContent, newChat, handleSendMessage, updateIsAiMode, canUseAI]);
 
+    const [recordedAudioBlob, setRecordedAudioBlob] = useState<Blob | null>(null);
+    const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+    const [isStopping, setIsStopping] = useState(false);
+    const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+    const [isLoadingDevices, setIsLoadingDevices] = useState(false);
+    const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>(undefined);
+    const [previousAudioBlobs, setPreviousAudioBlobs] = useState<Blob[]>([]);
+    const transcriptContainerRef = useRef<HTMLDivElement>(null);
+
+    const loadAudioDevices = useCallback(async () => {
+        setIsLoadingDevices(true);
+        try {
+            const devices = await getAvailableAudioDevices();
+            // Filter to only show monitor/virtual audio devices
+            // Common patterns: "monitor", "blackhole", "soundflower", "vb-cable", "virtual", "loopback"
+            const monitorDevices = devices.filter(device => {
+                const label = device.label.toLowerCase();
+                return label.includes('monitor') ||
+                       label.includes('blackhole') ||
+                       label.includes('soundflower') ||
+                       label.includes('vb-cable') ||
+                       label.includes('vb-audio') ||
+                       label.includes('virtual') ||
+                       label.includes('loopback') ||
+                       label.includes('stereo mix');
+            });
+            setAudioDevices(monitorDevices);
+        } catch (error) {
+            console.error('Failed to load audio devices:', error);
+            toast.error('Failed to load audio devices');
+        } finally {
+            setIsLoadingDevices(false);
+        }
+    }, []);
+
+    // Auto-scroll to bottom when new transcript chunks arrive
+    useEffect(() => {
+        if (transcriptContainerRef.current && isRecording && transcriptChunks.length > 0) {
+            transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
+        }
+    }, [transcriptChunks, isRecording]);
+
     const handleStopRecording = useCallback(async () => {
-        await stopRecording();
-        // Keep the transcription mode to show the final transcript
-        // User can then create node or clear
+        setIsStopping(true);
+        try {
+            const audioBlob = await stopRecording();
+            if (audioBlob) {
+                // Add to previous blobs for stitching
+                setPreviousAudioBlobs(prev => [...prev, audioBlob]);
+                setRecordedAudioBlob(audioBlob);
+                console.log('[PasteBin] Audio blob captured:', audioBlob.size, 'bytes');
+            }
+            // Keep the transcription mode to show the final transcript
+            // User can then create node or clear
+        } finally {
+            setIsStopping(false);
+        }
     }, [stopRecording]);
 
     const clearMedia = useCallback(async (deleteUnusedChat = true) => {
-        // Stop recording if active
+        // Stop recording if active (but continue to clear everything)
         if (isRecording) {
             await stopRecording();
         }
@@ -727,8 +976,15 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             }
         }
 
+        // Clear database
+        await clearPasteBin({ visionId: visionId as Id<"visions"> });
+
         // Clear transcription
         clearTranscript();
+        setTranscriptChunks([]);
+        setRecordedAudioBlob(null);
+        setPreviousAudioBlobs([]);
+        setSelectedDeviceId(undefined);
 
         updateMedia(null);
         setTextContent("");
@@ -736,9 +992,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         setIsTextMode(false);
         updateIsAiMode(false);
         updateChatId(null);
-
-        pasteBinStorage.save.textContent("");
-        pasteBinStorage.save.mode(PasteBinMode.IDLE);
 
         // Clear timers
         if (debounceTimerRef.current) {
@@ -753,30 +1006,24 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             clearTimeout(textContentDebounceRef.current);
             textContentDebounceRef.current = null;
         }
+        if (saveDebounceRef.current) {
+            clearTimeout(saveDebounceRef.current);
+            saveDebounceRef.current = null;
+        }
 
         // Reset state machine
         actions.resetState();
 
-        // Clear all localStorage data
-        pasteBinStorage.clear();
-
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
-    }, [actions, updateMedia, updateChatId, updateIsAiMode, chatId, isAiMode, deleteChat, media, isRecording, stopRecording, clearTranscript]);
+    }, [actions, updateMedia, updateChatId, updateIsAiMode, chatId, isAiMode, deleteChat, media, isRecording, stopRecording, clearTranscript, clearPasteBin, visionId]);
 
     const handleCreate = useCallback(async () => {
-        const node = () => {
+        const node = async () => {
             if (media) {
                 // Handle file uploads
                 if (media.file || media.uploadedUrl) {
-                    const finalName = media.fileName;
-
-                    if (!finalName && media.type !== NodeVariants.Link) {
-                        alert("Please provide a name for this media");
-                        return;
-                    }
-
                     // If still uploading, wait for upload to complete
                     if (isUploading) {
                         console.log("Upload in progress, please wait...");
@@ -822,18 +1069,115 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             }
 
             // Handle transcription mode
-            if (mode === PasteBinMode.TRANSCRIPTION && transcript) {
-                onCreateNode({
-                    title: "Transcription",
-                    variant: NodeVariants.Transcription,
-                    value: transcript,
-                    thought: "",
-                })
-                return;
+            if (mode === PasteBinMode.TRANSCRIPTION) {
+                // Use either live transcriptChunks or restored valueArray from database
+                const chunks = transcriptChunks.length > 0 ? transcriptChunks : (pasteBinData?.valueArray || []);
+                const transcriptValue = chunks.map(c => c.text).join(' ');
+                if (transcriptValue) {
+                    // Upload audio if available
+                    let audioUrl: string | undefined;
+                    let audioDuration: number | undefined;
+
+                    if (recordedAudioBlob) {
+                        const toastId = toast.loading('Converting and uploading recording...');
+                        setIsUploadingAudio(true);
+                        try {
+                            // Stitch all audio blobs together if there are multiple recordings
+                            let finalAudioBlob: Blob;
+                            if (previousAudioBlobs.length > 1) {
+                                console.log('[PasteBin] Stitching', previousAudioBlobs.length, 'audio recordings...');
+                                toast.loading('Stitching audio recordings...', { id: toastId });
+                                finalAudioBlob = await stitchAudioBlobs(previousAudioBlobs);
+                            } else {
+                                finalAudioBlob = recordedAudioBlob;
+                            }
+
+                            console.log('[PasteBin] Starting audio processing, WebM size:', finalAudioBlob.size, 'bytes');
+
+                            // Get audio duration by creating a temporary audio element
+                            audioDuration = await new Promise<number>((resolve) => {
+                                const audioElement = document.createElement('audio');
+                                audioElement.preload = 'metadata';
+                                audioElement.onloadedmetadata = () => {
+                                    const duration = audioElement.duration;
+                                    URL.revokeObjectURL(audioElement.src);
+                                    resolve(duration && !isNaN(duration) && isFinite(duration) ? duration : 0);
+                                };
+                                audioElement.onerror = () => {
+                                    URL.revokeObjectURL(audioElement.src);
+                                    resolve(0);
+                                };
+                                audioElement.src = URL.createObjectURL(finalAudioBlob);
+                            });
+
+                            console.log('[PasteBin] Audio duration:', audioDuration, 'seconds');
+
+                            // Convert to WAV format with timestamp metadata
+                            toast.loading('Converting to WAV format...', { id: toastId });
+                            const wavBlob = await convertToWav(finalAudioBlob);
+                            console.log('[PasteBin] Converted to WAV, size:', wavBlob.size, 'bytes', `(${(wavBlob.size / 1024 / 1024).toFixed(2)}MB)`);
+
+                            // Check file size (16MB limit)
+                            const maxSize = 16 * 1024 * 1024;
+                            if (wavBlob.size > maxSize) {
+                                throw new Error(`Audio file is too large (${(wavBlob.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 16MB. Try recording for a shorter duration.`);
+                            }
+
+                            // Convert blob to File
+                            const audioFile = new File(
+                                [wavBlob],
+                                `transcription-${Date.now()}.wav`,
+                                { type: 'audio/wav' }
+                            );
+
+                            // Upload to UploadThing with timeout
+                            toast.loading('Uploading recording...', { id: toastId });
+                            const uploadResult = await Promise.race([
+                                startUpload([audioFile]),
+                                new Promise<null>((_, reject) =>
+                                    setTimeout(() => reject(new Error('Upload timeout after 60s')), 60000)
+                                )
+                            ]);
+
+                            if (uploadResult && uploadResult[0]) {
+                                audioUrl = uploadResult[0].ufsUrl;
+                                console.log('[PasteBin] Audio uploaded successfully:', audioUrl);
+                                toast.success('Recording uploaded successfully!', { id: toastId, duration: 2000 });
+                            } else {
+                                throw new Error('Upload completed but no URL returned');
+                            }
+                        } catch (error) {
+                            console.error('[PasteBin] Failed to upload audio:', error);
+                            const errorMessage = error instanceof Error ? error.message : 'Failed to upload audio';
+                            toast.error(errorMessage, { id: toastId, duration: 5000 });
+
+                            // Don't create node if upload failed - keep paste bin state
+                            setIsUploadingAudio(false);
+                            return;
+                        } finally {
+                            setIsUploadingAudio(false);
+                        }
+                    }
+
+                    // Create the node
+                    onCreateNode({
+                        title: "Transcription",
+                        variant: NodeVariants.Transcription,
+                        value: transcriptValue,
+                        thought: "",
+                        transcriptChunks: chunks,
+                        audioUrl,
+                        audioDuration,
+                    });
+
+                    // Note: clearMedia(false) will be called after this function returns
+                    // to fully clear the paste bin state
+                    return;
+                }
             }
 
-            // Handle text mode without media
-            if (isTextMode || isAiMode) {
+            // Handle text mode without media (but not transcription mode)
+            if ((isTextMode || isAiMode) && mode !== PasteBinMode.TRANSCRIPTION) {
                 let value;
                 if (isAiMode && chatId) {
                     value = chatId
@@ -849,15 +1193,17 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             }
         }
 
-        // Clear all data and localStorage after successful creation (don't delete chat)
-        node();
+        // Clear all data after successful creation (don't delete chat)
+        await node();
         await clearMedia(false);
-    }, [media, clearMedia, onCreateNode, textContent, isTextMode, isAiMode, chatId, isUploading, mode, transcript]);
+    }, [media, clearMedia, onCreateNode, textContent, isTextMode, isAiMode, chatId, isUploading, mode, transcriptChunks, pasteBinData]);
 
     const isValidForCreation = useCallback(() => {
         // Transcription mode validation
         if (mode === PasteBinMode.TRANSCRIPTION) {
-            return !isRecording && !!transcript && transcript.trim().length > 0;
+            const chunks = transcriptChunks.length > 0 ? transcriptChunks : (pasteBinData?.valueArray || []);
+            const transcriptValue = chunks.map(c => c.text).join(' ');
+            return !isRecording && !!transcriptValue && transcriptValue.trim().length > 0;
         }
 
         if (media) {
@@ -872,11 +1218,11 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             }
         }
         return (isTextMode || isAiMode) && !!textContent.trim();
-    }, [media, isLoadingLinkMeta, isTextMode, isAiMode, textContent, isUploading, mode, isRecording, transcript]);
+    }, [media, isLoadingLinkMeta, isTextMode, isAiMode, textContent, isUploading, mode, isRecording, transcriptChunks, pasteBinData]);
 
     return (
         <div
-            className={`absolute inset-x-0 bottom-10 w-full max-w-xs sm:max-w-lg mx-auto`}
+            className={`absolute z-[10] inset-x-0 bottom-10 w-full max-w-xs sm:max-w-lg mx-auto`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -1093,25 +1439,67 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                                         }}
                                     >
                                         <div className="h-full w-full p-4 flex flex-col gap-3">
-                                            <div className="flex items-center gap-2">
-                                                <div className={`w-2 h-2 rounded-full ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-purple-500'}`}></div>
-                                                <span className="text-xs font-semibold text-purple-600 uppercase tracking-wider">
-                                                    {isConnecting ? 'Connecting...' : isRecording ? 'Recording' : 'Transcription Complete'}
-                                                </span>
+                                            <div className="flex items-center gap-2 justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`w-2 h-2 rounded-full ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-purple-500'}`}></div>
+                                                    <span className="text-xs font-semibold text-purple-600 uppercase tracking-wider">
+                                                        {isConnecting ? 'Connecting...' : isRecording ? 'Recording' : 'Transcription Complete'}
+                                                    </span>
+                                                </div>
+                                                {!isRecording && !isConnecting && (transcriptChunks.length > 0 || (pasteBinData?.valueArray && pasteBinData.valueArray.length > 0)) && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={async () => {
+                                                            try {
+                                                                // Use the same device that was previously selected
+                                                                if (selectedDeviceId) {
+                                                                    await startRecording('device', selectedDeviceId);
+                                                                } else {
+                                                                    await startRecording('microphone');
+                                                                }
+                                                            } catch (error) {
+                                                                console.error('Failed to restart recording:', error);
+                                                                const errorMessage = error instanceof Error ? error.message : 'Failed to continue recording';
+                                                                toast.error(errorMessage, { duration: 5000 });
+                                                            }
+                                                        }}
+                                                        className="h-6 px-2 text-xs"
+                                                    >
+                                                        <Mic size={12} className="mr-1" />
+                                                        Continue
+                                                    </Button>
+                                                )}
                                             </div>
 
-                                            <div className="flex-1 overflow-y-auto bg-background/50 rounded-lg p-3 border border-purple-500/20">
-                                                <div className="text-sm whitespace-pre-wrap">
-                                                    {transcriptArr.length > 0 ? (
-                                                        transcriptArr.map((chunk, index) => (
-                                                            <span key={index}>{chunk}{' '}</span>
-                                                        ))
+                                            <div
+                                                ref={transcriptContainerRef}
+                                                className="flex-1 overflow-y-auto overscroll-contain bg-background/50 rounded-lg p-3 border border-purple-500/20 space-y-2"
+                                            >
+                                                {(() => {
+                                                    const chunks = transcriptChunks.length > 0 ? transcriptChunks : (pasteBinData?.valueArray || []);
+                                                    return chunks.length > 0 ? (
+                                                        chunks.map((chunk, index) => {
+                                                            const date = new Date(chunk.timestamp);
+                                                            const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                                                            return (
+                                                                <div key={index} className="flex gap-2 items-start">
+                                                                    <div className="flex-shrink-0 text-[10px] text-muted-foreground/60 font-mono mt-0.5 min-w-[60px]">
+                                                                        {timeString}
+                                                                    </div>
+                                                                    <div className="flex-1 text-sm bg-accent/30 rounded-lg px-3 py-2 border border-accent/50">
+                                                                        {chunk.text}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })
                                                     ) : (
-                                                        <span className="text-muted-foreground">
+                                                        <span className="text-muted-foreground text-sm">
                                                             {isConnecting ? 'Connecting to transcription service...' : 'Start speaking...'}
                                                         </span>
-                                                    )}
-                                                </div>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
                                     </motion.div>
@@ -1260,7 +1648,11 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                                     exit={{ opacity: 0, scale: 0.8 }}
                                     transition={{ duration: 0.2 }}
                                 >
-                                    <DropdownMenu>
+                                    <DropdownMenu onOpenChange={(open) => {
+                                        if (open) {
+                                            loadAudioDevices();
+                                        }
+                                    }}>
                                         <DropdownMenuTrigger asChild>
                                             <Button
                                                 variant="outline"
@@ -1270,31 +1662,62 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                                                 <Mic size={12} />
                                             </Button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
+                                        <DropdownMenuContent align="end" className="w-64">
                                             <DropdownMenuItem onClick={async () => {
                                                 try {
+                                                    setSelectedDeviceId(undefined);
                                                     await startRecording('microphone');
                                                     setMode(PasteBinMode.TRANSCRIPTION);
-                                                    pasteBinStorage.save.mode(PasteBinMode.TRANSCRIPTION);
+                                                    savePasteBinToDb({ mode: PasteBinMode.TRANSCRIPTION });
                                                 } catch (error) {
                                                     console.error('Failed to start recording:', error);
+                                                    const errorMessage = error instanceof Error ? error.message : 'Failed to start microphone recording';
+                                                    toast.error(errorMessage, { duration: 5000 });
                                                 }
                                             }}>
-                                                <Headphones className="mr-2 h-4 w-4" />
-                                                Microphone
+                                                <Mic className="mr-2 h-4 w-4" />
+                                                Default Microphone
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={async () => {
-                                                try {
-                                                    await startRecording('system');
-                                                    setMode(PasteBinMode.TRANSCRIPTION);
-                                                    pasteBinStorage.save.mode(PasteBinMode.TRANSCRIPTION);
-                                                } catch (error) {
-                                                    console.error('Failed to start recording:', error);
-                                                }
-                                            }}>
-                                                <Monitor className="mr-2 h-4 w-4" />
-                                                System Audio
-                                            </DropdownMenuItem>
+
+                                            {isLoadingDevices ? (
+                                                <DropdownMenuItem disabled>
+                                                    <div className="w-3 h-3 mr-2 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                                    Loading devices...
+                                                </DropdownMenuItem>
+                                            ) : audioDevices.length > 0 ? (
+                                                <>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuLabel className="text-xs text-muted-foreground">Virtual Audio Devices</DropdownMenuLabel>
+                                                    {audioDevices.map((device) => (
+                                                        <DropdownMenuItem
+                                                            key={device.deviceId}
+                                                            onClick={async () => {
+                                                                try {
+                                                                    setSelectedDeviceId(device.deviceId);
+                                                                    await startRecording('device', device.deviceId);
+                                                                    setMode(PasteBinMode.TRANSCRIPTION);
+                                                                    savePasteBinToDb({ mode: PasteBinMode.TRANSCRIPTION });
+                                                                } catch (error) {
+                                                                    console.error('Failed to start recording:', error);
+                                                                    const errorMessage = error instanceof Error ? error.message : 'Failed to start recording';
+                                                                    toast.error(errorMessage, { duration: 5000 });
+                                                                }
+                                                            }}
+                                                            className="text-xs"
+                                                        >
+                                                            <Mic className="mr-2 h-3 w-3" />
+                                                            <span className="truncate">{device.label || `Device ${device.deviceId.slice(0, 8)}`}</span>
+                                                        </DropdownMenuItem>
+                                                    ))}
+                                                </>
+                                            ) : !isLoadingDevices ? (
+                                                <>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem disabled className="text-xs text-muted-foreground">
+                                                        No virtual audio devices found
+                                                    </DropdownMenuItem>
+                                                </>
+                                            ) : null}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                     <Button
@@ -1333,7 +1756,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => { clearMedia() }}
+                                            onClick={async () => { await clearMedia() }}
                                             className="h-8 w-8 p-0 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors"
                                         >
                                             <X size={14} />
@@ -1349,29 +1772,40 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                                         exit={{ x: 30, opacity: 0 }}
                                         transition={{ delay: 0.15 }}
                                     >
-                                        {mode === PasteBinMode.TRANSCRIPTION && (isRecording || isConnecting) ? (
+                                        {mode === PasteBinMode.TRANSCRIPTION && (isRecording || isConnecting || isStopping) ? (
                                             <Button
                                                 size="sm"
                                                 onClick={handleStopRecording}
-                                                disabled={isConnecting}
+                                                disabled={isConnecting || isStopping}
                                                 className="h-8 px-3 rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 transition-all duration-200"
                                             >
-                                                <Square size={12} className="mr-1" />
-                                                Stop
+                                                {isStopping ? (
+                                                    <>
+                                                        <div className="w-3 h-3 mr-1 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                                        Stopping...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Square size={12} className="mr-1" />
+                                                        Stop
+                                                    </>
+                                                )}
                                             </Button>
                                         ) : (
                                             <Button
                                                 size="sm"
-                                                onClick={async () => {
-                                                    handleCreate();
-                                                }}
+                                                onClick={handleCreate}
                                                 disabled={
-                                                    (isUploading) &&
+                                                    (isUploading || isUploadingAudio) ||
                                                     !isValidForCreation()
                                                 }
                                                 className="h-8 px-3 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50 transition-all duration-200"
                                             >
-                                                <Send size={12} />
+                                                {isUploadingAudio ? (
+                                                    <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                                ) : (
+                                                    <Send size={12} />
+                                                )}
                                             </Button>
                                         )}
                                     </motion.div>

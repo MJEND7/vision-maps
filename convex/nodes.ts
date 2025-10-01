@@ -18,6 +18,12 @@ const createArgs = v.object({
         id: v.string(),
         handlepos: v.optional(v.string()),
     })),
+    transcriptChunks: v.optional(v.array(v.object({
+        text: v.string(),
+        timestamp: v.number(),
+    }))),
+    audioUrl: v.optional(v.string()),
+    audioDuration: v.optional(v.number()),
 });
 
 const updateArgs = v.object({
@@ -98,6 +104,8 @@ export const create = mutation({
             vision: channel.vision,
             userId,
             updatedAt: now,
+            transcriptChunks: args.transcriptChunks,
+            audioUrl: args.audioUrl,
         }
         const nodeId = await ctx.db.insert("nodes", data);
 

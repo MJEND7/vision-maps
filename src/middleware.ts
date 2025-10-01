@@ -20,7 +20,7 @@ export default clerkMiddleware(
                 "style-src": ["'self'", "'unsafe-inline'"],
                 "img-src": ["'self'", "data:", "https:", "blob:", "t.co"],
                 "font-src": ["'self'", "data:"],
-                "media-src": ["'self'", "blob:", "data:"],
+                "media-src": ["'self'", "blob:", "data:", "https://*.ufs.sh"],
                 "connect-src": [
                     "'self'",
                     "https://cdn.syndication.twimg.com",
@@ -33,7 +33,8 @@ export default clerkMiddleware(
                     "https://*.cloudflare.com",
                     "https://*.convex.cloud",
                     "wss://*.convex.cloud",
-                    "wss://*.assemblyai.com"
+                    "wss://*.assemblyai.com",
+                    "https://*.ufs.sh",
                 ],
                 "frame-src": [
                     "'self'",

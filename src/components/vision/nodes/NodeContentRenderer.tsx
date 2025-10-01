@@ -6,6 +6,7 @@ import { Brain, Check, ExternalLink, Expand, Minimize2 } from 'lucide-react';
 import { AudioPlayer } from "../../channel/audio-player";
 import { VideoPlayer } from "../../channel/video-player";
 import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard } from "../../channel/metadata";
+import { TranscriptionNodeContent } from "./TranscriptionNodeContent";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useOGMetadataWithCache } from "@/utils/ogMetadata";
 import Markdown, { Components } from "react-markdown";
@@ -397,6 +398,21 @@ export function renderNodeContent(
                     )}
                 </div>
             );
+
+        case NodeVariants.Transcription:
+            // Check if we have audio and transcript chunks
+            if (node.audioUrl && node.transcriptChunks && node.transcriptChunks.length > 0) {
+                return (
+                    <TranscriptionNodeContent
+                        audioUrl={node.audioUrl}
+                        transcriptChunks={node.transcriptChunks}
+                        recordingStartTime={node.transcriptChunks[0]?.timestamp}
+                        audioDuration={node.audioDuration}
+                    />
+                );
+            }
+            // Fallback to text display if no audio
+            return <ExpandableTextContent textExpand={textExpand} content={node.value} />;
 
         default:
             // For unknown types, try to detect if it's a file

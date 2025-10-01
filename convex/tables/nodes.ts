@@ -36,6 +36,13 @@ export class Nodes {
         frame: v.optional(v.id(Frame.TABLE_NAME)),
         channel: v.id(Channel.TABLE_NAME),
         vision: v.id(Visions.TABLE_NAME),
+        // For Transcription nodes - store chunks with timestamps and audio
+        transcriptChunks: v.optional(v.array(v.object({
+            text: v.string(),
+            timestamp: v.number(),
+        }))),
+        audioUrl: v.optional(v.string()), // URL to the recorded audio file
+        audioDuration: v.optional(v.number()), // Duration in seconds
     })
 
     static Table = defineTable(this.columns)

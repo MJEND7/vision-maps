@@ -7,8 +7,8 @@ const f = createUploadthing();
 export const uploadThingFileRouter = {
     // Define a route for uploading audio files
     mediaUploader: f({
-        audio: { maxFileCount: 1, maxFileSize: "4MB" },
-        video: { maxFileCount: 1, maxFileSize: "4MB" },
+        audio: { maxFileCount: 1, maxFileSize: "16MB" },
+        video: { maxFileCount: 1, maxFileSize: "16MB" },
         image: { maxFileCount: 1, maxFileSize: "4MB" },
         pdf: { maxFileCount: 1, maxFileSize: "4MB" }
     })
