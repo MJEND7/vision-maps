@@ -8,8 +8,8 @@ import { CommentChatList } from "../comments/comment-chat-list";
 import { CommentChat } from "../comments/comment-chat";
 import { MessageSquare, Bot, Lock } from "lucide-react";
 import { useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import { api } from "@convex/_generated/api";
+import { Id } from "@convex/_generated/dataModel";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Permission } from "@/lib/permissions";
 

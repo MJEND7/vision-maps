@@ -1,6 +1,6 @@
 import { QueryCtx, MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
-import { VisionAccessRole, VisionUserStatus } from "../tables/visions";
+import { VisionAccessRole, VisionUserStatus } from "../visions/table";
 
 export async function getUserByIdenityId(ctx: QueryCtx | MutationCtx, userId: string) {
     const user = await ctx.db.query("users").withIndex("by_external_id", (u) => u.eq("externalId", userId)).first();

@@ -5,8 +5,8 @@ import {
     useMutation,
     usePaginatedQuery,
 } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import { api } from "@convex/_generated/api";
+import { Id } from "@convex/_generated/dataModel";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Search, Filter, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,7 @@ import { MultiUserSelector } from "@/components/ui/multi-user-selector";
 import { useNodeUserCache } from "@/hooks/useUserCache";
 import { useNodeStore } from "@/hooks/useNodeStore";
 import PasteBin from "../channel/paste-bin";
-import { CreateNodeArgs } from "../../../convex/nodes";
+import { CreateNodeArgs } from "@convex/nodes/functions";
 import { NODE_VARIANTS } from "@/lib/constants";
 import { useMetadataCache } from "../../utils/ogMetadata";
 import ChannelNode from "../channel/node";

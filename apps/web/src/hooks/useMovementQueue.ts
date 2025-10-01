@@ -1,8 +1,8 @@
 import { useCallback, useState, useEffect, useRef } from "react";
 import { Node, NodeChange } from "@xyflow/react";
 import { useMutation, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
+import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
 
 interface QueuedMovement {
   id: string;

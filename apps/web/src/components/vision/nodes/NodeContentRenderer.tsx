@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useTheme } from "next-themes";
-import { NodeVariants } from "../../../../convex/tables/nodes";
+import { NodeVariants } from "@convex/nodes/table";
 import Image from "next/image";
 import { Brain, Check, ExternalLink, Expand, Minimize2 } from 'lucide-react';
 import { AudioPlayer } from "../../channel/audio-player";
@@ -400,14 +400,22 @@ export function renderNodeContent(
             );
 
         case NodeVariants.Transcription:
+            // Parse chunks from JSON value
+            let transcriptChunks: Array<{ text: string; timestamp: number }> = [];
+            try {
+                transcriptChunks = JSON.parse(node.value);
+            } catch (e) {
+                // Fallback to treating as plain text if parsing fails
+                return <ExpandableTextContent textExpand={textExpand} content={node.value} />;
+            }
+
             // Check if we have audio and transcript chunks
-            if (node.audioUrl && node.transcriptChunks && node.transcriptChunks.length > 0) {
+            if (node.audioUrl && transcriptChunks && transcriptChunks.length > 0) {
                 return (
                     <TranscriptionNodeContent
                         audioUrl={node.audioUrl}
-                        transcriptChunks={node.transcriptChunks}
-                        recordingStartTime={node.transcriptChunks[0]?.timestamp}
-                        audioDuration={node.audioDuration}
+                        transcriptChunks={transcriptChunks}
+                        recordingStartTime={transcriptChunks[0]?.timestamp}
                     />
                 );
             }

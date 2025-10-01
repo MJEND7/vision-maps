@@ -3,7 +3,7 @@ import { components } from "./_generated/api";
 import { v, Infer } from "convex/values";
 import { Presence } from "@convex-dev/presence";
 import { requireAuth } from "./utils/auth";
-import { ActiveUsers } from "./tables/user";
+import { ActiveUsers } from "./users/table";
 
 // Args schemas
 const heartbeatArgs = v.object({

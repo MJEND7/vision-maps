@@ -1,4 +1,4 @@
-import { NodeVariants } from '../../convex/tables/nodes';
+import { NodeVariants } from "@convex/nodes/table";
 import banner from '../../public/landing/banner.png';
 
 

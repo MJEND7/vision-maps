@@ -1,6 +1,6 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
-import { Visions } from "./visions";
+import { Visions } from "../visions/table";
 
 export class UserPasteBin {
     static TABLE_NAME = "user_paste_bin" as const;

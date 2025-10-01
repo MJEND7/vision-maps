@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "motion/react";
-import { Doc } from "../../../../../convex/_generated/dataModel";
+import { Doc } from "@convex/_generated/dataModel";
 
 type Props = {
     message: Doc<"messages">;

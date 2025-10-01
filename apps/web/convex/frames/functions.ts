@@ -1,8 +1,8 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query } from "../_generated/server";
 import { v, Infer } from "convex/values";
-import { requireVisionAccess } from "./utils/auth";
-import { nodeValidator } from "./reactflow/types";
-import { Nodes } from "./tables/nodes";
+import { requireVisionAccess } from "../utils/auth";
+import { nodeValidator } from "../reactflow/types";
+import { Nodes } from "../nodes/table";
 
 // Args schemas
 const createArgs = v.object({

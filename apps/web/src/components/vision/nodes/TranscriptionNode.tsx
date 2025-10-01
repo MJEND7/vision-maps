@@ -1,7 +1,7 @@
 import React, { memo, useState, useRef, useEffect, useCallback } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { useMutation } from 'convex/react';
-import { api } from '../../../../convex/_generated/api';
+import { api } from "@convex/_generated/api";
 import { Mic, Copy, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 

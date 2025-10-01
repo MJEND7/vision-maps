@@ -3,8 +3,8 @@
 import * as React from "react"
 import { Check, ChevronsUpDown, Crown, X, Users } from "lucide-react"
 import { useQuery } from "convex/react"
-import { api } from "../../../convex/_generated/api"
-import { Id } from "../../../convex/_generated/dataModel"
+import { api } from "@convex/_generated/api"
+import { Id } from "@convex/_generated/dataModel"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"

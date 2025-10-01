@@ -1,9 +1,9 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query } from "../_generated/server";
 import { v, Infer } from "convex/values";
-import { requireAuth, requireVisionAccess } from "./utils/auth";
-import { Id } from "./_generated/dataModel";
-import { getUserPlan } from "./auth";
-import { requirePermission, Permission } from "./permissions";
+import { requireAuth, requireVisionAccess } from "../utils/auth";
+import { Id } from "../_generated/dataModel";
+import { getUserPlan } from "../auth";
+import { requirePermission, Permission } from "../permissions";
 
 // Args schemas
 const createCommentArgs = v.object({

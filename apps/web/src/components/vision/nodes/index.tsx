@@ -1,4 +1,4 @@
-import { NodeVariants } from "../../../../convex/tables/nodes";
+import { NodeVariants } from "@convex/nodes/table";
 import BaseNode from "./BaseNode";
 import TextNode from "./TextNode";
 import AINode from "./AINode";

@@ -1,9 +1,9 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query } from "../_generated/server";
 import { v, Infer } from "convex/values";
-import { Id } from "./_generated/dataModel";
-import { getUserByIdenityId, requireAuth, requireVisionAccess } from "./utils/auth";
+import { Id } from "../_generated/dataModel";
+import { getUserByIdenityId, requireAuth, requireVisionAccess } from "../utils/auth";
 import { paginationOptsValidator } from "convex/server";
-import { nodeValidator } from "./reactflow/types";
+import { nodeValidator } from "../reactflow/types";
 
 // Args schemas
 const createArgs = v.object({
@@ -18,12 +18,7 @@ const createArgs = v.object({
         id: v.string(),
         handlepos: v.optional(v.string()),
     })),
-    transcriptChunks: v.optional(v.array(v.object({
-        text: v.string(),
-        timestamp: v.number(),
-    }))),
     audioUrl: v.optional(v.string()),
-    audioDuration: v.optional(v.number()),
 });
 
 const updateArgs = v.object({
@@ -104,7 +99,6 @@ export const create = mutation({
             vision: channel.vision,
             userId,
             updatedAt: now,
-            transcriptChunks: args.transcriptChunks,
             audioUrl: args.audioUrl,
         }
         const nodeId = await ctx.db.insert("nodes", data);

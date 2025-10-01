@@ -1,7 +1,7 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query } from "../_generated/server";
 import { v, Infer } from "convex/values";
-import { requireAuth, requireVisionAccess } from "./utils/auth";
-import { Id } from "./_generated/dataModel";
+import { requireAuth, requireVisionAccess } from "../utils/auth";
+import { Id } from "../_generated/dataModel";
 
 // Args schemas
 const getUserNotificationsArgs = v.object({

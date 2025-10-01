@@ -6,8 +6,8 @@ import { useState } from "react";
 import { Search, UserPlus } from "lucide-react";
 import { Input } from "./input";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import { api } from "@convex/_generated/api";
+import { Id } from "@convex/_generated/dataModel";
 
 export function InviteUsersDialogue({
     children,

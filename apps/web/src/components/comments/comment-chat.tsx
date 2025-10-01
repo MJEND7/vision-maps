@@ -2,10 +2,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
+import { api } from "@convex/_generated/api";
 import { useUser } from '@clerk/nextjs';
 import Image from 'next/image';
-import { Id } from '../../../convex/_generated/dataModel';
+import { Id } from "@convex/_generated/dataModel";
 import { Send, User, MoreHorizontal, Edit2, Trash2, Reply, CornerUpLeft, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';

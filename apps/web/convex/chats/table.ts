@@ -1,8 +1,8 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
-import { Nodes } from "./nodes";
-import { Visions } from "./visions";
-import { Channel } from "./channel";
+import { Nodes } from "../nodes/table";
+import { Visions } from "../visions/table";
+import { Channel } from "../channels/table";
 
 // Chat wrapper for messages
 export class Chats {

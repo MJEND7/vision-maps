@@ -1,7 +1,7 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query } from "../_generated/server";
 import { v, Infer } from "convex/values";
-import { requireVisionAccess } from "./utils/auth";
-import { Doc, Id } from "./_generated/dataModel";
+import { requireVisionAccess } from "../utils/auth";
+import { Doc, Id } from "../_generated/dataModel";
 
 // Args schemas
 const createArgs = v.object({

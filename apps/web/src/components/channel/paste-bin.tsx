@@ -14,10 +14,10 @@ import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCar
 import { Textarea } from "../ui/textarea";
 import { usePasteBinState } from "@/lib/paste-bin-state";
 import { useMutation, useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
-import { CreateNodeArgs } from "../../../convex/nodes";
-import { NodeVariants } from "../../../convex/tables/nodes";
+import { api } from "@convex/_generated/api";
+import { Id } from "@convex/_generated/dataModel";
+import { CreateNodeArgs } from "@convex/nodes/functions";
+import { NodeVariants } from "@convex/nodes/table";
 import { useOGMetadataWithCache } from "@/utils/ogMetadata";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Permission } from "@/lib/permissions";
@@ -1159,15 +1159,13 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                         }
                     }
 
-                    // Create the node
+                    // Create the node - serialize chunks as JSON in value
                     onCreateNode({
                         title: "Transcription",
                         variant: NodeVariants.Transcription,
-                        value: transcriptValue,
+                        value: JSON.stringify(chunks),
                         thought: "",
-                        transcriptChunks: chunks,
                         audioUrl,
-                        audioDuration,
                     });
 
                     // Note: clearMedia(false) will be called after this function returns

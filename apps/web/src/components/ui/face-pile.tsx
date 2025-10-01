@@ -8,7 +8,7 @@ import { api } from "@/../convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { timeSinceFromDateString } from "@/utils/date";
 import { Skeleton } from "./skeleton";
-import { ActiveUsers } from "../../../convex/tables/user";
+import { ActiveUsers } from "@convex/users/table";
 import { UserResource } from "@clerk/types";
 import { InviteUsersDialogue } from "./invite-users-dialogue";
 

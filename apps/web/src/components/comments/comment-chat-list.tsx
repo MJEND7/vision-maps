@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import { api } from "@convex/_generated/api";
+import { Id } from "@convex/_generated/dataModel";
 import { MessageSquare, MessageCircle, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "../ui/button";

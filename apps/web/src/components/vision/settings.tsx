@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import { api } from "@convex/_generated/api";
+import { Id } from "@convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { toast } from "sonner";
 import { useUploadThing } from "@/utils/uploadthing";
 import { Camera, Search, MoreVertical, Crown, Edit2, UserPlus, X, Upload, ImageIcon, Trash2, Save, AlertTriangle, TableProperties, Frame, Filter, ChevronDown, Check, Lock, LogOut } from "lucide-react";
-import { VisionAccessRole } from "../../../convex/tables/visions";
+import { VisionAccessRole } from "@convex/visions/table";
 import { Textarea } from "../ui/textarea";
 import Image from "next/image";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";

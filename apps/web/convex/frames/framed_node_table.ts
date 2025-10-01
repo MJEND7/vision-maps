@@ -1,6 +1,6 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
-import { Frame } from "./frame";
+import { Frame } from "./table";
 import { nodeValidator } from "../reactflow/types";
 
 export class FramedNode {

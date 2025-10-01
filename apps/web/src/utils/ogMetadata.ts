@@ -1,7 +1,7 @@
 import { useMutation, useConvex } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import { useCallback } from "react";
-import { NodeVariants } from "../../convex/tables/nodes";
+import { NodeVariants } from "@convex/nodes/table";
 
 export interface OGMetadata {
     title?: string;

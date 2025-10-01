@@ -12,7 +12,7 @@ import {
     Position,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { NodeVariants } from "../../../convex/tables/nodes";
+import { NodeVariants } from "@convex/nodes/table";
 import nodeTypes from "../vision/nodes";
 import { Button } from "../ui/button";
 import { motion } from "motion/react";

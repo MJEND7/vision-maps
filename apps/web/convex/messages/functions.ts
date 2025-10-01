@@ -1,14 +1,16 @@
-import { query, mutation, httpAction, internalQuery, internalMutation, internalAction } from "./_generated/server";
+import { query, mutation, httpAction, internalQuery, internalMutation, internalAction } from "../_generated/server";
 import { PersistentTextStreaming, StreamId } from "@convex-dev/persistent-text-streaming";
 import { v, Infer } from "convex/values";
-import { requireAuth } from "./utils/auth";
-import { components, internal } from "./_generated/api";
+import { requireAuth } from "../utils/auth";
+import { components, internal } from "../_generated/api";
 import { PaginationOptions, paginationOptsValidator } from "convex/server";
 import OpenAI from "openai";
-import { Id } from "./_generated/dataModel";
-import { getUserPlan } from "./auth";
-import { requirePermission, Permission } from "./permissions";
-import { fetchYoutubeTranscripts } from "./utils/youtube";
+import { Id } from "../_generated/dataModel";
+import { getUserPlan } from "../auth";
+import { requirePermission, Permission } from "../permissions";
+import { fetchYoutubeTranscripts } from "../utils/youtube";
+import { createNodeContext } from "./helpers";
+import { AssistantMode, prompt } from "../utils/context";
 
 // Args schemas
 const listMessagesByChatArgs = v.object({
@@ -134,7 +136,7 @@ export const sendMessage = mutation({
         // If this is the first message, trigger chat naming action
         if (isFirstMessage) {
             // Schedule the naming action to run asynchronously (non-blocking)
-            await ctx.scheduler.runAfter(0, internal.messages.generateChatNameAction, {
+            await ctx.scheduler.runAfter(0, internal.messages.functions.generateChatNameAction, {
                 chatId: args.chatId,
                 messageContent: args.content
             });
@@ -203,121 +205,69 @@ export const streamChat = httpAction(async (ctx, request) => {
         streamId: string;
     };
 
-    //const messageId = request.headers.get("x-message-id");
     const chatId = request.headers.get("x-chat-id");
-
-    // Start streaming and persisting at the same time while
-    // we immediately return a streaming response to the client
     const response = await persistentTextStreaming.stream(
         ctx,
         request,
         body.streamId as StreamId,
         async (ctx, _, __, append) => {
-            const history = await ctx.runQuery(internal.messages.getChatHistory, { chatId: chatId as Id<"chats"> });
-            const nodeContext = await ctx.runQuery(internal.messages.getConnectedNodeContext, { chatId: chatId as Id<"chats"> });
+            const history = await ctx.runQuery(internal.messages.functions.getChatHistory, { chatId: chatId as Id<"chats"> });
+            const nodeContext = await ctx.runQuery(internal.messages.functions.getConnectedNodeContext, { chatId: chatId as Id<"chats"> });
 
-            // Fetch YouTube transcripts for connected YouTube nodes
             const youtubeTranscripts = await fetchYoutubeTranscripts(nodeContext);
 
-            const openai = new OpenAI()
-
-            // Build system message with connected node context
-            let systemContent = `You are a helpful assistant that can answer questions and help with tasks.
-            Please provide your response in markdown format. You are continuing a conversation.
-            The conversation so far is found in the following JSON-formatted value:`;
-
-            // Add connected node context with YouTube transcripts
-            if (nodeContext.contextText || youtubeTranscripts.length > 0) {
-                systemContent += `IMPORTANT: Additional context from connected nodes in the visual workspace:
-                -----`;
-
-                // Add regular node context
-                if (nodeContext.contextText) {
-                    systemContent += `\n${nodeContext.contextText}`;
-                }
-
-                // Add YouTube transcripts
-                if (youtubeTranscripts.length > 0) {
-                    youtubeTranscripts.forEach(node => {
-                        systemContent += `\n--- ${node.title} (YouTube) ---\n`;
-                        systemContent += `YouTube URL: ${node.value}\n\n`;
-                        systemContent += `Transcript:\n${node.transcript}\n\n`;
-                    });
-                    systemContent += "END CONNECTED NODE CONTEXT\n\n";
-                }
-
-                systemContent += `-----
-                Use this connected node context to inform your responses when relevant.
-                Please make sure you state the title of the node when you use it.`;
-            }
-
-            // Collect images and files from connected nodes for OpenAI vision/file support
+            // Build context array using the context helpers
+            const contextArray: string[] = [];
             const mediaContent: any[] = [];
 
+            // Process each connected node using the context helpers
             nodeContext.connectedNodes.forEach((node: any) => {
-                // Handle Image nodes directly
-                if (node.type === "Image") {
-                    mediaContent.push({
-                        type: "image_url",
-                        image_url: {
-                            url: node.value,
-                            detail: "auto"
-                        }
-                    });
-                }
+                // Find matching YouTube transcript if exists
+                const transcript = youtubeTranscripts.find(t => t.value === node.value)?.transcript;
 
-                // Handle media nodes with image metadata (thumbnails, etc.)
-                if (node.ogMetadata?.image &&
-                    (node.type === "YouTube" || node.type === "Link" || node.type === "Video")) {
-                    mediaContent.push({
-                        type: "image_url",
-                        image_url: {
-                            url: node.ogMetadata.image,
-                            detail: "auto"
-                        }
-                    });
+                // Create node context using the helper function
+                const nodeContextOutput = createNodeContext(
+                    {
+                        title: node.title,
+                        value: node.value,
+                        type: node.type,
+                        ogMetadata: node.ogMetadata
+                    },
+                    {
+                        transcript,
+                        contextText: node.thought
+                    }
+                );
+
+                // Add context to array
+                contextArray.push(nodeContextOutput.context);
+
+                // Add media if present
+                if (nodeContextOutput.media) {
+                    mediaContent.push(nodeContextOutput.media);
                 }
             });
 
-            // Build messages array with media content if available
-            const messages: any[] = [
+            // Get the last user message
+            const lastUserMessage = history.length > 0 ? history[history.length - 1]?.content || "" : "";
+
+            // Build context description
+            const contextDescription = contextArray.length > 0
+                ? `Additional context from ${contextArray.length} connected node(s) in the visual workspace`
+                : "Connected workspace nodes";
+
+            // Use the prompt function to create the stream
+            const stream = await prompt(
+                AssistantMode.General,
+                lastUserMessage,
                 {
-                    role: "system",
-                    content: systemContent,
+                    description: contextDescription,
+                    data: contextArray,
+                    media: mediaContent
                 },
-                ...history
-            ];
+                history
+            );
 
-            // If we have media content, add it to the last user message or create a new one
-            if (mediaContent.length > 0) {
-                const lastMessage = messages[messages.length - 1];
-                if (lastMessage?.role === "user") {
-                    // Convert string content to array format and add media
-                    const content = [
-                        { type: "text", text: lastMessage.content },
-                        ...mediaContent
-                    ];
-                    lastMessage.content = content;
-                } else {
-                    // Add a new message with just media content
-                    messages.push({
-                        role: "user",
-                        content: [
-                            { type: "text", text: "Please analyze the connected media content:" },
-                            ...mediaContent
-                        ]
-                    });
-                }
-            }
-
-            // Lets kickoff a stream request to OpenAI
-            const stream = await openai.chat.completions.create({
-                model: "gpt-4.1-mini",
-                messages,
-                stream: true,
-            });
-
-            // Append each chunk to the persistent stream as they come in from openai
             for await (const part of stream)
                 await append(part.choices[0]?.delta?.content || "");
         }
@@ -552,7 +502,7 @@ export const generateChatNameAction = internalAction({
             }
 
             // Use internal mutation to update titles
-            await ctx.runMutation(internal.messages.updateChatAndNodeTitle, {
+            await ctx.runMutation(internal.messages.functions.updateChatAndNodeTitle, {
                 chatId: args.chatId,
                 title: generatedTitle,
             });

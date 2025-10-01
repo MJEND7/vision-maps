@@ -2,7 +2,7 @@ import React, { memo, useState, useRef, useEffect } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { renderNodeContent } from './NodeContentRenderer';
 import { useMutation } from 'convex/react';
-import { api } from '../../../../convex/_generated/api';
+import { api } from "@convex/_generated/api";
 
 export default memo(function TextNode(props: NodeProps & { data: any }) {
   const node = props.data.node;

@@ -14,21 +14,19 @@ interface TranscriptionNodeContentProps {
   audioUrl: string;
   transcriptChunks: TranscriptChunk[];
   recordingStartTime?: number; // ms when recording started
-  audioDuration?: number; // seconds
 }
 
 export function TranscriptionNodeContent({
   audioUrl,
   transcriptChunks,
   recordingStartTime,
-  audioDuration,
 }: TranscriptionNodeContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const startTime = recordingStartTime || transcriptChunks[0]?.timestamp || 0;
 
   const [activeChunkIndex, setActiveChunkIndex] = useState<number>(-1);
-  const [duration, setDuration] = useState(audioDuration || 0);
+  const [duration, setDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
 

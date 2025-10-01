@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Bell, Check, Trash2, UserPlus } from "lucide-react";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import { Button } from "./button";
 import { Avatar } from "./avatar";
 import Image from "next/image";
@@ -20,7 +20,7 @@ function formatTimeAgo(dateString: string): string {
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
     return `${Math.floor(diffInSeconds / 86400)}d ago`;
 }
-import { Id } from "../../../convex/_generated/dataModel";
+import { Id } from "@convex/_generated/dataModel";
 import { useOrgSwitch } from "@/contexts/OrgSwitchContext";
 
 export default function NotificationsDropdown() {

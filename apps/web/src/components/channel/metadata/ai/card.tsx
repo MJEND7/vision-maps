@@ -3,10 +3,10 @@
 import React, { useRef, useCallback, useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { usePaginatedQuery } from "convex/react";
-import { api } from "../../../../../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import MessageItem from "./message-item";
 import dynamic from "next/dynamic";
-import { Id } from "../../../../../convex/_generated/dataModel";
+import { Id } from "@convex/_generated/dataModel";
 import { MessageCircle, Sparkles } from "lucide-react";
 import InfiniteScroll from "react-infinite-scroll-component";
 
