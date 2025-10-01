@@ -1,16 +1,16 @@
-import { query, mutation, httpAction, internalQuery, internalMutation, internalAction } from "../_generated/server";
+import { query, mutation, httpAction, internalQuery, internalMutation, internalAction } from "./_generated/server";
 import { PersistentTextStreaming, StreamId } from "@convex-dev/persistent-text-streaming";
 import { v, Infer } from "convex/values";
-import { requireAuth } from "../utils/auth";
-import { components, internal } from "../_generated/api";
+import { requireAuth } from "./utils/auth";
+import { components, internal } from "./_generated/api";
 import { PaginationOptions, paginationOptsValidator } from "convex/server";
 import OpenAI from "openai";
-import { Id } from "../_generated/dataModel";
-import { getUserPlan } from "../auth";
-import { requirePermission, Permission } from "../permissions";
-import { fetchYoutubeTranscripts } from "../utils/youtube";
-import { createNodeContext } from "./helpers";
-import { AssistantMode, prompt } from "../utils/context";
+import { Id } from "./_generated/dataModel";
+import { getUserPlan } from "./auth";
+import { requirePermission, Permission } from "./permissions";
+import { fetchYoutubeTranscripts } from "./utils/youtube";
+import { createNodeContext } from "./messageHelpers";
+import { AssistantMode, prompt } from "./utils/context";
 
 // Args schemas
 const listMessagesByChatArgs = v.object({
@@ -133,10 +133,9 @@ export const sendMessage = mutation({
             replyToMessageId: args.replyToMessageId,
         });
 
-        // If this is the first message, trigger chat naming action
         if (isFirstMessage) {
             // Schedule the naming action to run asynchronously (non-blocking)
-            await ctx.scheduler.runAfter(0, internal.messages.functions.generateChatNameAction, {
+            await ctx.scheduler.runAfter(0, internal.messages.generateChatNameAction, {
                 chatId: args.chatId,
                 messageContent: args.content
             });
@@ -211,8 +210,10 @@ export const streamChat = httpAction(async (ctx, request) => {
         request,
         body.streamId as StreamId,
         async (ctx, _, __, append) => {
-            const history = await ctx.runQuery(internal.messages.functions.getChatHistory, { chatId: chatId as Id<"chats"> });
-            const nodeContext = await ctx.runQuery(internal.messages.functions.getConnectedNodeContext, { chatId: chatId as Id<"chats"> });
+            const historyQuery = internal.messages.getChatHistory;
+            const contextQuery = internal.messages.getConnectedNodeContext;
+            const history = await ctx.runQuery(historyQuery, { chatId: chatId as Id<"chats"> });
+            const nodeContext = await ctx.runQuery(contextQuery, { chatId: chatId as Id<"chats"> });
 
             const youtubeTranscripts = await fetchYoutubeTranscripts(nodeContext);
 
@@ -502,7 +503,7 @@ export const generateChatNameAction = internalAction({
             }
 
             // Use internal mutation to update titles
-            await ctx.runMutation(internal.messages.functions.updateChatAndNodeTitle, {
+            await ctx.runMutation(internal.messages.updateChatAndNodeTitle, {
                 chatId: args.chatId,
                 title: generatedTitle,
             });

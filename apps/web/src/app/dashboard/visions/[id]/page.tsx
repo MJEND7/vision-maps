@@ -14,7 +14,7 @@ import Channel from '@/components/vision/channel';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { Vision } from "@convex/visions/table";
+import { Vision } from "@convex/tables/visions";
 import SettingsComponent from '@/components/vision/settings';
 import { NodeUserCacheProvider } from '@/hooks/useUserCache';
 import ThemeSwitcher from '@/components/ThemeSwitcher';

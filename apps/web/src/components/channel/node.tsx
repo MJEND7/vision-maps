@@ -1,9 +1,9 @@
 import React, { useState, useRef, memo, useMemo } from "react";
 import { NodeUser } from "@/hooks/useUserCache";
-import { NodeWithFrame } from "@convex/channels/functions";
+import { NodeWithFrame } from "@convex/channels";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { timeSinceFromDateString } from "@/utils/date";
-import { NodeVariants } from "@convex/nodes/table";
+import { NodeVariants } from "@convex/tables/nodes";
 import { Edit2, Trash2, Check, X, Link2, Eye, MessageSquare } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";

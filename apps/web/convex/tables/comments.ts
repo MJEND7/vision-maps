@@ -1,9 +1,9 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
-import { Visions } from "../visions/table";
-import { Channel } from "../channels/table";
-import { Nodes } from "../nodes/table";
-import { User } from "../users/table";
+import { Visions } from "./visions";
+import { Channel } from "./channel";
+import { Nodes } from "./nodes";
+import { User } from "./user";
 
 export class Comments {
     static TABLE_NAME = "comments" as "comments"

@@ -1,8 +1,8 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
-import { User } from "../users/table";
-import { Visions } from "../visions/table";
-import { Comments } from "../comments/table";
+import { User } from "./user";
+import { Visions } from "./visions";
+import { Comments } from "./comments";
 
 export enum NotificationType {
     DEFAULT = "default",

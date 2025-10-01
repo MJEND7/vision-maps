@@ -1,4 +1,4 @@
-import { useReducer, useCallback } from 'react';
+import { useReducer, useCallback, useMemo } from 'react';
 
 // State machine for paste-bin UI states
 interface PasteBinState {
@@ -50,22 +50,28 @@ function pasteBinReducer(state: PasteBinState, action: PasteBinAction): PasteBin
 export function usePasteBinState() {
   const [state, dispatch] = useReducer(pasteBinReducer, initialState);
 
-  const actions = {
-    setDragOver: useCallback((value: boolean) =>
-      dispatch({ type: 'SET_DRAG_OVER', payload: value }), []),
+  const setDragOver = useCallback((value: boolean) =>
+    dispatch({ type: 'SET_DRAG_OVER', payload: value }), []);
 
-    setLoadingLinkMeta: useCallback((value: boolean) =>
-      dispatch({ type: 'SET_LOADING_LINK_META', payload: value }), []),
+  const setLoadingLinkMeta = useCallback((value: boolean) =>
+    dispatch({ type: 'SET_LOADING_LINK_META', payload: value }), []);
 
-    setImageLoaded: useCallback((value: boolean) =>
-      dispatch({ type: 'SET_IMAGE_LOADED', payload: value }), []),
+  const setImageLoaded = useCallback((value: boolean) =>
+    dispatch({ type: 'SET_IMAGE_LOADED', payload: value }), []);
 
-    resetAllLoading: useCallback(() =>
-      dispatch({ type: 'RESET_ALL_LOADING' }), []),
+  const resetAllLoading = useCallback(() =>
+    dispatch({ type: 'RESET_ALL_LOADING' }), []);
 
-    resetState: useCallback(() =>
-      dispatch({ type: 'RESET_STATE' }), []),
-  };
+  const resetState = useCallback(() =>
+    dispatch({ type: 'RESET_STATE' }), []);
+
+  const actions = useMemo(() => ({
+    setDragOver,
+    setLoadingLinkMeta,
+    setImageLoaded,
+    resetAllLoading,
+    resetState,
+  }), [setDragOver, setLoadingLinkMeta, setImageLoaded, resetAllLoading, resetState]);
 
   return { state, actions };
 }

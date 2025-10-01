@@ -1,9 +1,9 @@
-import { mutation, query } from "../_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v, Infer } from "convex/values";
-import { requireAuth, getUserByIdenityId } from "../utils/auth";
+import { requireAuth, getUserByIdenityId } from "./utils/auth";
 import { paginationOptsValidator } from "convex/server";
-import { getUserPlan } from "../auth";
-import { requirePermission, Permission } from "../permissions";
+import { getUserPlan } from "./auth";
+import { requirePermission, Permission } from "./permissions";
 
 // Args schemas
 const createChatArgs = v.object({

@@ -39,7 +39,7 @@ export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarC
 
         // Mutations for chat operations
         const createChatWithNode = useMutation(api.chats.createChatWithNode);
-        const sendMessage = useMutation(api.messages.sendMessage);
+        const sendMessage = useMutation((api as any)["messages/functions"].sendMessage);
 
         const handleNewChat = async () => {
             try {

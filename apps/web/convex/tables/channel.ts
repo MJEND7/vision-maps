@@ -1,6 +1,6 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
-import { Visions } from "../visions/table";
+import { Visions } from "./visions";
 
 // Group of frames around a given context
 export class Channel {

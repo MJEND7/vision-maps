@@ -3,7 +3,7 @@ import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { WebhookEvent } from "@clerk/backend";
 import { Webhook } from "svix";
-import { streamChat } from "./messages/functions";
+import { streamChat } from "./messages";
 import { requireAuth } from "./utils/auth";
 
 const http = httpRouter();
@@ -50,7 +50,7 @@ http.route({
     switch (event.type) {
       case "subscription.updated":
         console.log(event.data.id, event.data)
-        await ctx.runMutation(internal.users.trials_functions.createTrial, {
+        await ctx.runMutation(internal.userTrials.createTrial, {
           clerkUserId: event.data.payer.user_id as string,
           organizationId: event.data.payer.organization_id,
           trialDays: 3,
@@ -76,14 +76,14 @@ http.route({
     switch (event.type) {
       case "user.created": // intentional fallthrough
       case "user.updated":
-        await ctx.runMutation(internal.users.functions.upsertFromClerk, {
+        await ctx.runMutation(internal.user.upsertFromClerk, {
           data: event.data,
         });
         break;
 
       case "user.deleted": {
         const clerkUserId = event.data.id!;
-        await ctx.runMutation(internal.users.functions.deleteFromClerk, { clerkUserId });
+        await ctx.runMutation(internal.user.deleteFromClerk, { clerkUserId });
         break;
       }
       default:

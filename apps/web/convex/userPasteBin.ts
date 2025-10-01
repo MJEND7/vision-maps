@@ -1,6 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "../_generated/server";
-import { UserPasteBin } from "./paste_bin_table";
+import { mutation, query } from "./_generated/server";
+import { UserPasteBin } from "./tables/userPasteBin";
 
 // Get the paste bin for a user in a specific vision
 export const get = query({

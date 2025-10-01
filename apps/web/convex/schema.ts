@@ -1,18 +1,18 @@
 import { defineSchema } from "convex/server";
-import { Visions } from "./visions/table";
-import { Channel } from "./channels/table";
-import { Frame } from "./frames/table";
-import { Nodes } from "./nodes/table";
-import { User } from "./users/table";
-import { Comments } from "./comments/table";
-import { Notifications } from "./notifications/table";
-import { Chats } from "./chats/table";
-import { Messages } from "./messages/table";
-import { OGMetadata } from "./ogMetadata/table";
-import { Edges } from "./edges/table";
-import { FramedNode } from "./frames/framed_node_table";
-import { UserTrials } from "./users/trials_table";
-import { UserPasteBin } from "./users/paste_bin_table";
+import { Visions } from "./tables/visions";
+import { Channel } from "./tables/channel";
+import { Frame } from "./tables/frame";
+import { Nodes } from "./tables/nodes";
+import { User } from "./tables/user";
+import { Comments } from "./tables/comments";
+import { Notifications } from "./tables/notifications";
+import { Chats } from "./tables/chats";
+import { Messages } from "./tables/messages";
+import { OGMetadata } from "./tables/ogMetadata";
+import { Edges } from "./tables/edges";
+import { FramedNode } from "./tables/framed_node";
+import { UserTrials } from "./tables/userTrials";
+import { UserPasteBin } from "./tables/userPasteBin";
 
 // The schema is entirely optional.
 // You can delete this file (schema.ts) and the

@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { NodeVariants } from "../nodes/table";
+import { NodeVariants } from "../tables/nodes";
 import { Id } from "../_generated/dataModel";
 
 export enum AssistantMode {

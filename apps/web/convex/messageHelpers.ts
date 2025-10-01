@@ -1,5 +1,5 @@
-import { NodeVariants } from "../nodes/table";
-import { AssistantMode, Context, edge_context } from "../utils/context";
+import { NodeVariants } from "./tables/nodes";
+import { AssistantMode, Context, edge_context } from "./utils/context";
 
 export type NodeContextOutput = {
     context: Context;

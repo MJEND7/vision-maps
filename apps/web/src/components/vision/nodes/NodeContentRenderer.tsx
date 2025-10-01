@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useTheme } from "next-themes";
-import { NodeVariants } from "@convex/nodes/table";
+import { NodeVariants } from "@convex/tables/nodes";
 import Image from "next/image";
 import { Brain, Check, ExternalLink, Expand, Minimize2 } from 'lucide-react';
 import { AudioPlayer } from "../../channel/audio-player";
@@ -405,6 +405,7 @@ export function renderNodeContent(
             try {
                 transcriptChunks = JSON.parse(node.value);
             } catch (e) {
+                console.error(e)
                 // Fallback to treating as plain text if parsing fails
                 return <ExpandableTextContent textExpand={textExpand} content={node.value} />;
             }

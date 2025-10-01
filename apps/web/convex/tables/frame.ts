@@ -1,7 +1,7 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
-import { Visions } from "../visions/table";
-import { Channel } from "../channels/table";
+import { Visions } from "./visions";
+import { Channel } from "./channel";
 import { nodeValidator } from "../reactflow/types";
 
 // A frame is a place where you can group nodes and we automaticly 

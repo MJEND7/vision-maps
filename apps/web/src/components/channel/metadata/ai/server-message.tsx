@@ -136,7 +136,7 @@ export function ServerMessage({
     };
 
     const { text, status } = useStream(
-        api.messages.getStreamBody,
+        (api as any)["messages/functions"].getStreamBody,
         new URL(`${getConvexSiteUrl()}/chat-stream`),
         isDriven,
         message.streamId as StreamId,

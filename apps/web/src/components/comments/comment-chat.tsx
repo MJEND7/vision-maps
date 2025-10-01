@@ -89,7 +89,7 @@ export function CommentChat({ chatId, className, onClose, localCommentData, visi
 
   // Get messages for this specific chat (skip for local chats without real ID)
   const messagesResult = useQuery(
-    api.messages.listMessagesByChat,
+    (api as any)["messages/functions"].listMessagesByChat,
     chat && realChatId ? {
       chatId: chat._id,
       paginationOpts: {
@@ -103,7 +103,7 @@ export function CommentChat({ chatId, className, onClose, localCommentData, visi
   const userIds = React.useMemo(() => {
     if (!messagesResult?.page) return [];
     const ids = messagesResult.page.map((message: any) => message.userId).filter(Boolean);
-    return [...new Set(ids)];
+    return [...new Set(ids)] as string[];
   }, [messagesResult]);
 
   // Get user data for all message authors
@@ -158,7 +158,7 @@ export function CommentChat({ chatId, className, onClose, localCommentData, visi
     }
   }, [replyingTo, editingComment]);
 
-  const sendMessage = useMutation(api.messages.sendMessage);
+  const sendMessage = useMutation((api as any)["messages/functions"].sendMessage);
 
   const handleSendComment = async () => {
     if (!newComment.trim()) return;

@@ -16,8 +16,8 @@ import { usePasteBinState } from "@/lib/paste-bin-state";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { CreateNodeArgs } from "@convex/nodes/functions";
-import { NodeVariants } from "@convex/nodes/table";
+import { CreateNodeArgs } from "@convex/nodes";
+import { NodeVariants } from "@convex/tables/nodes";
 import { useOGMetadataWithCache } from "@/utils/ogMetadata";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Permission } from "@/lib/permissions";
@@ -316,7 +316,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     const canUseAI = hasPermission(Permission.AI_NODES);
 
     const createChat = useMutation(api.chats.createChat);
-    const sendMessage = useMutation(api.messages.sendMessage);
+    const sendMessage = useMutation((api as any)["messages/functions"].sendMessage);
     const deleteChat = useMutation(api.chats.deleteChat);
 
     // Convex mutations for paste bin persistence
@@ -1076,7 +1076,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                 if (transcriptValue) {
                     // Upload audio if available
                     let audioUrl: string | undefined;
-                    let audioDuration: number | undefined;
 
                     if (recordedAudioBlob) {
                         const toastId = toast.loading('Converting and uploading recording...');
@@ -1093,24 +1092,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                             }
 
                             console.log('[PasteBin] Starting audio processing, WebM size:', finalAudioBlob.size, 'bytes');
-
-                            // Get audio duration by creating a temporary audio element
-                            audioDuration = await new Promise<number>((resolve) => {
-                                const audioElement = document.createElement('audio');
-                                audioElement.preload = 'metadata';
-                                audioElement.onloadedmetadata = () => {
-                                    const duration = audioElement.duration;
-                                    URL.revokeObjectURL(audioElement.src);
-                                    resolve(duration && !isNaN(duration) && isFinite(duration) ? duration : 0);
-                                };
-                                audioElement.onerror = () => {
-                                    URL.revokeObjectURL(audioElement.src);
-                                    resolve(0);
-                                };
-                                audioElement.src = URL.createObjectURL(finalAudioBlob);
-                            });
-
-                            console.log('[PasteBin] Audio duration:', audioDuration, 'seconds');
 
                             // Convert to WAV format with timestamp metadata
                             toast.loading('Converting to WAV format...', { id: toastId });

@@ -1,10 +1,10 @@
 import { v } from "convex/values";
-import { connectionValidator, edgeChangeValidator } from "../reactflow/types";
-import { mutation, query } from "../_generated/server";
-import { rfEdge } from "./table";
+import { connectionValidator, edgeChangeValidator } from "./reactflow/types";
+import { mutation, query } from "./_generated/server";
+import { rfEdge } from "./tables/edges";
 import { addEdge, applyEdgeChanges } from "@xyflow/react";
-import { Id } from "../_generated/dataModel";
-import { requireVisionAccess } from "../utils/auth";
+import { Id } from "./_generated/dataModel";
+import { requireVisionAccess } from "./utils/auth";
 
 export const get = query({
     args: { frameId: v.id("frames") },

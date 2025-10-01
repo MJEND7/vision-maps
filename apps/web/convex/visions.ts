@@ -1,10 +1,10 @@
-import { mutation, query } from "../_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v, Infer } from "convex/values";
-import { requireAuth, requireVisionAccess } from "../utils/auth";
-import { Vision, VisionAccessRole, VisionUserStatus } from "./table";
-import { createDefaultChannel } from "../utils/channel";
-import { getUserPlan, getOrganizationId } from "../auth";
-import { canCreateVision, canInviteToVision, requireTeamsForOrg, PermissionError, VISION_LIMITS, COLLABORATION_LIMITS } from "../permissions";
+import { requireAuth, requireVisionAccess } from "./utils/auth";
+import { Vision, VisionAccessRole, VisionUserStatus } from "./tables/visions";
+import { createDefaultChannel } from "./utils/channel";
+import { getUserPlan, getOrganizationId } from "./auth";
+import { canCreateVision, canInviteToVision, requireTeamsForOrg, PermissionError, VISION_LIMITS, COLLABORATION_LIMITS } from "./permissions";
 
 // Args schemas
 const createArgs = v.object({

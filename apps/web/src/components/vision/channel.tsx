@@ -27,7 +27,7 @@ import { MultiUserSelector } from "@/components/ui/multi-user-selector";
 import { useNodeUserCache } from "@/hooks/useUserCache";
 import { useNodeStore } from "@/hooks/useNodeStore";
 import PasteBin from "../channel/paste-bin";
-import { CreateNodeArgs } from "@convex/nodes/functions";
+import { CreateNodeArgs } from "@convex/nodes";
 import { NODE_VARIANTS } from "@/lib/constants";
 import { useMetadataCache } from "../../utils/ogMetadata";
 import ChannelNode from "../channel/node";
@@ -666,7 +666,7 @@ export default function Channel({
                                 {storedNodes.map((node, i) => {
                                     const nodeUser = getUserForNode(node.userId);
                                     return (
-                                        <div key={i}>
+                                        <div key={`node-${i}`}>
                                             <ChannelNode
                                                 node={node}
                                                 nodeUser={nodeUser}

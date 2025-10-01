@@ -22,7 +22,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import PasteBin from "../channel/paste-bin";
-import { CreateNodeArgs } from "@convex/nodes/functions";
+import { CreateNodeArgs } from "@convex/nodes";
 import { useMetadataCache } from "../../utils/ogMetadata";
 import { useMovementQueue } from "../../hooks/useMovementQueue";
 import nodeTypes from "./nodes";

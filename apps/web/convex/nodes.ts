@@ -1,9 +1,9 @@
-import { mutation, query } from "../_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v, Infer } from "convex/values";
-import { Id } from "../_generated/dataModel";
-import { getUserByIdenityId, requireAuth, requireVisionAccess } from "../utils/auth";
+import { Id } from "./_generated/dataModel";
+import { getUserByIdenityId, requireAuth, requireVisionAccess } from "./utils/auth";
 import { paginationOptsValidator } from "convex/server";
-import { nodeValidator } from "../reactflow/types";
+import { nodeValidator } from "./reactflow/types";
 
 // Args schemas
 const createArgs = v.object({

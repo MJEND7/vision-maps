@@ -1,7 +1,7 @@
 // stores/useNodeStore.ts
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { NodeWithFrame } from "@convex/channels/functions"
+import { NodeWithFrame } from "@convex/channels"
 
 interface NodeStore {
   // Store nodes by channel ID

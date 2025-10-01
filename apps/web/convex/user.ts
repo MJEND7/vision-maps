@@ -1,7 +1,7 @@
-import { internalMutation, query, QueryCtx } from "../_generated/server";
+import { internalMutation, query, QueryCtx } from "./_generated/server";
 import { UserJSON } from "@clerk/backend";
 import { v, Validator, Infer } from "convex/values";
-import { requireVisionAccess } from "../utils/auth";
+import { requireVisionAccess } from "./utils/auth";
 
 // Args schemas
 const currentArgs = v.object({});

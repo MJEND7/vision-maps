@@ -1,4 +1,4 @@
-import { NodeVariants } from "@convex/nodes/table";
+import { NodeVariants } from "@convex/tables/nodes";
 
 export { BaseCard } from './base-card';
 export { GitHubCard } from './github-card';
