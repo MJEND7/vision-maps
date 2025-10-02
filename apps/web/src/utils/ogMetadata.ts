@@ -2,6 +2,7 @@ import { useMutation, useConvex } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { useCallback } from "react";
 import { NodeVariants } from "@convex/tables/nodes";
+import { ApiRoutes } from "@/constants/apiRoutes";
 
 export interface OGMetadata {
     title?: string;
@@ -222,7 +223,7 @@ export function useOGMetadataWithCache() {
 // Standalone function for one-off metadata fetching
 export async function fetchOGMetadata(url: string): Promise<OGFetchResult> {
     try {
-        const response = await fetch('/api/og', {
+        const response = await fetch(ApiRoutes.OG_METADATA, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -21,6 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { InviteUsersDialogue } from "../ui/invite-users-dialogue";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { UpgradeDialog } from "../ui/upgrade-dialog";
+import { ApiRoutes } from "@/constants/apiRoutes";
 
 interface SettingsComponentProps {
     id?: string;
@@ -95,7 +96,7 @@ export default function SettingsComponent({
 
         setIsUploading(true);
         try {
-            const response = await fetch('/api/uploadthing/delete', {
+            const response = await fetch(ApiRoutes.UPLOADTHING_DELETE, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

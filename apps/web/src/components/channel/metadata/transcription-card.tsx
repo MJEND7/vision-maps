@@ -16,7 +16,7 @@ interface TranscriptionNodeContentProps {
     recordingStartTime?: number; // ms when recording started
 }
 
-export function TranscriptionNodeContent({
+export function TranscriptionCard({
     audioUrl,
     transcriptChunks,
     recordingStartTime,
@@ -185,3 +185,4 @@ export function TranscriptionNodeContent({
         </div>
     );
 }
+

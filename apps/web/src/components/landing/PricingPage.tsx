@@ -23,6 +23,7 @@ import { Users, Plus, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { ApiRoutes } from "@/constants/apiRoutes";
 
 // Hardcoded pricing config (UI only — no Clerk IDs yet)
 const plans = [
@@ -226,7 +227,7 @@ export function PricingComponent() {
             await new Promise(resolve => setTimeout(resolve, 1500));
 
             // Check if user already has Pro plan on personal account
-            const response = await fetch('/api/user-plan');
+            const response = await fetch(ApiRoutes.USER_PLAN);
             const data = await response.json();
 
             console.log('User plan check:', data); // Debug log

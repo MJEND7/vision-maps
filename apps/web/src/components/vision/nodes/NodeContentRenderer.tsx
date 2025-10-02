@@ -5,8 +5,7 @@ import Image from "next/image";
 import { Brain, Check, ExternalLink, Expand, Minimize2 } from 'lucide-react';
 import { AudioPlayer } from "../../channel/audio-player";
 import { VideoPlayer } from "../../channel/video-player";
-import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard } from "../../channel/metadata";
-import { TranscriptionNodeContent } from "./TranscriptionNodeContent";
+import { TranscriptionCard, GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard } from "../../channel/metadata";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useOGMetadataWithCache } from "@/utils/ogMetadata";
 import Markdown, { Components } from "react-markdown";
@@ -256,7 +255,7 @@ function NodeWithMetadata({ node, variant }: { node: any, variant: NodeVariants 
 // Component for rendering image nodes with dialog
 function ImageNodeContent({ node }: { node: any }) {
     const [isImageDialogOpen, setIsImageDialogOpen] = React.useState(false);
-    
+
     return (
         <>
             <div className="rounded-lg overflow-hidden border cursor-pointer" onClick={() => setIsImageDialogOpen(true)}>
@@ -413,7 +412,7 @@ export function renderNodeContent(
             // Check if we have audio and transcript chunks
             if (node.audioUrl && transcriptChunks && transcriptChunks.length > 0) {
                 return (
-                    <TranscriptionNodeContent
+                    <TranscriptionCard
                         audioUrl={node.audioUrl}
                         transcriptChunks={transcriptChunks}
                         recordingStartTime={transcriptChunks[0]?.timestamp}

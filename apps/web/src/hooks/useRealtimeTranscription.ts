@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { AssemblyAI, RealtimeTranscriber } from 'assemblyai'
+import { ApiRoutes } from '@/constants/apiRoutes'
 
 export type AudioSource = 'microphone' | 'device'
 
@@ -63,7 +64,7 @@ export function useRealtimeTranscription(
                 setAudioSource(source)
 
                 // Fetch temporary API key/token from your API route
-                const response = await fetch('/api/transcribe', {
+                const response = await fetch(ApiRoutes.TRANSCRIBE, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'start' }),

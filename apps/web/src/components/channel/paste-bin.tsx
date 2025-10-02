@@ -25,8 +25,9 @@ import { UpgradeDialog } from "../ui/upgrade-dialog";
 import { useRealtimeTranscription, getAvailableAudioDevices } from "@/hooks/useRealtimeTranscription";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { convertToWav, stitchAudioBlobs } from "@/utils/audio";
+import { ApiRoutes } from "@/constants/apiRoutes";
 
-// Paste-bin mode enum
 export enum PasteBinMode {
     IDLE = 'idle',
     TEXT = 'text',
@@ -34,172 +35,6 @@ export enum PasteBinMode {
     MEDIA = 'media',
     EMBED = 'embed',
     TRANSCRIPTION = 'transcription'
-}
-
-// Helper function to stitch multiple audio blobs together
-async function stitchAudioBlobs(blobs: Blob[]): Promise<Blob> {
-    if (blobs.length === 0) {
-        throw new Error('No audio blobs to stitch');
-    }
-
-    if (blobs.length === 1) {
-        return blobs[0];
-    }
-
-    console.log('[Audio Stitching] Stitching', blobs.length, 'audio blobs');
-
-    // Decode all audio blobs
-    const audioContext = new AudioContext();
-    const audioBuffers: AudioBuffer[] = [];
-
-    for (const blob of blobs) {
-        const arrayBuffer = await blob.arrayBuffer();
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        audioBuffers.push(audioBuffer);
-    }
-
-    // Calculate total length
-    const totalLength = audioBuffers.reduce((sum, buffer) => sum + buffer.length, 0);
-    const numberOfChannels = audioBuffers[0].numberOfChannels;
-    const sampleRate = audioBuffers[0].sampleRate;
-
-    // Create a new buffer to hold all audio
-    const stitchedBuffer = audioContext.createBuffer(numberOfChannels, totalLength, sampleRate);
-
-    // Copy all audio data into the stitched buffer
-    let offset = 0;
-    for (const buffer of audioBuffers) {
-        for (let channel = 0; channel < numberOfChannels; channel++) {
-            stitchedBuffer.getChannelData(channel).set(buffer.getChannelData(channel), offset);
-        }
-        offset += buffer.length;
-    }
-
-    // Convert to WebM blob using MediaRecorder
-    const mediaStream = audioContext.createMediaStreamDestination();
-    const source = audioContext.createBufferSource();
-    source.buffer = stitchedBuffer;
-    source.connect(mediaStream);
-
-    const mediaRecorder = new MediaRecorder(mediaStream.stream, {
-        mimeType: 'audio/webm;codecs=opus'
-    });
-
-    const chunks: Blob[] = [];
-    mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-            chunks.push(e.data);
-        }
-    };
-
-    const stitchedBlob = await new Promise<Blob>((resolve, reject) => {
-        mediaRecorder.onstop = () => {
-            const blob = new Blob(chunks, { type: 'audio/webm' });
-            resolve(blob);
-        };
-        mediaRecorder.onerror = reject;
-
-        mediaRecorder.start();
-        source.start();
-
-        // Stop after the audio finishes playing
-        setTimeout(() => {
-            mediaRecorder.stop();
-            source.stop();
-        }, (totalLength / sampleRate) * 1000 + 100);
-    });
-
-    await audioContext.close();
-    console.log('[Audio Stitching] Stitched blob size:', stitchedBlob.size, 'bytes');
-
-    return stitchedBlob;
-}
-
-// Helper function to convert audio blob to WAV with timestamp metadata
-async function convertToWav(
-    audioBlob: Blob,
-): Promise<Blob> {
-    // Decode audio data - use high sample rate for better quality
-    const audioContext = new AudioContext({ sampleRate: 48000 });
-    const arrayBuffer = await audioBlob.arrayBuffer();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-    // Get audio data
-    const numberOfChannels = audioBuffer.numberOfChannels;
-    const sampleRate = audioBuffer.sampleRate;
-    const length = audioBuffer.length;
-
-    console.log('[WAV Conversion] Channels:', numberOfChannels, 'Sample Rate:', sampleRate, 'Length:', length);
-
-    // For mono recordings, use single channel. For stereo, interleave properly
-    let pcmData: Int16Array;
-
-    if (numberOfChannels === 1) {
-        // Mono - simpler and clearer
-        const channelData = audioBuffer.getChannelData(0);
-        pcmData = new Int16Array(length);
-        for (let i = 0; i < length; i++) {
-            const s = Math.max(-1, Math.min(1, channelData[i]));
-            pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-        }
-    } else {
-        // Stereo - interleave channels
-        const interleaved = new Float32Array(length * numberOfChannels);
-        for (let channel = 0; channel < numberOfChannels; channel++) {
-            const channelData = audioBuffer.getChannelData(channel);
-            for (let i = 0; i < length; i++) {
-                interleaved[i * numberOfChannels + channel] = channelData[i];
-            }
-        }
-
-        // Convert Float32 to Int16 with proper scaling
-        pcmData = new Int16Array(interleaved.length);
-        for (let i = 0; i < interleaved.length; i++) {
-            const s = Math.max(-1, Math.min(1, interleaved[i]));
-            pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-        }
-    }
-
-    // Create WAV file with proper headers
-    const wavBuffer = new ArrayBuffer(44 + pcmData.length * 2);
-    const view = new DataView(wavBuffer);
-
-    // WAV header
-    const writeString = (offset: number, string: string) => {
-        for (let i = 0; i < string.length; i++) {
-            view.setUint8(offset + i, string.charCodeAt(i));
-        }
-    };
-
-    const byteRate = sampleRate * numberOfChannels * 2;
-    const blockAlign = numberOfChannels * 2;
-    const dataSize = pcmData.length * 2;
-
-    writeString(0, 'RIFF');
-    view.setUint32(4, 36 + dataSize, true); // ChunkSize
-    writeString(8, 'WAVE');
-    writeString(12, 'fmt ');
-    view.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
-    view.setUint16(20, 1, true); // AudioFormat (1 = PCM)
-    view.setUint16(22, numberOfChannels, true); // NumChannels
-    view.setUint32(24, sampleRate, true); // SampleRate
-    view.setUint32(28, byteRate, true); // ByteRate
-    view.setUint16(32, blockAlign, true); // BlockAlign
-    view.setUint16(34, 16, true); // BitsPerSample
-    writeString(36, 'data');
-    view.setUint32(40, dataSize, true); // Subchunk2Size
-
-    // Write PCM data with proper byte order (little endian)
-    let offset = 44;
-    for (let i = 0; i < pcmData.length; i++) {
-        view.setInt16(offset, pcmData[i], true); // true = little endian
-        offset += 2;
-    }
-
-    await audioContext.close();
-
-    console.log('[WAV Conversion] Created WAV file:', dataSize, 'bytes');
-    return new Blob([wavBuffer], { type: 'audio/wav' });
 }
 
 // Data interfaces
@@ -355,7 +190,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         clearTranscript,
     } = useRealtimeTranscription({
         onTranscript: (text, timestamp) => {
-            // Add new chunk with accurate timestamp from recording start
             const newChunk = { text, timestamp };
             setTranscriptChunks(prev => [...prev, newChunk]);
         },
@@ -451,8 +285,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             setChatId(pasteBinData.chatId);
         }
 
-        // Transcription will be restored by displaying valueArray directly in the UI
-
         // Restore media if valid
         if (pasteBinData.type && pasteBinData.value) {
             const restoredMedia: Media = {
@@ -502,17 +334,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         };
     }, []);
 
-    // Focus textarea when text mode is activated
-    useEffect(() => {
-        if ((mode === PasteBinMode.TEXT || mode === PasteBinMode.AI) && textareaRef.current) {
-            // Use requestAnimationFrame instead of setTimeout for better performance
-            const focusTimeout = requestAnimationFrame(() => {
-                textareaRef.current?.focus();
-            });
-            return () => cancelAnimationFrame(focusTimeout);
-        }
-    }, [mode]);
-
     const setIdle = async () => {
         if (debounceTimerRef.current) {
             clearTimeout(debounceTimerRef.current);
@@ -537,18 +358,14 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         }
     }, [mode, savePasteBinToDb]);
 
-    // Debounced text content update
     const updateTextContent = useCallback((content: string) => {
-        // Clear existing timer
         if (debounceTimerRef.current) {
             clearTimeout(debounceTimerRef.current);
         }
 
         setTextContent(content);
 
-        // Set debounce timer to create text media item
         debounceTimerRef.current = setTimeout(() => {
-            // Set debounced database save
             savePasteBinToDb({
                 mode: mode,
                 textContent: content,
@@ -589,7 +406,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             if (res && res[0]) {
                 setMedia(currentMedia => {
                     if (currentMedia) {
-                        // Clear the preview URL and use the uploaded URL
                         if (currentMedia.url && currentMedia.url.startsWith('blob:')) {
                             URL.revokeObjectURL(currentMedia.url);
                         }
@@ -599,7 +415,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                             url: res[0].ufsUrl, // Update the url to the uploaded version
                             isUploading: false
                         };
-                        // Save to database
                         savePasteBinToDb({
                             mode: mode,
                             type: updatedMedia.type,
@@ -616,7 +431,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             setMedia(currentMedia => {
                 if (currentMedia) {
                     const updatedMedia = { ...currentMedia, isUploading: false };
-                    // Save to database
                     savePasteBinToDb({
                         mode: mode,
                         type: updatedMedia.type,
@@ -634,12 +448,11 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         if (type.startsWith("image/")) return NodeVariants.Image;
         if (type.startsWith("audio/")) return NodeVariants.Audio;
         if (type.startsWith("video/")) return NodeVariants.Video;
-        return NodeVariants.Link; // Using Link as default for file types
+        return NodeVariants.Link;
     };
 
     const detectLinkType = useCallback((url: string): NodeVariants => {
         try {
-            // Validate URL exists and is a string
             if (!url || typeof url !== 'string' || url.trim() === '') {
                 console.error('Invalid URL provided to detectLinkType:', url);
                 return NodeVariants.Link;
@@ -665,26 +478,20 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     }, []);
 
     const fetchLinkMetadata = useCallback(async (url: string): Promise<any> => {
-        console.log('fetchLinkMetadata called with:', url, 'type:', typeof url);
         try {
-            // Validate URL before processing
             if (!url || typeof url !== 'string' || url.trim() === '') {
                 throw new Error('Invalid URL provided to fetchLinkMetadata');
             }
 
-            console.log('About to call fetchWithCache with:', url);
             const result = await fetchWithCache(url);
-            console.log('fetchWithCache result:', result);
             return {
                 ...result.metadata,
                 type: result.type
             };
         } catch (error) {
             console.error('Error fetching metadata:', error);
-            console.log('About to call detectLinkType with:', url);
             const fallbackType = detectLinkType(url);
 
-            // Safe fallback with URL validation
             try {
                 const hostname = url ? new URL(url).hostname : 'Invalid URL';
                 return {
@@ -723,18 +530,15 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         updateMedia(newMedia);
         actions.setImageLoaded(false);
 
-        // Start upload immediately
         startUpload([file]);
     }, [actions, updateMedia, startUpload]);
 
     const handleLinkPaste = useCallback(async (url: string) => {
-        // Validate URL before processing
         if (!url || typeof url !== 'string' || url.trim() === '') {
             console.error('Invalid URL provided to handleLinkPaste:', url);
             return;
         }
 
-        // Validate URL format
         try {
             new URL(url);
         } catch (urlError) {
@@ -747,7 +551,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
 
         try {
             const meta = await fetchLinkMetadata(url);
-            // Convert LinkMetadata to unified Media format and save to localStorage only when complete
             updateMedia({
                 type: meta.type as NodeVariants,
                 title: meta.title,
@@ -763,12 +566,10 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         }
     }, [actions, updateMedia, fetchLinkMetadata]);
 
-    // Input handlers that depend on handleLinkPaste and handleFileSelect
     const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const clipboardData = e.clipboardData;
         const files = Array.from(clipboardData.files);
 
-        // Try multiple ways to get text data
         const text = clipboardData.getData("text/plain") || clipboardData.getData("text") || clipboardData.getData("text/uri-list");
 
         if (files.length > 0) {
@@ -777,7 +578,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             const cleanUrl = text.trim();
             console.log('Processing URL:', cleanUrl);
             handleLinkPaste(cleanUrl);
-            updateTextContent("");  // Clear input after pasting link
+            updateTextContent("");
         }
     }, [handleFileSelect, handleLinkPaste, updateTextContent]);
 
@@ -788,13 +589,11 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         // Auto-detect and handle URLs when user types/pastes
         if (value && typeof value === 'string' && value.trim() && (value.startsWith("http://") || value.startsWith("https://"))) {
             handleLinkPaste(value.trim());
-            updateTextContent("");  // Clear input after processing link
+            updateTextContent("");
             return;
         }
 
-        // Handle text mode with debounce
         if (value && !value.startsWith("http://") && !value.startsWith("https://")) {
-            // Clear existing timer
             if (debounceTimerRef.current) {
                 clearTimeout(debounceTimerRef.current);
             }
@@ -803,7 +602,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                 setMode(PasteBinMode.TEXT);
                 setIsTextMode(true);
             }
-            // Set debounce timer to create text media item
             debounceTimerRef.current = setTimeout(() => {
                 if (mode === PasteBinMode.IDLE) {
                     savePasteBinToDb({ mode: PasteBinMode.TEXT });
@@ -848,7 +646,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     }, [sendMessage, textContent]);
 
     const handleToggleAiMode = useCallback(async () => {
-        // Check if user has permission to use AI features
         if (!canUseAI) {
             setShowUpgradeDialog(true);
             return;
@@ -902,7 +699,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         }
     }, []);
 
-    // Auto-scroll to bottom when new transcript chunks arrive
     useEffect(() => {
         if (transcriptContainerRef.current && isRecording && transcriptChunks.length > 0) {
             transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
@@ -914,28 +710,23 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         try {
             const audioBlob = await stopRecording();
             if (audioBlob) {
-                // Add to previous blobs for stitching
                 setPreviousAudioBlobs(prev => [...prev, audioBlob]);
                 setRecordedAudioBlob(audioBlob);
                 console.log('[PasteBin] Audio blob captured:', audioBlob.size, 'bytes');
             }
-            // Keep the transcription mode to show the final transcript
-            // User can then create node or clear
         } finally {
             setIsStopping(false);
         }
     }, [stopRecording]);
 
     const clearMedia = useCallback(async (deleteUnusedChat = true) => {
-        // Stop recording if active (but continue to clear everything)
         if (isRecording) {
             await stopRecording();
         }
 
-        // Delete any uploaded media files if not clearing after successful creation
         if (media && media.uploadedUrl && deleteUnusedChat) {
             try {
-                const response = await fetch('/api/uploadthing/delete', {
+                const response = await fetch(ApiRoutes.UPLOADTHING_DELETE, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -951,8 +742,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             }
         }
 
-        // Delete any chat that was created but not used (no messages sent)
-        // Only delete if this is a cancellation, not after successful creation
         if (chatId && isAiMode && deleteUnusedChat) {
             try {
                 await deleteChat({ chatId: chatId as Id<"chats"> });
@@ -961,10 +750,8 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             }
         }
 
-        // Clear database
         await clearPasteBin({ visionId: visionId as Id<"visions"> });
 
-        // Clear transcription
         clearTranscript();
         setTranscriptChunks([]);
         setRecordedAudioBlob(null);
@@ -992,7 +779,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             saveDebounceRef.current = null;
         }
 
-        // Reset state machine
         actions.resetState();
 
         if (fileInputRef.current) {
@@ -1003,15 +789,12 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     const handleCreate = useCallback(async () => {
         const node = async () => {
             if (media) {
-                // Handle file uploads
                 if (media.file || media.uploadedUrl) {
-                    // If still uploading, wait for upload to complete
                     if (isUploading) {
                         console.log("Upload in progress, please wait...");
                         return;
                     }
 
-                    // Upload should already be completed at this point
                     const url = media.uploadedUrl;
                     if (!url && media.file) {
                         console.log("No uploaded URL available, upload may have failed");
@@ -1027,7 +810,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                     return;
                 }
 
-                // Handle links/embeds
                 if (media.url) {
                     onCreateNode({
                         title: media.title || 'Untitled',
@@ -1038,7 +820,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                     return;
                 }
 
-                // Handle AI chat
                 if (media.chatId) {
                     onCreateNode({
                         title: media.title || "AI Chat",
@@ -1049,50 +830,37 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                 }
             }
 
-            // Handle transcription mode
             if (mode === PasteBinMode.TRANSCRIPTION) {
-                // Use either live transcriptChunks or restored valueArray from database
                 const chunks = transcriptChunks.length > 0 ? transcriptChunks : (pasteBinData?.valueArray || []);
                 const transcriptValue = chunks.map(c => c.text).join(' ');
                 if (transcriptValue) {
-                    // Upload audio if available
                     let audioUrl: string | undefined;
 
                     if (recordedAudioBlob) {
                         const toastId = toast.loading('Converting and uploading recording...');
                         setIsUploadingAudio(true);
                         try {
-                            // Stitch all audio blobs together if there are multiple recordings
                             let finalAudioBlob: Blob;
                             if (previousAudioBlobs.length > 1) {
-                                console.log('[PasteBin] Stitching', previousAudioBlobs.length, 'audio recordings...');
                                 toast.loading('Stitching audio recordings...', { id: toastId });
                                 finalAudioBlob = await stitchAudioBlobs(previousAudioBlobs);
                             } else {
                                 finalAudioBlob = recordedAudioBlob;
                             }
 
-                            console.log('[PasteBin] Starting audio processing, WebM size:', finalAudioBlob.size, 'bytes');
-
-                            // Convert to WAV format with timestamp metadata
-                            toast.loading('Converting to WAV format...', { id: toastId });
                             const wavBlob = await convertToWav(finalAudioBlob);
-                            console.log('[PasteBin] Converted to WAV, size:', wavBlob.size, 'bytes', `(${(wavBlob.size / 1024 / 1024).toFixed(2)}MB)`);
 
-                            // Check file size (16MB limit)
                             const maxSize = 16 * 1024 * 1024;
                             if (wavBlob.size > maxSize) {
                                 throw new Error(`Audio file is too large (${(wavBlob.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 16MB. Try recording for a shorter duration.`);
                             }
 
-                            // Convert blob to File
                             const audioFile = new File(
                                 [wavBlob],
                                 `transcription-${Date.now()}.wav`,
                                 { type: 'audio/wav' }
                             );
 
-                            // Upload to UploadThing with timeout
                             toast.loading('Uploading recording...', { id: toastId });
                             const uploadResult = await Promise.race([
                                 startUpload([audioFile]),
@@ -1103,7 +871,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
 
                             if (uploadResult && uploadResult[0]) {
                                 audioUrl = uploadResult[0].ufsUrl;
-                                console.log('[PasteBin] Audio uploaded successfully:', audioUrl);
                                 toast.success('Recording uploaded successfully!', { id: toastId, duration: 2000 });
                             } else {
                                 throw new Error('Upload completed but no URL returned');
@@ -1121,7 +888,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                         }
                     }
 
-                    // Create the node - serialize chunks as JSON in value
                     onCreateNode({
                         title: "Transcription",
                         variant: NodeVariants.Transcription,
@@ -1129,14 +895,10 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                         thought: "",
                         audioUrl,
                     });
-
-                    // Note: clearMedia(false) will be called after this function returns
-                    // to fully clear the paste bin state
                     return;
                 }
             }
 
-            // Handle text mode without media (but not transcription mode)
             if ((isTextMode || isAiMode) && mode !== PasteBinMode.TRANSCRIPTION) {
                 let value;
                 if (isAiMode && chatId) {
@@ -1153,13 +915,11 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             }
         }
 
-        // Clear all data after successful creation (don't delete chat)
         await node();
         await clearMedia(false);
     }, [media, clearMedia, onCreateNode, textContent, isTextMode, isAiMode, chatId, isUploading, mode, transcriptChunks, pasteBinData]);
 
     const isValidForCreation = useCallback(() => {
-        // Transcription mode validation
         if (mode === PasteBinMode.TRANSCRIPTION) {
             const chunks = transcriptChunks.length > 0 ? transcriptChunks : (pasteBinData?.valueArray || []);
             const transcriptValue = chunks.map(c => c.text).join(' ');
@@ -1170,10 +930,8 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             if (media.type === NodeVariants.Text || media.type === NodeVariants.AI) {
                 return !!media.customName || !!media.title;
             } else if (media.file) {
-                // For media files, upload must be completed and have an uploaded URL
                 return !!media.fileName && !isUploading && !!media.uploadedUrl;
             } else if (media.url) {
-                // For links/embeds
                 return !isLoadingLinkMeta;
             }
         }
@@ -1412,7 +1170,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                                                         size="sm"
                                                         onClick={async () => {
                                                             try {
-                                                                // Use the same device that was previously selected
                                                                 if (selectedDeviceId) {
                                                                     await startRecording('device', selectedDeviceId);
                                                                 } else {
