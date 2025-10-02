@@ -9,7 +9,10 @@ import { CheckCircle } from "lucide-react";
 import { Unauthenticated } from "convex/react";
 import { Button } from "../ui/button";
 import { ROUTES } from "@/lib/constants";
-import { SignedIn, useOrganization, useOrganizationList, useClerk } from "@clerk/clerk-react";
+import { SignedIn } from "@clerk/clerk-react";
+import { useOrganization, useOrganizationList } from "@/contexts/OrganizationContext";
+import { useMutation } from "convex/react";
+import { api } from "@/../convex/_generated/api";
 import AutoCheckout from "./AutoCheckout";
 import {
     Dialog,
@@ -99,10 +102,8 @@ export function PricingComponent() {
     const [isCreatingOrg, setIsCreatingOrg] = useState(false);
 
     const { organization } = useOrganization();
-    const { userMemberships, isLoaded: orgListLoaded, setActive } = useOrganizationList({
-        userMemberships: { infinite: true },
-    });
-    const { createOrganization } = useClerk();
+    const { userMemberships, isLoaded: orgListLoaded, setActive } = useOrganizationList();
+    const createOrgMutation = useMutation(api.orgs.create);
 
     // Fetch current user plan from API
     useEffect(() => {
@@ -265,8 +266,8 @@ export function PricingComponent() {
         setIsCreatingOrg(true);
 
         try {
-            const org = await createOrganization({ name: newOrgName.trim() });
-            if (org) {
+            const orgId = await createOrgMutation({ name: newOrgName.trim() });
+            if (orgId) {
                 toast.success("Organization created successfully!");
 
                 // Refresh the memberships list to include the new org
@@ -277,7 +278,7 @@ export function PricingComponent() {
 
                 // Go directly to checkout with the newly created org
                 setTimeout(() => {
-                    handleOrgSelection(org.id, org.name);
+                    handleOrgSelection(orgId, newOrgName.trim());
                 }, 500);
             }
         } catch (error) {

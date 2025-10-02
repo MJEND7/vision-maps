@@ -7,7 +7,7 @@ import { ImprovedChatList } from "../ai/improved-chat-list";
 import { CommentChatList } from "../comments/comment-chat-list";
 import { CommentChat } from "../comments/comment-chat";
 import { MessageSquare, Bot, Lock } from "lucide-react";
-import { useMutation } from "convex/react";
+import { useConvexMutation } from "@/hooks/useConvexWithToast";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { usePermissions } from "@/contexts/PermissionsContext";
@@ -38,8 +38,8 @@ export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarC
         const canComment = hasPermission(Permission.COMMENTING);
 
         // Mutations for chat operations
-        const createChatWithNode = useMutation(api.chats.createChatWithNode);
-        const sendMessage = useMutation((api as any)["messages/functions"].sendMessage);
+        const createChatWithNode = useConvexMutation(api.chats.createChatWithNode);
+        const sendMessage = useConvexMutation((api as any)["messages/functions"].sendMessage);
 
         const handleNewChat = async () => {
             try {
@@ -48,11 +48,11 @@ export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarC
                     visionId: visionId as Id<"visions">
                 });
 
-                if (result.chatId) {
+                if (result?.chatId) {
                     setSelectedChatId(result.chatId);
                 }
-            } catch (error) {
-                console.error("Failed to create chat:", error);
+            } catch {
+                // Error already shown as toast by useConvexMutation
             }
         };
 
@@ -65,8 +65,8 @@ export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarC
                     content: message
                 });
                 setDrivenMessageIds((ids) => ids.add(result.messageId));
-            } catch (error) {
-                console.error("Failed to send message:", error);
+            } catch {
+                // Error already shown as toast by useConvexMutation
             }
         };
 

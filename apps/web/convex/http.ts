@@ -39,37 +39,10 @@ http.route({
 });
 
 http.route({
-  path: "/clerk-plans-create-webhook",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    const event = await validatePlansRequest(request);
-    if (!event) {
-      return new Response("Error occured", { status: 400 });
-    }
-
-    switch (event.type) {
-      case "subscription.updated":
-        console.log(event.data.id, event.data)
-        await ctx.runMutation(internal.userTrials.createTrial, {
-          clerkUserId: event.data.payer.user_id as string,
-          organizationId: event.data.payer.organization_id,
-          trialDays: 3,
-          plan: event.data.id
-        });
-        break;
-      default:
-        console.log("Ignored Clerk webhook event", event.type);
-    }
-
-    return new Response(null, { status: 200 });
-  }),
-});
-
-http.route({
   path: "/clerk-users-webhook",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
-    const event = await validateRequest(request);
+    const event = await validateRequest(request, process.env.CLERK_WEBHOOK_SECRET!);
     if (!event) {
       return new Response("Error occured", { status: 400 });
     }
@@ -94,30 +67,15 @@ http.route({
   }),
 });
 
-async function validateRequest(req: Request): Promise<WebhookEvent | null> {
-  const payloadString = await req.text();
-  const svixHeaders = {
-    "svix-id": req.headers.get("svix-id")!,
-    "svix-timestamp": req.headers.get("svix-timestamp")!,
-    "svix-signature": req.headers.get("svix-signature")!,
-  };
-  const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
-  try {
-    return wh.verify(payloadString, svixHeaders) as unknown as WebhookEvent;
-  } catch (error) {
-    console.error("Error verifying webhook event", error);
-    return null;
-  }
-}
 
-async function validatePlansRequest(req: Request): Promise<WebhookEvent | null> {
+async function validateRequest(req: Request, secret: string): Promise<WebhookEvent | null> {
   const payloadString = await req.text();
   const svixHeaders = {
     "svix-id": req.headers.get("svix-id")!,
     "svix-timestamp": req.headers.get("svix-timestamp")!,
     "svix-signature": req.headers.get("svix-signature")!,
   };
-  const wh = new Webhook(process.env.CLERK_PLANS_WEBHOOK_SECRET!);
+  const wh = new Webhook(secret);
   try {
     return wh.verify(payloadString, svixHeaders) as unknown as WebhookEvent;
   } catch (error) {

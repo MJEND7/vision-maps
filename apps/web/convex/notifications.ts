@@ -59,6 +59,10 @@ const rejectOrgInviteArgs = v.object({
   notificationId: v.id("notifications"),
 });
 
+const getOrgPendingInvitesArgs = v.object({
+  organizationId: v.string(),
+});
+
 export const getUserNotifications = query({
   args: getUserNotificationsArgs,
   handler: async (ctx, args) => {
@@ -453,23 +457,55 @@ export const acceptOrgInvite = mutation({
       throw new Error("This invitation has already been processed");
     }
 
-    // Update notification status - the actual Clerk org join will be handled on frontend
+    // Check if this is an org invite (has organizationId)
+    if (!("organizationId" in notification.inviteData)) {
+      throw new Error("This function only handles organization invites");
+    }
+
+    const orgId = notification.inviteData.organizationId;
+
+    // Check if user is already a member
+    const existingMembership = await ctx.db
+      .query("organization_members")
+      .withIndex("by_org_and_user", (q) =>
+        q.eq("organizationId", orgId as any).eq("userId", identity.userId!.toString())
+      )
+      .first();
+
+    if (existingMembership) {
+      throw new Error("You are already a member of this organization");
+    }
+
+    // Add user to organization
+    await ctx.db.insert("organization_members", {
+      organizationId: orgId as any,
+      userId: identity.userId!.toString(),
+      role: notification.inviteData.role || "member",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    // Update members count
+    const org = await ctx.db.get(orgId as any) as any;
+    if (org) {
+      await ctx.db.patch(orgId as any, {
+        membersCount: org.membersCount + 1,
+        updatedAt: Date.now(),
+      });
+    }
+
+    // Update notification status
     await ctx.db.patch(args.notificationId, {
       inviteStatus: "accepted",
       isRead: true,
       readAt: new Date().toISOString()
     });
 
-    // Check if this is an org invite (has organizationId)
-    if ("organizationId" in notification.inviteData) {
-      return {
-        notificationId: args.notificationId,
-        organizationId: notification.inviteData.organizationId,
-        role: notification.inviteData.role
-      };
-    } else {
-      throw new Error("This function only handles organization invites");
-    }
+    return {
+      notificationId: args.notificationId,
+      organizationId: orgId,
+      role: notification.inviteData.role
+    };
   }
 });
 
@@ -507,6 +543,70 @@ export const rejectOrgInvite = mutation({
     });
 
     return args.notificationId;
+  }
+});
+
+export const getOrgPendingInvites = query({
+  args: getOrgPendingInvitesArgs,
+  handler: async (ctx, args) => {
+    const identity = await requireAuth(ctx);
+
+    if (!identity.userId) {
+      throw new Error("Failed to get userId");
+    }
+
+    // Check if user is an admin of the organization
+    const membership = await ctx.db
+      .query("organization_members")
+      .withIndex("by_org_and_user", (q) =>
+        q.eq("organizationId", args.organizationId as any).eq("userId", identity.userId!.toString())
+      )
+      .first();
+
+    // Return empty array if not an admin (instead of throwing error)
+    if (!membership || membership.role !== "admin") {
+      return [];
+    }
+
+    // Get all pending org invite notifications for this organization
+    const allNotifications = await ctx.db
+      .query("notifications")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("type"), "org_invite"),
+          q.eq(q.field("inviteStatus"), "pending"),
+          q.neq(q.field("isDeleted"), true)
+        )
+      )
+      .collect();
+
+    // Filter by organizationId in inviteData
+    const orgInvites = allNotifications.filter(
+      (n) => n.inviteData && "organizationId" in n.inviteData && n.inviteData.organizationId === args.organizationId
+    );
+
+    // Enrich with recipient information
+    const enrichedInvites = await Promise.all(
+      orgInvites.map(async (invite) => {
+        const recipient = await ctx.db
+          .query("users")
+          .filter((q) => q.eq(q.field("externalId"), invite.recipientId))
+          .first();
+
+        return {
+          id: invite._id,
+          recipientId: invite.recipientId,
+          recipientEmail: recipient?.email || "Unknown",
+          recipientName: recipient?.name || "Unknown",
+          recipientPicture: recipient?.picture,
+          role: invite.inviteData?.role || "member",
+          createdAt: invite.createdAt,
+          inviteStatus: invite.inviteStatus,
+        };
+      })
+    );
+
+    return enrichedInvites;
   }
 });
 

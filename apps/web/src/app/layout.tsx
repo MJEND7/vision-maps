@@ -10,6 +10,7 @@ import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
 import { extractRouterConfig } from "uploadthing/server";
 import { uploadThingFileRouter } from "./api/uploadthing/core";
 import { OrgSwitchProvider } from "../contexts/OrgSwitchContext";
+import { OrganizationProvider } from "../contexts/OrganizationContext";
 
 export const metadata: Metadata = {
     title: "Vision",
@@ -90,7 +91,11 @@ export default function RootLayout({
                     theme: shadcn
                 }}>
                     <OrgSwitchProvider>
-                        <ConvexClientProvider>{children}</ConvexClientProvider>
+                        <ConvexClientProvider>
+                            <OrganizationProvider>
+                                {children}
+                            </OrganizationProvider>
+                        </ConvexClientProvider>
                     </OrgSwitchProvider>
                 </ClerkProvider>
                 <Toaster />

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useUser, useOrganization, useOrganizationList } from "@clerk/nextjs";
-import { useMutation } from "convex/react";
+import { useUser } from "@clerk/nextjs";
+import { useOrganization, useOrganizationList } from "@/contexts/OrganizationContext";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/../convex/_generated/api";
 import { useOrgSwitch } from "@/contexts/OrgSwitchContext";
 import {
@@ -42,12 +43,13 @@ import {
     Settings,
     Mail,
     AlertTriangle,
-    X,
     Camera,
-    Save
+    Save,
+    UserPlus
 } from "lucide-react";
 import { toast } from "sonner";
 import { RoleUtils } from "@/lib/roles";
+import { InviteUsersPopup } from "@/components/ui/custom-org-popup";
 
 interface OrgSettingsDialogProps {
     open: boolean;
@@ -61,13 +63,9 @@ interface MembersTabProps {
     isAdmin: boolean;
     onRoleChange: (memberId: string, newRole: string, memberName: string) => void;
     onRemoveMember: (memberId: string, memberName: string) => void;
+    onInviteMembers: () => void;
 }
 
-interface InvitesTabProps {
-    invitations: any;
-    isAdmin: boolean;
-    onCancelInvite: (inviteId: string) => void;
-}
 
 interface ProfileTabProps {
     organization: any;
@@ -87,30 +85,55 @@ interface DangerTabProps {
 
 export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps) {
     const { user } = useUser();
-    const { organization, membership, memberships, invitations } = useOrganization({
-        memberships: {
-            infinite: true,
-            keepPreviousData: true,
-        },
-        invitations: {
-            infinite: true,
-            keepPreviousData: true,
-        }
-    });
-    const { setActive, userMemberships, userInvitations } = useOrganizationList({
-        userMemberships: { infinite: true },
-        userInvitations: { infinite: true },
-    });
+    const { organization, isAdmin } = useOrganization();
+    const { setActive } = useOrganizationList();
     const { setIsOrgSwitching } = useOrgSwitch();
-    
+
+    // Fetch members from Convex
+    const convexMembers = useQuery(
+        api.orgs.getMembers,
+        organization ? { organizationId: organization._id } : "skip"
+    );
+
+    // Fetch pending invites
+    const pendingInvites = useQuery(
+        api.notifications.getOrgPendingInvites,
+        organization ? { organizationId: organization._id } : "skip"
+    );
+
     const [activeTab, setActiveTab] = useState("members");
     const [showLeaveDialog, setShowLeaveDialog] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [showInviteDialog, setShowInviteDialog] = useState(false);
     const [orgName, setOrgName] = useState(organization?.name || "");
     const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
     // Mutations
     const createNotification = useMutation(api.notifications.createNotification);
+    const updateOrg = useMutation(api.orgs.update);
+    const removeOrg = useMutation(api.orgs.remove);
+    const removeMember = useMutation(api.orgs.removeMember);
+    const updateMemberRole = useMutation(api.orgs.updateMemberRole);
+    const deleteNotification = useMutation(api.notifications.deleteNotification);
+
+    // Create compatibility layer to match original component structure
+    const membership = organization ? {
+        role: organization.role || "member"
+    } : null;
+
+    const memberships = {
+        data: convexMembers?.map(m => ({
+            id: m.id,
+            role: m.role,
+            publicUserData: {
+                userId: m.userId,
+                firstName: m.name?.split(' ')[0] || '',
+                lastName: m.name?.split(' ').slice(1).join(' ') || '',
+                imageUrl: m.picture,
+                emailAddress: m.email
+            }
+        }))
+    };
 
     // Update orgName when organization changes (but not when user is typing)
     useEffect(() => {
@@ -122,22 +145,23 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
     if (!organization || !membership) {
         return null;
     }
-
-    const isAdmin = RoleUtils.isAdmin(membership.role);
     
     const handleLeaveOrg = async () => {
         try {
             setIsOrgSwitching(true);
-            await membership.destroy();
+
+            if (organization && user?.id) {
+                await removeMember({
+                    organizationId: organization._id,
+                    userId: user.id
+                });
+            }
+
             await setActive?.({ organization: null });
-            
-            // Refresh organization list in workspace switcher
-            userMemberships.revalidate?.();
-            userInvitations.revalidate?.();
-            
+
             toast.success("Left organization successfully");
             onOpenChange(false);
-            
+
             // Reset org switching state after a delay to allow auth to settle
             setTimeout(() => {
                 setIsOrgSwitching(false);
@@ -152,16 +176,16 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
     const handleDeleteOrg = async () => {
         try {
             setIsOrgSwitching(true);
-            await organization.destroy();
+
+            if (organization) {
+                await removeOrg({ organizationId: organization._id });
+            }
+
             await setActive?.({ organization: null });
-            
-            // Refresh organization list in workspace switcher
-            userMemberships.revalidate?.();
-            userInvitations.revalidate?.();
-            
+
             toast.success("Organization deleted successfully");
             onOpenChange(false);
-            
+
             // Reset org switching state after a delay to allow auth to settle
             setTimeout(() => {
                 setIsOrgSwitching(false);
@@ -181,11 +205,13 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
 
         setIsUpdatingProfile(true);
         try {
-            await organization.update({ name: orgName.trim() });
-            
-            // Refresh organization list in workspace switcher to show updated name
-            userMemberships.revalidate?.();
-            
+            if (organization) {
+                await updateOrg({
+                    organizationId: organization._id,
+                    name: orgName.trim()
+                });
+            }
+
             toast.success("Organization profile updated successfully");
         } catch (error) {
             console.error("Failed to update organization:", error);
@@ -198,13 +224,17 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
     const handleRoleChange = async (memberId: string, newRole: string, memberName: string) => {
         try {
             const targetMembership = memberships?.data?.find(m => m.id === memberId);
-            if (!targetMembership) {
+            if (!targetMembership || !organization) {
                 toast.error("Member not found");
                 return;
             }
 
-            await targetMembership.update({ role: newRole });
-            
+            await updateMemberRole({
+                organizationId: organization._id,
+                userId: targetMembership.publicUserData.userId,
+                newRole: newRole
+            });
+
             // Send notification to the user about role change
             if (targetMembership.publicUserData?.userId) {
                 try {
@@ -219,7 +249,7 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
                     // Don't throw - the role change succeeded
                 }
             }
-            
+
             toast.success(`${memberName}'s role updated to ${RoleUtils.getDisplayName(newRole)}`);
         } catch (error) {
             console.error("Failed to update member role:", error);
@@ -230,16 +260,16 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
     const handleRemoveMember = async (memberId: string, memberName: string) => {
         try {
             const targetMembership = memberships?.data?.find(m => m.id === memberId);
-            if (!targetMembership) {
+            if (!targetMembership || !organization) {
                 toast.error("Member not found");
                 return;
             }
 
-            await targetMembership.destroy();
-            
-            // Refresh organization list in workspace switcher
-            userMemberships.revalidate?.();
-            
+            await removeMember({
+                organizationId: organization._id,
+                userId: targetMembership.publicUserData.userId
+            });
+
             toast.success(`${memberName} removed from organization`);
         } catch (error) {
             console.error("Failed to remove member:", error);
@@ -249,11 +279,8 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
 
     const handleCancelInvite = async (inviteId: string) => {
         try {
-            const invitation = invitations?.data?.find(inv => inv.id === inviteId);
-            if (invitation) {
-                await invitation.revoke();
-                toast.success("Invitation cancelled");
-            }
+            await deleteNotification({ notificationId: inviteId as any });
+            toast.success("Invitation cancelled");
         } catch (error) {
             console.error("Failed to cancel invitation:", error);
             toast.error("Failed to cancel invitation");
@@ -301,16 +328,16 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
                                 <button
                                     onClick={() => setActiveTab("invites")}
                                     className={`flex-shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 text-left rounded-lg transition-colors ${
-                                        activeTab === "invites" 
-                                            ? "bg-primary text-primary-foreground shadow-sm" 
+                                        activeTab === "invites"
+                                            ? "bg-primary text-primary-foreground shadow-sm"
                                             : "hover:bg-accent hover:text-accent-foreground"
                                     }`}
                                 >
                                     <Mail className="w-4 h-4" />
                                     <span className="font-medium whitespace-nowrap">Invites</span>
-                                    {invitations && invitations?.data?.filter(inv => inv.status === "pending").length > 0 && (
+                                    {pendingInvites && pendingInvites.length > 0 && (
                                         <span className="ml-auto text-xs bg-amber-500 text-white px-2 py-0.5 rounded-full whitespace-nowrap">
-                                            {invitations.data.filter(inv => inv.status === "pending").length}
+                                            {pendingInvites.length}
                                         </span>
                                     )}
                                 </button>
@@ -345,19 +372,20 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
                         <div className="flex-1 overflow-hidden">
                             <div className="h-full overflow-y-auto scrollbar-hide p-4 sm:p-8">
                                 {activeTab === "members" && (
-                                    <MembersTab 
+                                    <MembersTab
                                         organization={organization}
                                         memberships={memberships}
                                         currentUser={user}
                                         isAdmin={isAdmin}
                                         onRoleChange={handleRoleChange}
                                         onRemoveMember={handleRemoveMember}
+                                        onInviteMembers={() => setShowInviteDialog(true)}
                                     />
                                 )}
 
                                 {activeTab === "invites" && (
-                                    <InvitesTab 
-                                        invitations={invitations}
+                                    <InvitesTab
+                                        invites={pendingInvites}
                                         isAdmin={isAdmin}
                                         onCancelInvite={handleCancelInvite}
                                     />
@@ -433,18 +461,36 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Invite Members Dialog */}
+            <InviteUsersPopup
+                open={showInviteDialog}
+                onOpenChange={setShowInviteDialog}
+                organizationId={organization._id}
+                organizationName={organization.name}
+            />
         </>
     );
 }
 
 // Members Tab Component
-function MembersTab({ organization, memberships, currentUser, isAdmin, onRoleChange, onRemoveMember }: MembersTabProps) {
+function MembersTab({ organization, memberships, currentUser, isAdmin, onRoleChange, onRemoveMember, onInviteMembers }: MembersTabProps) {
     const membersList = memberships?.data || [];
-    
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium">Members ({organization?.membersCount || membersList.length})</h3>
+                {isAdmin && (
+                    <Button
+                        onClick={onInviteMembers}
+                        size="sm"
+                        className="gap-2"
+                    >
+                        <UserPlus className="w-4 h-4" />
+                        Invite Members
+                    </Button>
+                )}
             </div>
             
             <div className="flex flex-col-reverse gap-3">
@@ -522,41 +568,57 @@ function MembersTab({ organization, memberships, currentUser, isAdmin, onRoleCha
 }
 
 // Invites Tab Component
-function InvitesTab({ invitations, isAdmin, onCancelInvite }: InvitesTabProps) {
-    const pendingInvites = invitations?.data?.filter((inv: any) => inv.status === "pending") || [];
+function InvitesTab({ invites, isAdmin, onCancelInvite }: {
+    invites: any[] | undefined;
+    isAdmin: boolean;
+    onCancelInvite: (inviteId: string) => void;
+}) {
+    const invitesList = invites || [];
 
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Pending Invites ({pendingInvites.length})</h3>
+                <h3 className="text-lg font-medium">Pending Invites ({invitesList.length})</h3>
             </div>
-            
-            {pendingInvites.length > 0 ? (
-                <div className="space-y-3">
-                    {pendingInvites.map((invitation: any) => (
-                        <div key={invitation.id} className="flex items-center justify-between p-3 border rounded-lg">
+
+            {invitesList.length > 0 ? (
+                <div className="flex flex-col-reverse gap-3">
+                    {invitesList.map((invite: any) => (
+                        <div key={invite.id} className="flex items-center justify-between p-3 border rounded-lg">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                                    <Mail className="w-5 h-5 text-muted-foreground" />
-                                </div>
+                                <Avatar className="w-10 h-10">
+                                    <AvatarImage src={invite.recipientPicture} />
+                                    <AvatarFallback>
+                                        {invite.recipientEmail[0]?.toUpperCase()}
+                                    </AvatarFallback>
+                                </Avatar>
                                 <div>
-                                    <p className="font-medium">{invitation.emailAddress}</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-medium">
+                                            {invite.recipientName}
+                                        </p>
+                                    </div>
                                     <p className="text-sm text-muted-foreground">
-                                        Invited as {RoleUtils.getDisplayName(invitation.role)}
+                                        {invite.recipientEmail}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Invited as {RoleUtils.getDisplayName(invite.role)}
                                     </p>
                                 </div>
                             </div>
-                            
+
                             <div className="flex items-center gap-2">
-                                <Badge variant="outline">Pending</Badge>
+                                <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20">
+                                    Pending
+                                </Badge>
                                 {isAdmin && (
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => onCancelInvite(invitation.id)}
+                                        onClick={() => onCancelInvite(invite.id)}
                                         className="text-destructive hover:text-destructive"
                                     >
-                                        <X className="w-4 h-4" />
+                                        <Trash2 className="w-4 h-4" />
                                     </Button>
                                 )}
                             </div>
@@ -616,7 +678,7 @@ function ProfileTab({ organization, isAdmin, orgName, setOrgName, onUpdateProfil
                     <div className="space-y-2">
                         <Label>Organization ID</Label>
                         <Input
-                            value={organization.id}
+                            value={organization._id}
                             disabled
                             className="bg-muted"
                         />

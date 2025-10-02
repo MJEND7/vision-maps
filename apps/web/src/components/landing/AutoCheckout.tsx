@@ -4,7 +4,7 @@ import {
 import { ForPayerType } from "@clerk/types";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { useAuth, useOrganizationList } from "@clerk/nextjs";
+import { useOrganization, useOrganizationList } from "@/contexts/OrganizationContext";
 
 export default function AutoCheckout({
     data,
@@ -23,15 +23,15 @@ export default function AutoCheckout({
     const router = useRouter();
     const checkoutBtnRef = useRef<HTMLButtonElement | null>(null);
     const searchParams = useSearchParams();
-    const { orgId } = useAuth();
+    const { organization } = useOrganization();
     const { setActive } = useOrganizationList();
 
     // Switch to the selected organization if needed for team plans
     useEffect(() => {
-        if (forWho === "organization" && selectedOrg?.id && orgId !== selectedOrg.id) {
-            setActive?.({ organization: selectedOrg.id });
+        if (forWho === "organization" && selectedOrg?.id && organization?._id !== selectedOrg.id) {
+            setActive({ organization: selectedOrg.id as any });
         }
-    }, [forWho, selectedOrg, orgId, setActive]);
+    }, [forWho, selectedOrg, organization?._id, setActive]);
 
     useEffect(() => {
         if ((!data || data.length === 0) && currentIndex != 0) return;
@@ -44,7 +44,7 @@ export default function AutoCheckout({
         
         if (shouldAutoTrigger) {
             // For organization plans, wait until we have the right org active
-            if (forWho === "organization" && (!orgId || (selectedOrg?.id && orgId !== selectedOrg.id))) {
+            if (forWho === "organization" && (!organization || (selectedOrg?.id && organization._id !== selectedOrg.id))) {
                 return;
             }
             
@@ -58,10 +58,10 @@ export default function AutoCheckout({
                 router.push(window.location.pathname);
             }
         }
-    }, [data, currentIndex, forWho, orgId, selectedOrg, searchParams, router]);
+    }, [data, currentIndex, forWho, organization, selectedOrg, searchParams, router]);
 
     // Only render CheckoutButton when we have proper context
-    if (forWho === "organization" && !orgId) {
+    if (forWho === "organization" && !organization) {
         return null; // Don't render until org is active
     }
 

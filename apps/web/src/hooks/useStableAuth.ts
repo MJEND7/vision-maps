@@ -1,6 +1,7 @@
 "use client";
 
-import { useUser, useOrganization } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import { useState, useEffect } from "react";
 
 /**
@@ -50,7 +51,7 @@ export function useStableAuth() {
             }, 100);
             return () => clearTimeout(timer);
         }
-    }, [organization?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [organization?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return {
         user,

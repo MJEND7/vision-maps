@@ -19,7 +19,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useUser, useOrganization, useOrganizationList, SignOutButton, useClerk, useAuth } from "@clerk/nextjs";
+import { useUser, SignOutButton, useClerk, useAuth } from "@clerk/nextjs";
+import { useOrganization, useOrganizationList } from "@/contexts/OrganizationContext";
 import { useRouter, usePathname } from "next/navigation"; // Added usePathname
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "convex/react";
@@ -39,19 +40,9 @@ export function NotionSidebar() {
     const {
         userMemberships,
         userInvitations,
-        userSuggestions,
         isLoaded: orgListLoaded,
         setActive
-    } = useOrganizationList({
-        userMemberships: {
-            infinite: true,
-            keepPreviousData: true,
-        },
-        userInvitations: {
-            infinite: true,
-            keepPreviousData: true,
-        }
-    });
+    } = useOrganizationList();
     const { openUserProfile } = useClerk();
     const router = useRouter();
     const pathname = usePathname(); // Get current pathname
@@ -75,7 +66,7 @@ export function NotionSidebar() {
         if (orgListLoaded && !hasInitiallyLoaded) {
             setHasInitiallyLoaded(true);
         }
-    }, [orgListLoaded, hasInitiallyLoaded, userMemberships.data?.length, userInvitations.data?.length, userSuggestions?.data?.length]);
+    }, [orgListLoaded, hasInitiallyLoaded, userMemberships.data?.length]);
 
     useEffect(() => {
         if (orgListLoaded && (isOrgSwitching)) {
@@ -85,7 +76,7 @@ export function NotionSidebar() {
 
             return () => clearTimeout(resetTimer);
         }
-    }, [organization?.id, orgListLoaded, isOrgSwitching, setIsOrgSwitching]);
+    }, [organization?._id, orgListLoaded, isOrgSwitching, setIsOrgSwitching]);
 
     useEffect(() => {
         if (!isSignedIn && user && !isOrgSwitching) {
@@ -133,7 +124,7 @@ export function NotionSidebar() {
             if (orgId === "personal") {
                 await setActive?.({ organization: null });
             } else {
-                await setActive?.({ organization: orgId });
+                await setActive?.({ organization: orgId as any });
             }
 
             // Small delay to allow Clerk auth to stabilize

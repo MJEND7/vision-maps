@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useUser, useOrganization, useOrganizationList, useClerk } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
+import { useOrganization, useOrganizationList } from "@/contexts/OrganizationContext";
 import { useOrgSwitch } from "@/contexts/OrgSwitchContext";
 import { api } from "@/../convex/_generated/api";
-import { useQuery, useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import {
     Dialog,
     DialogContent,
@@ -28,16 +29,16 @@ import {
     Users,
     Crown,
     Check,
-    X,
     ChevronDown,
     Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { OrgRole, RoleUtils } from "@/lib/roles";
+import { Id } from "@/../convex/_generated/dataModel";
 
 interface CustomOrgPopupProps {
     children: React.ReactNode;
-    onOrgChange?: (orgId: string | null) => void;
+    onOrgChange?: (orgId: Id<"organizations"> | null) => void;
 }
 
 interface CreateOrgPopupProps {
@@ -49,11 +50,12 @@ interface CreateOrgPopupProps {
 interface InviteUsersPopupProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    organizationId: string;
+    organizationId: Id<"organizations">;
     organizationName: string;
 }
 
 interface InlineInviteUsersProps {
+    organizationId: Id<"organizations">;
     onInviteSent: () => void;
     onDone: () => void;
 }
@@ -61,29 +63,20 @@ interface InlineInviteUsersProps {
 export function CustomOrgPopup({ children, onOrgChange }: CustomOrgPopupProps) {
     const { user } = useUser();
     const { organization } = useOrganization();
-    const { 
-        userMemberships, 
-        userInvitations, 
-        setActive, 
-        isLoaded
-    } = useOrganizationList({
-        userMemberships: { infinite: true },
-        userInvitations: { infinite: true },
-    });
+    const { userMemberships, setActive, isLoaded } = useOrganizationList();
     const { setIsOrgSwitching } = useOrgSwitch();
 
     const [createOrgOpen, setCreateOrgOpen] = useState(false);
     const [inviteUsersOpen, setInviteUsersOpen] = useState(false);
-    const [selectedOrgForInvite, setSelectedOrgForInvite] = useState<{id: string, name: string} | null>(null);
+    const [selectedOrgForInvite, setSelectedOrgForInvite] = useState<{id: Id<"organizations">, name: string} | null>(null);
 
-    const handleOrganizationSwitch = async (orgId: string | null) => {
+    const handleOrganizationSwitch = async (orgId: Id<"organizations"> | null) => {
         try {
             setIsOrgSwitching(true);
-            await setActive?.({ organization: orgId });
+            await setActive({ organization: orgId });
             onOrgChange?.(orgId);
             toast.success(`Switched to ${orgId ? 'organization' : 'personal workspace'}`);
-            
-            // Reset org switching state after a delay to allow auth to settle
+
             setTimeout(() => {
                 setIsOrgSwitching(false);
             }, 1500);
@@ -93,33 +86,9 @@ export function CustomOrgPopup({ children, onOrgChange }: CustomOrgPopupProps) {
         }
     };
 
-    const handleInviteUsers = (orgId: string, orgName: string) => {
+    const handleInviteUsers = (orgId: Id<"organizations">, orgName: string) => {
         setSelectedOrgForInvite({ id: orgId, name: orgName });
         setInviteUsersOpen(true);
-    };
-
-    const handleAcceptInvitation = async (invitationId: string) => {
-        try {
-            const invitation = userInvitations.data?.find(inv => inv.id === invitationId);
-            if (invitation) {
-                await invitation.accept();
-                toast.success("Invitation accepted!");
-                userMemberships.revalidate?.();
-                userInvitations.revalidate?.();
-            }
-        } catch {
-            toast.error("Failed to accept invitation");
-        }
-    };
-
-    const handleDeclineInvitation = async () => {
-        try {
-            // Note: Clerk doesn't provide a direct reject method for invitations
-            // Users typically need to ignore invitations or they expire automatically
-            toast.info("Invitation ignored. It will expire automatically.");
-        } catch {
-            toast.error("Failed to decline invitation");
-        }
     };
 
     return (
@@ -142,7 +111,7 @@ export function CustomOrgPopup({ children, onOrgChange }: CustomOrgPopupProps) {
                     <DropdownMenuSeparator />
 
                     {/* Personal Account */}
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                         onClick={() => handleOrganizationSwitch(null)}
                         className="p-3"
                     >
@@ -195,7 +164,7 @@ export function CustomOrgPopup({ children, onOrgChange }: CustomOrgPopupProps) {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    {organization?.id === membership.organization.id && (
+                                    {organization?._id === membership.organization.id && (
                                         <Check className="w-4 h-4 text-green-600" />
                                     )}
                                     {membership.role === "admin" && (
@@ -215,71 +184,14 @@ export function CustomOrgPopup({ children, onOrgChange }: CustomOrgPopupProps) {
                             </div>
                         </DropdownMenuItem>
                     ))}
-
-                    {/* Invitations */}
-                    {isLoaded && userInvitations.data?.length > 0 && (
-                        <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuLabel>Invitations</DropdownMenuLabel>
-                            {userInvitations.data.map((invitation) => (
-                                <DropdownMenuItem key={invitation.id} className="p-3">
-                                    <div className="flex items-center justify-between w-full">
-                                        <div className="flex items-center gap-3">
-                                            <Avatar className="w-8 h-8">
-                                                <AvatarImage src={invitation.publicOrganizationData.imageUrl} />
-                                                <AvatarFallback className="bg-amber-500 text-white">
-                                                    {invitation.publicOrganizationData.name[0]}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-medium">
-                                                    {invitation.publicOrganizationData.name}
-                                                </span>
-                                                <span className="text-xs text-amber-600">
-                                                    Pending invitation
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-6 w-6 p-0 text-green-600 hover:text-green-700"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleAcceptInvitation(invitation.id);
-                                                }}
-                                            >
-                                                <Check className="w-3 h-3" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDeclineInvitation();
-                                                }}
-                                            >
-                                                <X className="w-3 h-3" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </DropdownMenuItem>
-                            ))}
-                        </>
-                    )}
                 </DropdownMenuContent>
             </DropdownMenu>
 
-            <CreateOrgPopup 
-                open={createOrgOpen} 
+            <CreateOrgPopup
+                open={createOrgOpen}
                 onOpenChange={setCreateOrgOpen}
                 onOrgCreated={() => {
                     setCreateOrgOpen(false);
-                    // Refresh organization list
-                    userMemberships.revalidate?.();
-                userInvitations.revalidate?.();
                 }}
             />
 
@@ -299,27 +211,27 @@ function CreateOrgPopup({ open, onOpenChange, onOrgCreated }: CreateOrgPopupProp
     const [orgName, setOrgName] = useState("");
     const [loading, setLoading] = useState(false);
     const [showInviteStep, setShowInviteStep] = useState(false);
-    
-    const { createOrganization } = useClerk();
+    const [createdOrgId, setCreatedOrgId] = useState<Id<"organizations"> | null>(null);
+
+    const createOrganization = useMutation(api.orgs.create);
     const { setActive } = useOrganizationList();
     const { setIsOrgSwitching } = useOrgSwitch();
 
     const handleCreateOrg = async () => {
         if (!orgName.trim()) return;
-        
+
         setLoading(true);
         try {
-            const org = await createOrganization({ name: orgName.trim() });
-            if (org) {
-                // Set org switching state
+            const orgId = await createOrganization({ name: orgName.trim() });
+            if (orgId) {
+                setCreatedOrgId(orgId);
                 setIsOrgSwitching(true);
-                
+
                 // Switch to the newly created organization
-                await setActive?.({ organization: org.id });
+                await setActive({ organization: orgId });
                 toast.success("Organization created successfully!");
                 setShowInviteStep(true);
-                
-                // Reset org switching state after a delay to allow auth to settle
+
                 setTimeout(() => {
                     setIsOrgSwitching(false);
                 }, 1500);
@@ -336,6 +248,7 @@ function CreateOrgPopup({ open, onOpenChange, onOrgCreated }: CreateOrgPopupProp
     const handleFinishSetup = () => {
         setShowInviteStep(false);
         setOrgName("");
+        setCreatedOrgId(null);
         onOrgCreated?.();
     };
 
@@ -364,8 +277,8 @@ function CreateOrgPopup({ open, onOpenChange, onOrgCreated }: CreateOrgPopupProp
                                 <Button variant="outline" onClick={() => onOpenChange(false)}>
                                     Cancel
                                 </Button>
-                                <Button 
-                                    onClick={handleCreateOrg} 
+                                <Button
+                                    onClick={handleCreateOrg}
                                     disabled={!orgName.trim() || loading}
                                 >
                                     {loading ? "Creating..." : "Create"}
@@ -382,10 +295,13 @@ function CreateOrgPopup({ open, onOpenChange, onOrgCreated }: CreateOrgPopupProp
                             </p>
                         </DialogHeader>
                         <div className="space-y-4">
-                            <InlineInviteUsers
-                                onInviteSent={() => {}}
-                                onDone={handleFinishSetup}
-                            />
+                            {createdOrgId && (
+                                <InlineInviteUsers
+                                    organizationId={createdOrgId}
+                                    onInviteSent={() => {}}
+                                    onDone={handleFinishSetup}
+                                />
+                            )}
                         </div>
                     </>
                 )}
@@ -394,28 +310,25 @@ function CreateOrgPopup({ open, onOpenChange, onOrgCreated }: CreateOrgPopupProp
     );
 }
 
-function InviteUsersPopup({ open, onOpenChange }: InviteUsersPopupProps) {
+export function InviteUsersPopup({ open, onOpenChange, organizationId, organizationName }: InviteUsersPopupProps) {
     const [email, setEmail] = useState("");
     const [role, setRole] = useState<string>(OrgRole.MEMBER);
     const [loading, setLoading] = useState(false);
-    const [selectedUsers, setSelectedUsers] = useState<Array<{ email: string, role: string }>>([]);
+    const [selectedUsers, setSelectedUsers] = useState<Array<{ email: string, role: string, userId?: string }>>([]);
 
     const searchUsers = useQuery(
         api.user.searchUsersByEmail,
         email.length > 2 ? { searchTerm: email } : "skip"
     );
 
-    const { organization } = useOrganization();
     const { user } = useUser();
-    const createOrgInviteNotification = useMutation(api.notifications.createOrgInviteNotification);
+    const inviteMember = useMutation(api.orgs.inviteMember);
 
     // Filter out current user and already selected users from suggestions
     const filteredSearchUsers = searchUsers?.filter(searchUser => {
-        // Filter out current user
         if (user && searchUser.email === user.emailAddresses?.[0]?.emailAddress) {
             return false;
         }
-        // Filter out already selected users
         if (selectedUsers.some(selectedUser => selectedUser.email === searchUser.email)) {
             return false;
         }
@@ -424,8 +337,7 @@ function InviteUsersPopup({ open, onOpenChange }: InviteUsersPopupProps) {
 
     const handleAddUser = () => {
         if (!email.trim()) return;
-        
-        // Check if user already added
+
         if (selectedUsers.some(user => user.email === email.trim())) {
             toast.error("User already added");
             return;
@@ -448,36 +360,19 @@ function InviteUsersPopup({ open, onOpenChange }: InviteUsersPopupProps) {
 
         setLoading(true);
         try {
-            if (organization) {
-                // Send invitations for all selected users using both Clerk and Convex
-                await Promise.all(
-                    selectedUsers.map(async (user) => {
-                        // Send Clerk email invitation
-                        await organization.inviteMember({
-                            emailAddress: user.email,
-                            role: user.role
-                        });
-
-                        // Send Convex notification
-                        try {
-                            await createOrgInviteNotification({
-                                recipientEmail: user.email,
-                                organizationId: organization.id,
-                                organizationName: organization.name,
-                                role: user.role
-                            });
-                        } catch (convexError) {
-                            console.warn("Failed to create Convex notification for", user.email, convexError);
-                            // Don't throw here - Clerk invite still succeeded
-                        }
-                    })
-                );
-                toast.success(`${selectedUsers.length} invitation${selectedUsers.length > 1 ? 's' : ''} sent successfully!`);
-                setSelectedUsers([]);
-                onOpenChange(false);
-            } else {
-                throw new Error("No organization selected");
-            }
+            // Send invitations to all selected users
+            await Promise.all(
+                selectedUsers.map(async (user) => {
+                    await inviteMember({
+                        organizationId,
+                        recipientEmail: user.email,
+                        role: user.role
+                    });
+                })
+            );
+            toast.success(`${selectedUsers.length} invitation(s) sent successfully!`);
+            setSelectedUsers([]);
+            onOpenChange(false);
         } catch (error) {
             console.error("Failed to send invitations:", error);
             toast.error(`Failed to send invitations: ${error}`);
@@ -490,7 +385,7 @@ function InviteUsersPopup({ open, onOpenChange }: InviteUsersPopupProps) {
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Invite Users to {organization?.name || "Organization"}</DialogTitle>
+                    <DialogTitle>Invite Users to {organizationName}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                     {/* Add User Section */}
@@ -540,17 +435,20 @@ function InviteUsersPopup({ open, onOpenChange }: InviteUsersPopupProps) {
                             <Label className="text-xs text-muted-foreground">Suggested Users</Label>
                             <div className="max-h-32 overflow-y-auto space-y-1 border rounded-md p-2">
                                 {filteredSearchUsers.map((user) => (
-                                    <div 
+                                    <div
                                         key={user._id}
                                         className="flex items-center justify-between p-2 hover:bg-accent rounded cursor-pointer transition-colors"
                                         onClick={() => {
                                             if (user.email) {
-                                                // Check if user already added
                                                 if (selectedUsers.some(selectedUser => selectedUser.email === user.email)) {
                                                     toast.error("User already added");
                                                     return;
                                                 }
-                                                setSelectedUsers(prev => [...prev, { email: user.email!, role }]);
+                                                setSelectedUsers(prev => [...prev, {
+                                                    email: user.email!,
+                                                    role,
+                                                    userId: user.externalId
+                                                }]);
                                                 setEmail("");
                                             }
                                         }}
@@ -619,11 +517,11 @@ function InviteUsersPopup({ open, onOpenChange }: InviteUsersPopupProps) {
                         <Button variant="outline" onClick={() => onOpenChange(false)}>
                             Cancel
                         </Button>
-                        <Button 
+                        <Button
                             onClick={handleSendInvitations}
                             disabled={selectedUsers.length === 0 || loading}
                         >
-                            {loading ? "Sending Invitations..." : `Send ${selectedUsers.length} Invitation${selectedUsers.length !== 1 ? 's' : ''}`}
+                            {loading ? "Adding Members..." : `Add ${selectedUsers.length} Member${selectedUsers.length !== 1 ? 's' : ''}`}
                         </Button>
                     </div>
                 </div>
@@ -632,28 +530,24 @@ function InviteUsersPopup({ open, onOpenChange }: InviteUsersPopupProps) {
     );
 }
 
-function InlineInviteUsers({ onInviteSent, onDone }: InlineInviteUsersProps) {
+function InlineInviteUsers({ organizationId, onInviteSent, onDone }: InlineInviteUsersProps) {
     const [email, setEmail] = useState("");
     const [role, setRole] = useState<string>(OrgRole.MEMBER);
     const [loading, setLoading] = useState(false);
-    const [selectedUsers, setSelectedUsers] = useState<Array<{ email: string, role: string }>>([]);
+    const [selectedUsers, setSelectedUsers] = useState<Array<{ email: string, role: string, userId?: string }>>([]);
 
     const searchUsers = useQuery(
         api.user.searchUsersByEmail,
         email.length > 2 ? { searchTerm: email } : "skip"
     );
 
-    const { organization } = useOrganization();
     const { user } = useUser();
-    const createOrgInviteNotification = useMutation(api.notifications.createOrgInviteNotification);
+    const inviteMember = useMutation(api.orgs.inviteMember);
 
-    // Filter out current user and already selected users from suggestions
     const filteredSearchUsers = searchUsers?.filter(searchUser => {
-        // Filter out current user
         if (user && searchUser.email === user.emailAddresses?.[0]?.emailAddress) {
             return false;
         }
-        // Filter out already selected users
         if (selectedUsers.some(selectedUser => selectedUser.email === searchUser.email)) {
             return false;
         }
@@ -662,8 +556,7 @@ function InlineInviteUsers({ onInviteSent, onDone }: InlineInviteUsersProps) {
 
     const handleAddUser = () => {
         if (!email.trim()) return;
-        
-        // Check if user already added
+
         if (selectedUsers.some(user => user.email === email.trim())) {
             toast.error("User already added");
             return;
@@ -682,35 +575,17 @@ function InlineInviteUsers({ onInviteSent, onDone }: InlineInviteUsersProps) {
         if (selectedUsers.length > 0) {
             setLoading(true);
             try {
-                if (organization) {
-                    // Send invitations for all selected users using both Clerk and Convex
-                    await Promise.all(
-                        selectedUsers.map(async (user) => {
-                            // Send Clerk email invitation
-                            await organization.inviteMember({
-                                emailAddress: user.email,
-                                role: user.role
-                            });
-
-                            // Send Convex notification
-                            try {
-                                await createOrgInviteNotification({
-                                    recipientEmail: user.email,
-                                    organizationId: organization.id,
-                                    organizationName: organization.name,
-                                    role: user.role
-                                });
-                            } catch (convexError) {
-                                console.warn("Failed to create Convex notification for", user.email, convexError);
-                                // Don't throw here - Clerk invite still succeeded
-                            }
-                        })
-                    );
-                    toast.success(`${selectedUsers.length} invitation${selectedUsers.length > 1 ? 's' : ''} sent successfully!`);
-                    onInviteSent();
-                } else {
-                    throw new Error("No organization selected");
-                }
+                await Promise.all(
+                    selectedUsers.map(async (user) => {
+                        await inviteMember({
+                            organizationId,
+                            recipientEmail: user.email,
+                            role: user.role
+                        });
+                    })
+                );
+                toast.success(`${selectedUsers.length} invitation(s) sent successfully!`);
+                onInviteSent();
             } catch (error) {
                 console.error("Failed to send invitations:", error);
                 toast.error(`Failed to send invitations: ${error}`);
@@ -770,17 +645,20 @@ function InlineInviteUsers({ onInviteSent, onDone }: InlineInviteUsersProps) {
                     <Label className="text-xs text-muted-foreground">Suggested Users</Label>
                     <div className="max-h-32 overflow-y-auto space-y-1 border rounded-md p-2">
                         {filteredSearchUsers.map((user) => (
-                            <div 
+                            <div
                                 key={user._id}
                                 className="flex items-center justify-between p-2 hover:bg-accent rounded cursor-pointer transition-colors"
                                 onClick={() => {
                                     if (user.email) {
-                                        // Check if user already added
                                         if (selectedUsers.some(selectedUser => selectedUser.email === user.email)) {
                                             toast.error("User already added");
                                             return;
                                         }
-                                        setSelectedUsers(prev => [...prev, { email: user.email!, role }]);
+                                        setSelectedUsers(prev => [...prev, {
+                                            email: user.email!,
+                                            role,
+                                            userId: user.externalId
+                                        }]);
                                         setEmail("");
                                     }
                                 }}
@@ -851,7 +729,7 @@ function InlineInviteUsers({ onInviteSent, onDone }: InlineInviteUsersProps) {
                     Skip for now
                 </Button>
                 <Button onClick={handleDone} disabled={loading}>
-                    {loading ? "Sending..." : selectedUsers.length > 0 ? `Send ${selectedUsers.length} & Done` : "Done"}
+                    {loading ? "Adding..." : selectedUsers.length > 0 ? `Add ${selectedUsers.length} & Done` : "Done"}
                 </Button>
             </div>
         </div>

@@ -18,7 +18,7 @@ import { Id } from '@/../convex/_generated/dataModel';
 import { toast } from 'sonner';
 import { StaticFacePile } from '@/components/ui/face-pile';
 import { VisionTableSkeleton, VisionGridSkeleton } from '@/components/vision-skeletons';
-import { useOrganization } from '@clerk/nextjs';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { NotionSidebar } from '@/components/ui/notion-sidebar';
 import { useOrgSwitch } from '@/contexts/OrgSwitchContext';
 import { usePermissions } from '@/contexts/PermissionsContext';
@@ -93,7 +93,7 @@ export default function SheetsPage() {
         (isOrgSwitching) ? "skip" :
             {
                 search: debouncedSearch || undefined,
-                organizationId: organization?.id || null,
+                organizationId: organization?._id || null,
                 sortBy: sortBy as "updatedAt" | "createdAt" | "title",
                 limit: 50
             },
@@ -123,7 +123,7 @@ export default function SheetsPage() {
         }
 
         const id = await createVision({
-            organizationId: organization?.id
+            organizationId: organization?._id
         });
         router.push(`${ROUTES.PROFILE.VISIONS}/${id}`);
     };
@@ -332,7 +332,7 @@ export default function SheetsPage() {
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                className="mt-30 flex items-center justify-center z-50 pointer-events-none px-4"
+                                className="w-full absolute mt-30 flex items-center justify-center z-50 pointer-events-none px-4"
                             >
                                 <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border-2 border-primary/20 rounded-xl p-8 max-w-md w-full shadow-2xl bg-background/95 backdrop-blur-sm pointer-events-auto">
                                     <div className="flex flex-col items-center text-center gap-4">

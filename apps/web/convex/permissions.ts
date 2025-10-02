@@ -210,8 +210,9 @@ export class PermissionError extends Error {
  */
 export function requirePermission(plan: Plan, permission: Permission): void {
   if (!hasPermission(plan, permission)) {
+    console.error("Missing Perm:", permission)
     throw new PermissionError(
-      `This action requires ${permission} permission. Please upgrade your plan.`
+      `This action requires permission. Please upgrade your plan.`
     );
   }
 }

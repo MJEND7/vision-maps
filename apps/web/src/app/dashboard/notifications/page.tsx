@@ -5,7 +5,8 @@ import { motion } from "motion/react";
 import { Bell, Check, Trash2, Users, MessageSquare, Settings, UserCheck, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useUser, useOrganization, useOrganizationList } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
+import { useOrganization, useOrganizationList } from "@/contexts/OrganizationContext";
 import { NotionSidebar } from "@/components/ui/notion-sidebar";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
@@ -53,9 +54,7 @@ const formatTimestamp = (timestamp: string) => {
 export default function NotificationsPage() {
     const { isLoaded: userLoaded, isSignedIn } = useUser();
     const { isLoaded: orgLoaded } = useOrganization();
-    const { userInvitations, setActive } = useOrganizationList({
-        userInvitations: { infinite: true }
-    });
+    const { setActive } = useOrganizationList();
     const router = useRouter();
     const [filter, setFilter] = useState<"all" | "unread">("all");
 
@@ -140,24 +139,7 @@ export default function NotificationsPage() {
 
     const handleAcceptOrgInvite = async (notificationId: Id<"notifications">) => {
         try {
-            const result = await acceptOrgInviteMutation({ notificationId });
-
-            if (result && "organizationId" in result) {
-                // Find the corresponding Clerk invitation
-                const clerkInvitation = userInvitations.data?.find(inv =>
-                    inv.publicOrganizationData.id === result.organizationId
-                );
-
-                if (clerkInvitation) {
-                    // Accept the Clerk invitation and switch to the organization
-                    await clerkInvitation.accept();
-                    await setActive?.({ organization: result.organizationId });
-
-                    // Revalidate invitations
-                    userInvitations.revalidate?.();
-                }
-            }
-
+            await acceptOrgInviteMutation({ notificationId });
             toast.success("Organization invitation accepted!");
         } catch (error) {
             console.error("Failed to accept organization invitation:", error);

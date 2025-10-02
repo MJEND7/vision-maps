@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Plus, Hash, Trash2, Edit2, Check, X, MoreVertical, Calendar, MessageSquare, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "motion/react";
-import { usePaginatedQuery, useMutation } from "convex/react";
+import { usePaginatedQuery } from "convex/react";
+import { useConvexMutation } from "@/hooks/useConvexWithToast";
 import { api } from "@/../convex/_generated/api";
 import { Id } from "@/../convex/_generated/dataModel";
 import InfiniteScroll from "react-infinite-scroll-component";
@@ -244,8 +245,8 @@ export function ImprovedChatList({ visionId, selectedChatId, onChatSelect, onNew
         { initialNumItems: 10 }
     );
 
-    const updateChatTitle = useMutation(api.chats.updateChatTitle);
-    const deleteChat = useMutation(api.chats.deleteChat);
+    const updateChatTitle = useConvexMutation(api.chats.updateChatTitle);
+    const deleteChat = useConvexMutation(api.chats.deleteChat);
 
     // Combine all chats from all pages and filter out comment chats
     const allChats = chatsPage?.flatMap(page => page) || [];
@@ -258,9 +259,8 @@ export function ImprovedChatList({ visionId, selectedChatId, onChatSelect, onNew
                 title
             });
             toast.success("Chat title updated");
-        } catch (error) {
-            console.error("Failed to update chat title:", error);
-            toast.error("Failed to update chat title");
+        } catch {
+            // Error already shown as toast by useConvexMutation
         }
     };
 
@@ -270,9 +270,8 @@ export function ImprovedChatList({ visionId, selectedChatId, onChatSelect, onNew
                 chatId: chatId as Id<"chats">
             });
             toast.success("Chat deleted");
-        } catch (error) {
-            console.error("Failed to delete chat:", error);
-            toast.error("Failed to delete chat");
+        } catch {
+            // Error already shown as toast by useConvexMutation
         }
     };
 
