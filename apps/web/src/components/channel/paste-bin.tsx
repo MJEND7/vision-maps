@@ -285,7 +285,7 @@ interface Media {
     chatId?: string;
 }
 
-function PasteBin({ onCreateNode, channelId, visionId }: { 
+function PasteBin({ onCreateNode, channelId, visionId }: {
     onCreateNode: (data: Omit<CreateNodeArgs, "channel">) => void,
     channelId: string,
     visionId: string
@@ -310,7 +310,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const emptyResetTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const textContentDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
     const { hasPermission } = usePermissions();
     const canUseAI = hasPermission(Permission.AI_NODES);
@@ -364,7 +363,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             console.error('Transcription error:', error);
         },
     });
-    
+
     // Use the reusable OG metadata hook
     const { fetchWithCache } = useOGMetadataWithCache();
 
@@ -373,8 +372,8 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         containerWidth: mode !== PasteBinMode.IDLE || isDragOver ? "100%" : "10rem",
         containerHeight: mode === PasteBinMode.AI ? "400px" :
             mode === PasteBinMode.TRANSCRIPTION ? "300px" :
-            mode !== PasteBinMode.IDLE ? "auto" :
-                isDragOver ? "8rem" : "2rem",
+                mode !== PasteBinMode.IDLE ? "auto" :
+                    isDragOver ? "8rem" : "2rem",
         containerPadding: mode !== PasteBinMode.IDLE || isDragOver ? "0px" : "4px",
         inputHeight: mode !== PasteBinMode.IDLE ? "120px" : "44px"
     }), [mode, isDragOver]);
@@ -497,9 +496,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             if (emptyResetTimerRef.current) {
                 clearTimeout(emptyResetTimerRef.current);
             }
-            if (textContentDebounceRef.current) {
-                clearTimeout(textContentDebounceRef.current);
-            }
             if (saveDebounceRef.current) {
                 clearTimeout(saveDebounceRef.current);
             }
@@ -517,30 +513,16 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         }
     }, [mode]);
 
-    // Reset to original state if input is empty for 3 seconds - debounced
-    useEffect(() => {
-        if (mode === PasteBinMode.TEXT && !media && !textContent.trim()) {
-            // Clear existing timer
-            if (emptyResetTimerRef.current) {
-                clearTimeout(emptyResetTimerRef.current);
-            }
-
-            // Only start timer if we're in text mode with empty content
-            emptyResetTimerRef.current = setTimeout(async () => {
-                setMode(PasteBinMode.IDLE);
-                setIsTextMode(false);
-                setTextContent("");
-                await clearPasteBin({ visionId: visionId as Id<"visions"> });
-            }, 1500);
-
-            return () => {
-                if (emptyResetTimerRef.current) {
-                    clearTimeout(emptyResetTimerRef.current);
-                    emptyResetTimerRef.current = null;
-                }
-            };
+    const setIdle = async () => {
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
         }
-    }, [mode, media, textContent, clearPasteBin, visionId]);
+
+        setMode(PasteBinMode.IDLE);
+        setIsTextMode(false);
+        setTextContent("");
+        await clearPasteBin({ visionId: visionId as Id<"visions"> });
+    }
 
     const updateMedia = useCallback((mediaItem: Media | null) => {
         setMedia(mediaItem);
@@ -557,20 +539,21 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
 
     // Debounced text content update
     const updateTextContent = useCallback((content: string) => {
-        setTextContent(content);
-
-        // Clear existing debounce timer
-        if (textContentDebounceRef.current) {
-            clearTimeout(textContentDebounceRef.current);
+        // Clear existing timer
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
         }
 
-        // Set debounced database save
-        textContentDebounceRef.current = setTimeout(() => {
+        setTextContent(content);
+
+        // Set debounce timer to create text media item
+        debounceTimerRef.current = setTimeout(() => {
+            // Set debounced database save
             savePasteBinToDb({
                 mode: mode,
                 textContent: content,
             });
-        }, 300);
+        }, 2000);
     }, [mode, savePasteBinToDb]);
 
     const updateChatId = useCallback((chatIdValue: string | null) => {
@@ -700,7 +683,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             console.error('Error fetching metadata:', error);
             console.log('About to call detectLinkType with:', url);
             const fallbackType = detectLinkType(url);
-            
+
             // Safe fallback with URL validation
             try {
                 const hostname = url ? new URL(url).hostname : 'Invalid URL';
@@ -784,7 +767,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const clipboardData = e.clipboardData;
         const files = Array.from(clipboardData.files);
-        
+
         // Try multiple ways to get text data
         const text = clipboardData.getData("text/plain") || clipboardData.getData("text") || clipboardData.getData("text/uri-list");
 
@@ -816,14 +799,16 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                 clearTimeout(debounceTimerRef.current);
             }
 
+            if (mode === PasteBinMode.IDLE) {
+                setMode(PasteBinMode.TEXT);
+                setIsTextMode(true);
+            }
             // Set debounce timer to create text media item
             debounceTimerRef.current = setTimeout(() => {
                 if (mode === PasteBinMode.IDLE) {
-                    setMode(PasteBinMode.TEXT);
-                    setIsTextMode(true);
                     savePasteBinToDb({ mode: PasteBinMode.TEXT });
                 }
-            }, 500);
+            }, 2000);
         }
     }, [handleLinkPaste, updateTextContent, mode, savePasteBinToDb]);
 
@@ -900,13 +885,13 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             const monitorDevices = devices.filter(device => {
                 const label = device.label.toLowerCase();
                 return label.includes('monitor') ||
-                       label.includes('blackhole') ||
-                       label.includes('soundflower') ||
-                       label.includes('vb-cable') ||
-                       label.includes('vb-audio') ||
-                       label.includes('virtual') ||
-                       label.includes('loopback') ||
-                       label.includes('stereo mix');
+                    label.includes('blackhole') ||
+                    label.includes('soundflower') ||
+                    label.includes('vb-cable') ||
+                    label.includes('vb-audio') ||
+                    label.includes('virtual') ||
+                    label.includes('loopback') ||
+                    label.includes('stereo mix');
             });
             setAudioDevices(monitorDevices);
         } catch (error) {
@@ -1001,10 +986,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         if (emptyResetTimerRef.current) {
             clearTimeout(emptyResetTimerRef.current);
             emptyResetTimerRef.current = null;
-        }
-        if (textContentDebounceRef.current) {
-            clearTimeout(textContentDebounceRef.current);
-            textContentDebounceRef.current = null;
         }
         if (saveDebounceRef.current) {
             clearTimeout(saveDebounceRef.current);
@@ -1291,7 +1272,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                                             paste
                                         </span>
                                         <span className="sm:hidden flex text-[10px] text-muted-foreground font-medium items-center justify-center">
-                                            Paste your 
+                                            Paste your
                                             <kbd className="px-1 py-0.5 mx-1 bg-accent rounded">media</kbd>
                                             here
                                         </span>
@@ -1334,7 +1315,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                                                     </div>
                                                 </div>
                                             )}
-                                            
+
                                             {!isUploading && media.uploadedUrl && (
                                                 <div className="text-center">
                                                     <div className="text-xs text-green-600 dark:text-green-400">
@@ -1597,11 +1578,14 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                             }
                             value={textContent}
                             onChange={(e) => {
-                                if (mode === PasteBinMode.TEXT || mode === PasteBinMode.AI) {
+                                if (e.target.value == "") {
+                                    setIdle()
+                                } else if (mode === PasteBinMode.TEXT || mode === PasteBinMode.AI) {
                                     updateTextContent(e.target.value);
                                 } else {
                                     handleInputChange(e);
                                 }
+
                             }}
                             onKeyDown={async (e) => {
                                 if (e.key === "Enter" && !e.shiftKey && textContent) {
