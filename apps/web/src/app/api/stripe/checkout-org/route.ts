@@ -27,14 +27,28 @@ export async function POST(req: Request) {
       );
     }
 
-    // Verify user is the owner of the organization
-    const org = await convex.query(api.organizations.getOrganizationById, {
-      organizationId: orgId,
+    // SECURITY: Verify user is an admin of the organization before proceeding
+    const org = await convex.query(api.orgs.getById, {
+      organizationId: orgId as any,
     });
 
-    if (!org || org.createdBy !== userId) {
+    if (!org) {
       return NextResponse.json(
-        { error: "Only organization owners can manage billing" },
+        { error: "Organization not found" },
+        { status: 404 }
+      );
+    }
+
+    // Check if user is an admin member of the organization
+    const members = await convex.query(api.orgs.getMembers, {
+      organizationId: orgId as any,
+    });
+
+    const userMembership = members.find((m) => m.userId === userId);
+
+    if (!userMembership || userMembership.role !== "admin") {
+      return NextResponse.json(
+        { error: "Only organization admins can manage billing" },
         { status: 403 }
       );
     }
