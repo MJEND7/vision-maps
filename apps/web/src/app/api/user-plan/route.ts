@@ -3,44 +3,56 @@ import { NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/../convex/_generated/api";
 
-
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function GET() {
     try {
-        const { userId, sessionClaims, orgId } = await auth();
+        const { userId, orgId } = await auth();
 
-        if (!userId || !sessionClaims) {
+        if (!userId) {
             return NextResponse.json(
                 { error: "Unauthorized" },
                 { status: 401 }
             );
         }
 
-        const rawPlan = (sessionClaims.pla as string);
-        const plan = rawPlan.replace("u:", "").replace("o:", "");
+        // Get user plan from Convex
+        const userPlan = await convex.query(api.userPlans.getUserPlanByExternalId, {
+            externalId: userId,
+        });
 
-        // Get trial information from Convex
-        let trialDaysLeft = null;
-        try {
-            console.log(userId);
-            const trialInfo = await convex.query(api.userTrials.getTrialInfo, {
-                clerkUserId: userId,
-                organizationId: orgId || undefined,
+        // Get org plan from Convex if in an organization
+        let orgPlan = null;
+        if (orgId) {
+            orgPlan = await convex.query(api.orgPlans.getOrgPlanByOrganizationId, {
+                organizationId: orgId,
             });
+        }
 
-            if (trialInfo) {
-                trialDaysLeft = trialInfo.daysLeft;
-            }
-        } catch (convexError) {
-            console.error("Error fetching trial info:", convexError);
-            // Don't fail the whole request if trial info fails
+        // Determine the active plan (org plan takes precedence)
+        const activePlan = orgPlan || userPlan;
+        const planType = activePlan?.planType || "free";
+        const status = activePlan?.status || "none";
+        const isOnTrial = activePlan?.isOnTrial || false;
+
+        // Calculate trial days left if on trial
+        let trialDaysLeft = null;
+        if (isOnTrial && activePlan?.trialEndsAt) {
+            const now = Date.now();
+            trialDaysLeft = Math.ceil((activePlan.trialEndsAt - now) / (24 * 60 * 60 * 1000));
+            if (trialDaysLeft < 0) trialDaysLeft = 0;
         }
 
         return NextResponse.json({
-            plan,
+            plan: planType,
             userId,
+            orgId: orgId || null,
+            status,
+            isOnTrial,
             trialDaysLeft,
+            activePlan,
+            userPlan,
+            orgPlan,
         });
     } catch (error) {
         console.error("Error fetching user plan:", error);

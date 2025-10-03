@@ -11,10 +11,11 @@ import { Messages } from "./tables/messages";
 import { OGMetadata } from "./tables/ogMetadata";
 import { Edges } from "./tables/edges";
 import { FramedNode } from "./tables/framed_node";
-import { UserTrials } from "./tables/userTrials";
 import { UserPasteBin } from "./tables/userPasteBin";
 import { Organizations } from "./tables/organization";
 import { OrganizationMembers } from "./tables/organizationMember";
+import { UserPlans } from "./tables/userPlans";
+import { OrgPlans } from "./tables/orgPlans";
 
 // The schema is entirely optional.
 // You can delete this file (schema.ts) and the
@@ -35,8 +36,9 @@ export default defineSchema({
     chats: Chats.Table,
     messages: Messages.Table,
     og_metadata: OGMetadata.Table,
-    userTrials: UserTrials.Table,
     user_paste_bin: UserPasteBin.Table,
     organizations: Organizations.Table,
     organization_members: OrganizationMembers.Table,
+    user_plans: UserPlans.Table,
+    org_plans: OrgPlans.Table,
 });

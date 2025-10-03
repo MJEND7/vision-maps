@@ -5,6 +5,7 @@ import type { WebhookEvent } from "@clerk/backend";
 import { Webhook } from "svix";
 import { streamChat } from "./messages";
 import { requireAuth } from "./utils/auth";
+import { webhook as stripeWebhook } from "./stripe";
 
 const http = httpRouter();
 
@@ -65,6 +66,12 @@ http.route({
 
     return new Response(null, { status: 200 });
   }),
+});
+
+http.route({
+  path: "/stripe/webhook",
+  method: "POST",
+  handler: stripeWebhook,
 });
 
 

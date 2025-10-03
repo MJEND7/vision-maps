@@ -1,19 +1,15 @@
 "use client";
 
-import {
-    CheckoutButton,
-} from "@clerk/nextjs/experimental";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CheckCircle } from "lucide-react";
 import { Unauthenticated } from "convex/react";
 import { Button } from "../ui/button";
 import { ROUTES } from "@/lib/constants";
-import { SignedIn } from "@clerk/clerk-react";
+import { SignedIn, useAuth } from "@clerk/clerk-react";
 import { useOrganization, useOrganizationList } from "@/contexts/OrganizationContext";
 import { useMutation } from "convex/react";
 import { api } from "@/../convex/_generated/api";
-import AutoCheckout from "./AutoCheckout";
 import {
     Dialog,
     DialogContent,
@@ -26,9 +22,8 @@ import { Users, Plus, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { ApiRoutes } from "@/constants/apiRoutes";
 
-// Hardcoded pricing config (UI only — no Clerk IDs yet)
+// Pricing configuration
 const plans = [
     {
         key: "free",
@@ -46,14 +41,14 @@ const plans = [
     },
     {
         key: "pro",
-        id: process.env.NODE_ENV !== "production" ? process.env.NEXT_PUBLIC_CLERK_DEV_PRO_PLAN : process.env.NEXT_PUBLIC_CLERK_DEV_PRO_PLAN,
         name: "Pro",
         description: "Enhance your ideation experience",
-        monthly: "$15.00",
-        annual: "$150.00",
-        annualMonthly: "$13.00",
+        monthly: "$20.00",
+        annual: "$216.00",
+        annualMonthly: "$18.00",
         hasFreeTrial: true,
-        trialDays: 3,
+        trialDays: 7,
+        priceId: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID,
         features: [
             "Unlimited visions",
             "AI Assistance",
@@ -64,20 +59,21 @@ const plans = [
         ],
     },
     {
-        key: "teams",
-        id: process.env.NODE_ENV !== "production" ? process.env.NEXT_PUBLIC_CLERK_DEV_TEAM_PLAN : process.env.NEXT_PUBLIC_CLERK_DEV_TEAM_PLAN,
-        name: "Teams",
-        description: "Small plan for small teams 1 to 3 users",
-        monthly: "$50.00",
-        annual: "$480.00",
-        annualMonthly: "$40.00",
+        key: "team",
+        name: "Team",
+        description: "Collaborate with your team",
+        monthly: "$15.00",
+        annual: "$156.00",
+        annualMonthly: "$13.00",
+        perSeat: true,
         hasFreeTrial: true,
-        trialDays: 3,
+        trialDays: 7,
+        priceId: process.env.NEXT_PUBLIC_STRIPE_TEAM_PRICE_ID,
         features: [
             "Unlimited visions",
             "AI Assistance",
             "Team Collaboration",
-            "Large Team",
+            "Unlimited team members",
             "All integrations",
             "Advanced export options",
             "Priority support",
@@ -88,9 +84,8 @@ const plans = [
 export function PricingComponent() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { userId } = useAuth();
     const [isAnnual, setIsAnnual] = useState(false);
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const [showCheckOut, setShowCheckOut] = useState(false);
     const [currentPlan, setCurrentPlan] = useState<string>("free");
     const [isLoadingPlan, setIsLoadingPlan] = useState(true);
     const [showOrgSelector, setShowOrgSelector] = useState(false);
@@ -100,6 +95,7 @@ export function PricingComponent() {
     const [showCreateOrg, setShowCreateOrg] = useState(false);
     const [newOrgName, setNewOrgName] = useState("");
     const [isCreatingOrg, setIsCreatingOrg] = useState(false);
+    const [isCheckingOut, setIsCheckingOut] = useState(false);
 
     const { organization } = useOrganization();
     const { userMemberships, isLoaded: orgListLoaded, setActive } = useOrganizationList();
@@ -110,12 +106,10 @@ export function PricingComponent() {
         fetch('/api/user-plan')
             .then(res => res.json())
             .then(data => {
-                console.log('Initial plan fetch:', data)
                 setCurrentPlan(data.plan || "free");
                 // Set proAlreadyOwned if user has pro plan and is in an organization
                 if (data.plan === 'pro' && organization) {
                     setProAlreadyOwned(true);
-                    console.log('Setting proAlreadyOwned to true on initial load');
                 }
                 setIsLoadingPlan(false);
             })
@@ -129,37 +123,54 @@ export function PricingComponent() {
     // Update proAlreadyOwned state when organization changes
     useEffect(() => {
         if (!organization) {
-            // When switching to personal account, reset the state
             setProAlreadyOwned(false);
         } else if (currentPlan === 'pro') {
-            // When switching to an organization and user has pro plan, set to true
             setProAlreadyOwned(true);
-            console.log('Setting proAlreadyOwned to true because user has pro and switched to org');
         }
-    }, [organization, currentPlan, ]);
+    }, [organization, currentPlan]);
 
-    // Preselect checkout if coming with query params
-    useEffect(() => {
-        const selectedPlan = searchParams.get("plan");
-        const selectedPeriod = searchParams.get("period");
+    // Handle Stripe checkout
+    const handleCheckout = async (planKey: string) => {
+        if (!userId) return;
 
-        if (selectedPlan && selectedPeriod && !isLoadingPlan) {
-            const wasAnnual = selectedPeriod === "annual";
-            setIsAnnual(wasAnnual);
-            const planIndex = plans.findIndex(
-                (plan) => plan.name.toLowerCase() === selectedPlan.toLowerCase()
-            );
-            if (planIndex !== -1) setCurrentIndex(planIndex);
+        setIsCheckingOut(true);
 
-            // If it's a teams plan, show org selector when in organization or no organization
-            if (selectedPlan.toLowerCase() === "teams") {
-                setShowOrgSelector(true);
-            } else {
-                // For other plans (Pro), proceed directly to checkout
-                setShowCheckOut(true);
+        try {
+            let endpoint = '/api/stripe/checkout';
+            let body: any = {
+                priceId: plans.find(p => p.key === planKey)?.priceId,
+                planType: planKey,
+            };
+
+            // For team plans, use the org checkout endpoint
+            if (planKey === 'team' && selectedOrgForTeam?.id) {
+                endpoint = '/api/stripe/checkout-org';
+                // Get member count for seat calculation
+                const orgData = userMemberships.data?.find(m => m.organization.id === selectedOrgForTeam.id);
+                body.seats = orgData?.organization.membersCount || 1;
             }
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+
+            const data = await response.json();
+
+            if (data.url) {
+                // Redirect to Stripe checkout
+                window.location.href = data.url;
+            } else {
+                toast.error('Failed to create checkout session');
+            }
+        } catch (error) {
+            console.error('Checkout error:', error);
+            toast.error('Failed to start checkout');
+        } finally {
+            setIsCheckingOut(false);
         }
-    }, [isLoadingPlan, searchParams]);
+    };
 
     // Helper function to get button text based on current plan
     const getButtonText = (planKey: string) => {
@@ -171,12 +182,12 @@ export function PricingComponent() {
             return "Current Plan";
         }
 
-        // Special case for Teams plan - show current org name
-        if (planKey === "teams" && organization) {
+        // Special case for Team plan - show current org name
+        if (planKey === "team" && organization) {
             if (plan?.hasFreeTrial) {
                 return `Start Trial for ${organization.name}`;
             }
-            return `Upgrade ${organization.name} to Teams`;
+            return `Upgrade ${organization.name} to Team`;
         }
 
         if (plan?.hasFreeTrial) {
@@ -199,19 +210,17 @@ export function PricingComponent() {
         setIsProcessingOrgSelection(true);
         setSelectedOrgForTeam({ id: orgId, name: orgName });
         setShowOrgSelector(false);
-        setCurrentIndex(2); // Team plan index
 
-        // Clean up URL params if they exist
-        const hasParams = searchParams.get("plan") || searchParams.get("period");
-        if (hasParams) {
-            router.push(window.location.pathname);
+        // Switch to the selected organization
+        if (orgId) {
+            await setActive?.({ organization: orgId as any });
+            // Wait a moment for org switch to complete
+            await new Promise(resolve => setTimeout(resolve, 500));
         }
 
-        // Add a small delay to allow for any org switching to complete
-        setTimeout(() => {
-            setShowCheckOut(true);
-            setIsProcessingOrgSelection(false);
-        }, 500);
+        // Proceed to checkout
+        await handleCheckout('team');
+        setIsProcessingOrgSelection(false);
     };
 
     // Handle Pro plan click when in organization
@@ -228,22 +237,17 @@ export function PricingComponent() {
             await new Promise(resolve => setTimeout(resolve, 1500));
 
             // Check if user already has Pro plan on personal account
-            const response = await fetch(ApiRoutes.USER_PLAN);
+            const response = await fetch('/api/user-plan');
             const data = await response.json();
 
-            console.log('User plan check:', data); // Debug log
-
             if (data.plan === 'pro') {
-                console.log('Setting proAlreadyOwned to true'); // Debug log
                 toast.error("You already own the Pro plan on your personal account");
                 setProAlreadyOwned(true);
                 return;
             }
 
             // Proceed to checkout for Pro plan
-            setCurrentIndex(1); // Pro plan index
-            setSelectedOrgForTeam(null); // Clear team selection
-            setShowCheckOut(true);
+            await handleCheckout('pro');
 
         } catch (error) {
             console.error('Error switching to personal account:', error);
@@ -304,18 +308,6 @@ export function PricingComponent() {
 
     return (
         <>
-            {showCheckOut && (
-                <SignedIn>
-                    <AutoCheckout
-                        isAnnual={isAnnual}
-                        data={plans}
-                        currentIndex={currentIndex}
-                        forWho={selectedOrgForTeam ? "organization" : "user"}
-                        selectedOrg={selectedOrgForTeam}
-                    />
-                </SignedIn>
-            )}
-
             <section id="pricing" className="py-20 px-6">
                 <div className="max-w-6xl mx-auto">
                     {/* HEADER */}
@@ -356,13 +348,13 @@ export function PricingComponent() {
                     <div className="grid md:grid-cols-3 gap-8">
                         {plans.map((plan) => (
                             <div
-                                key={`DESKTOP-${plan.name}`}
+                                key={plan.name}
                                 className={`relative flex flex-col justify-between p-8 rounded-xl border bg-card hover:shadow-lg transition-all ${plan.name === "Pro" ? "border-primary shadow-lg scale-105" : ""
                                     }`}
                             >
                                 <div className="space-y-3">
                                     {plan.name === "Pro" && (
-                                        <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 flex flex-col gap-2">
+                                        <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                                             <span className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-semibold">
                                                 Most Popular
                                             </span>
@@ -384,13 +376,13 @@ export function PricingComponent() {
                                                 <span className="text-4xl font-bold">
                                                     {isAnnual ? plan.annual : plan.monthly}
                                                 </span>
-                                                <span className="text-muted-foreground">
-                                                    {isAnnual ? "Yearly" : "Monthly"}
+                                                <span className="text-muted-foreground text-sm">
+                                                    {plan.perSeat && "/seat"} {isAnnual ? "/year" : "/month"}
                                                 </span>
                                             </div>
                                             {isAnnual && plan.name !== "Free" && (
                                                 <p className="text-xs text-muted-foreground mt-2">
-                                                    ({plan.annualMonthly}/month billed annually)
+                                                    ({plan.annualMonthly}{plan.perSeat && "/seat"}/month billed annually)
                                                 </p>
                                             )}
                                         </div>
@@ -402,7 +394,7 @@ export function PricingComponent() {
                                     <div className="space-y-4 mb-8">
                                         {plan.features.map((feature) => (
                                             <div
-                                                key={`FEATURE-${plan.name}-${feature}`}
+                                                key={feature}
                                                 className="flex items-center gap-3"
                                             >
                                                 <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
@@ -412,20 +404,18 @@ export function PricingComponent() {
                                     </div>
                                 </div>
 
-                                {plan.name !== "Free" && plan.id && (
+                                {plan.name !== "Free" && (
                                     <div>
                                         <SignedIn>
-                                            {plan.key === "teams" ? (
+                                            {plan.key === "team" ? (
                                                 <Button
                                                     onClick={handleTeamPlanClick}
-                                                    data-plan={plan.name}
-                                                    data-period={isAnnual ? "annual" : "month"}
                                                     className="w-full h-auto p-3"
                                                     variant="outline"
                                                     size="lg"
-                                                    disabled={currentPlan === plan.key || isProcessingOrgSelection}
+                                                    disabled={currentPlan === plan.key || isProcessingOrgSelection || isCheckingOut}
                                                 >
-                                                    {isProcessingOrgSelection ? (
+                                                    {isProcessingOrgSelection || isCheckingOut ? (
                                                         "Processing..."
                                                     ) : organization ? (
                                                         <div className="flex items-center justify-between w-full">
@@ -437,7 +427,7 @@ export function PricingComponent() {
                                                                     </AvatarFallback>
                                                                 </Avatar>
                                                                 <span className="text-sm">
-                                                                    {plan?.hasFreeTrial ? `Start Trial for ${organization.name}` : `Upgrade ${organization.name} to Teams`}
+                                                                    {getButtonText(plan.key)}
                                                                 </span>
                                                             </div>
                                                             <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -451,43 +441,29 @@ export function PricingComponent() {
                                                 </Button>
                                             ) : plan.key === "pro" && organization ? (
                                                 <Button
-                                                    onClick={() => {
-                                                        console.log('Button clicked, proAlreadyOwned:', proAlreadyOwned);
-                                                        handleProPlanClick();
-                                                    }}
-                                                    data-plan={plan.name}
-                                                    data-period={isAnnual ? "annual" : "month"}
+                                                    onClick={handleProPlanClick}
                                                     className={`w-full ${proAlreadyOwned ? "opacity-50 cursor-not-allowed" : "bg-primary hover:bg-primary/90"}`}
                                                     variant={proAlreadyOwned ? "outline" : "default"}
                                                     size="lg"
-                                                    disabled={currentPlan === plan.key || isProcessingOrgSelection || proAlreadyOwned}
+                                                    disabled={currentPlan === plan.key || isProcessingOrgSelection || proAlreadyOwned || isCheckingOut}
                                                 >
-                                                    {(() => {
-                                                        console.log('Rendering button, states:', { isProcessingOrgSelection, proAlreadyOwned, currentPlan: currentPlan === plan.key });
-                                                        return isProcessingOrgSelection ? "Switching to personal..." : proAlreadyOwned ? "Already owned on personal account" : getButtonText(plan.key);
-                                                    })()}
+                                                    {isProcessingOrgSelection || isCheckingOut ? "Processing..." : proAlreadyOwned ? "Already owned on personal account" : getButtonText(plan.key)}
                                                 </Button>
                                             ) : (
-                                                <CheckoutButton
-                                                    planId={plan.id}
-                                                    planPeriod={isAnnual ? "annual" : "month"}
+                                                <Button
+                                                    onClick={() => handleCheckout(plan.key)}
+                                                    className={`w-full ${plan.name === "Pro"
+                                                        ? "bg-primary hover:bg-primary/90"
+                                                        : ""
+                                                        }`}
+                                                    variant={
+                                                        plan.name === "Pro" ? "default" : "outline"
+                                                    }
+                                                    size="lg"
+                                                    disabled={currentPlan === plan.key || isCheckingOut}
                                                 >
-                                                    <Button
-                                                        data-plan={plan.name}
-                                                        data-period={isAnnual ? "annual" : "month"}
-                                                        className={`w-full ${plan.name === "Pro"
-                                                            ? "bg-primary hover:bg-primary/90"
-                                                            : ""
-                                                            }`}
-                                                        variant={
-                                                            plan.name === "Pro" ? "default" : "outline"
-                                                        }
-                                                        size="lg"
-                                                        disabled={currentPlan === plan.key}
-                                                    >
-                                                        {getButtonText(plan.key)}
-                                                    </Button>
-                                                </CheckoutButton>
+                                                    {isCheckingOut ? "Processing..." : getButtonText(plan.key)}
+                                                </Button>
                                             )}
                                         </SignedIn>
                                         <Unauthenticated>
@@ -601,7 +577,7 @@ export function PricingComponent() {
                     <DialogHeader>
                         <DialogTitle>Create Organization</DialogTitle>
                         <DialogDescription>
-                            Enter a name for your new organization to continue with the Teams plan.
+                            Enter a name for your new organization to continue with the Team plan.
                         </DialogDescription>
                     </DialogHeader>
 

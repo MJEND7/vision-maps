@@ -43,7 +43,6 @@ export function NotionSidebar() {
         isLoaded: orgListLoaded,
         setActive
     } = useOrganizationList();
-    const { openUserProfile } = useClerk();
     const router = useRouter();
     const pathname = usePathname(); // Get current pathname
     const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
@@ -109,7 +108,7 @@ export function NotionSidebar() {
     }, [isSignedIn, isOrgSwitching]);
 
     const handleProfileClick = () => {
-        openUserProfile()
+        router.push("profile")
     };
 
     const handleSettingsClick = () => {
@@ -147,7 +146,7 @@ export function NotionSidebar() {
         if (!isSignedIn) return null;
 
         // Free user → Upgrade widget
-        if (userPlan == "free_user" || userPlan == "free_org") {
+        if (userPlan == "free") {
             return (
                 <div
                     className="relative rounded-2xl p-4 mt-2 
@@ -388,7 +387,6 @@ export function NotionSidebar() {
 
             {/* Bottom Section */}
             <div className="px-3 py-5  border-t border-border space-y-2">
-                {/* User Profile - Clickable */}
                 <button
                     className="flex items-center gap-2 p-2  rounded-md hover:bg-accent w-full text-left transition-colors"
                     onClick={handleProfileClick}
@@ -408,7 +406,6 @@ export function NotionSidebar() {
                         </div>
                     </div>
                 </button>
-
             </div>
 
             {/* Organization Settings Dialog */}
