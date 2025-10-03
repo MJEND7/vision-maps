@@ -67,7 +67,7 @@ export const createComment = mutation({
         }
 
         // Check commenting permission
-        const plan = await getUserPlan(ctx.auth);
+        const plan = await getUserPlan(ctx.auth, ctx.db);
         requirePermission(plan, Permission.COMMENTING);
 
         // Verify access to vision
@@ -231,7 +231,7 @@ export const createCommentChat = mutation({
         }
 
         // Check commenting permission
-        const plan = await getUserPlan(ctx.auth);
+        const plan = await getUserPlan(ctx.auth, ctx.db);
         requirePermission(plan, Permission.COMMENTING);
 
         // Verify access to vision

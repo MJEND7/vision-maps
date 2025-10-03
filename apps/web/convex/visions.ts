@@ -94,7 +94,7 @@ export const create = mutation({
     }
 
     // Check permissions
-    const plan = await getUserPlan(ctx.auth);
+    const plan = await getUserPlan(ctx.auth, ctx.db);
     const sessionOrgId = await getOrganizationId(ctx.auth);
 
     // Validate organization membership - user can only create visions in orgs they belong to
@@ -158,7 +158,7 @@ export const update = mutation({
 
     // If organizationId is being changed, validate membership and Teams tier
     if (args.organizationId !== undefined) {
-      const plan = await getUserPlan(ctx.auth);
+      const plan = await getUserPlan(ctx.auth, ctx.db);
       const sessionOrgId = await getOrganizationId(ctx.auth);
 
       // Validate organization membership - user can only move visions to orgs they belong to
@@ -483,7 +483,7 @@ export const addMember = mutation({
     }
 
     // Check collaboration limit
-    const plan = await getUserPlan(ctx.auth);
+    const plan = await getUserPlan(ctx.auth, ctx.db);
     const currentMembers = await ctx.db
       .query("vision_users")
       .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
@@ -704,7 +704,7 @@ export const approveJoinRequest = mutation({
     }
 
     // Check collaboration limit before approving
-    const plan = await getUserPlan(ctx.auth);
+    const plan = await getUserPlan(ctx.auth, ctx.db);
     const currentMembers = await ctx.db
       .query("vision_users")
       .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))

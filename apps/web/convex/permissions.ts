@@ -97,6 +97,7 @@ const PRO_ADDITIONAL_PERMISSIONS: Permission[] = [
 
   // Light collaboration (1 extra person per vision)
   Permission.INVITE_USERS,
+  Permission.COMMENTING,
 ];
 
 /**
@@ -104,7 +105,6 @@ const PRO_ADDITIONAL_PERMISSIONS: Permission[] = [
  */
 const TEAMS_ADDITIONAL_PERMISSIONS: Permission[] = [
   // Full collaboration features
-  Permission.COMMENTING,
   Permission.LIVE_COLLABORATION,
 ];
 

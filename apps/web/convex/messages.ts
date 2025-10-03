@@ -111,7 +111,7 @@ export const sendMessage = mutation({
         }
 
         // Check AI permission
-        const plan = await getUserPlan(ctx.auth);
+        const plan = await getUserPlan(ctx.auth, ctx.db);
         requirePermission(plan, Permission.AI_NODES);
 
         // Check if this is the first user message in the chat

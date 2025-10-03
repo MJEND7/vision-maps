@@ -63,7 +63,7 @@ export const createChat = mutation({
         }
 
         // Check AI permission
-        const plan = await getUserPlan(ctx.auth);
+        const plan = await getUserPlan(ctx.auth, ctx.db);
         requirePermission(plan, Permission.AI_NODES);
 
         const id = await ctx.db.insert("chats", {
@@ -279,7 +279,7 @@ export const createChatWithNode = mutation({
         }
 
         // Check AI permission
-        const plan = await getUserPlan(ctx.auth);
+        const plan = await getUserPlan(ctx.auth, ctx.db);
         requirePermission(plan, Permission.AI_NODES);
 
         const userId = (await getUserByIdenityId(ctx, identity.userId as string))?._id;

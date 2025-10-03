@@ -89,7 +89,7 @@ export function CommentChat({ chatId, className, onClose, localCommentData, visi
 
   // Get messages for this specific chat (skip for local chats without real ID)
   const messagesResult = useQuery(
-    (api as any)["messages/functions"].listMessagesByChat,
+    api.messages.listMessagesByChat,
     chat && realChatId ? {
       chatId: chat._id,
       paginationOpts: {
