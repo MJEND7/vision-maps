@@ -41,7 +41,6 @@ import {
     Smartphone,
     User,
     Link as LinkIcon,
-    Globe,
     Laptop,
     RefreshCw,
     Save,
