@@ -52,7 +52,20 @@ export const webhook = httpAction(async (ctx, request) => {
       process.env.STRIPE_WEBHOOK_SECRET!
     );
   } catch (error) {
-    console.error("[STRIPE WEBHOOK CONVEX] Signature verification failed:", error);
+    // SECURITY: Log detailed error information for webhook signature failures
+    // This helps detect potential webhook spoofing attempts
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
+    console.error("[STRIPE WEBHOOK CONVEX] Signature verification failed", {
+      error: errorMessage,
+      stack: errorStack,
+      signatureLength: signature.length,
+      bodyLength: body.length,
+      timestamp: new Date().toISOString(),
+      // Don't log the actual signature or body for security
+    });
+
     return new Response("Webhook signature verification failed", { status: 400 });
   }
 
@@ -72,7 +85,18 @@ export const webhook = httpAction(async (ctx, request) => {
 
     return new Response(JSON.stringify({ received: true }), { status: 200 });
   } catch (error) {
-    console.error("[STRIPE WEBHOOK CONVEX] Error processing event:", error);
+    // SECURITY: Enhanced error logging for webhook processing failures
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
+    console.error("[STRIPE WEBHOOK CONVEX] Error processing event", {
+      eventId: event.id,
+      eventType: event.type,
+      error: errorMessage,
+      stack: errorStack,
+      timestamp: new Date().toISOString(),
+    });
+
     return new Response("Error processing event", { status: 500 });
   }
 });
