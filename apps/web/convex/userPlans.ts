@@ -119,6 +119,19 @@ export const createUserPlanMapping = mutation({
     stripeCustomerId: v.string(),
   },
   handler: async (ctx, args) => {
+    // SECURITY: Verify that the authenticated user matches the externalId
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized: User must be authenticated");
+    }
+
+    // Extract userId from identity (Clerk format)
+    const authenticatedUserId = identity.subject;
+
+    if (authenticatedUserId !== args.externalId) {
+      throw new Error("Unauthorized: Cannot create plan mapping for another user");
+    }
+
     const existingPlan = await ctx.db
       .query("user_plans")
       .withIndex("by_external_id", (q) => q.eq("externalId", args.externalId))
