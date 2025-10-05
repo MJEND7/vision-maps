@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useImperativeHandle, forwardRef } from "react";
+import { useState, useImperativeHandle, forwardRef, useRef } from "react";
 import { ChatCard } from "../channel/metadata/ai/card";
-import { ChatInput } from "../ai/chat-input";
+import { ChatInput, ChatInputRef } from "../ai/chat-input";
 import { ImprovedChatList } from "../ai/improved-chat-list";
 import { CommentChatList } from "../comments/comment-chat-list";
 import { CommentChat } from "../comments/comment-chat";
@@ -32,6 +32,8 @@ export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarC
         const [selectedNodeForComments, setSelectedNodeForComments] = useState<string>();
         const [drivenMessageIds, setDrivenMessageIds] = useState(new Set<string>());
         const [localCommentData, setLocalCommentData] = useState<{chatId: string, nodeId: string} | null>(null);
+
+        const chatInputRef = useRef<ChatInputRef>(null);
 
         const { hasPermission } = usePermissions();
         const canUseAI = hasPermission(Permission.AI_NODES);
@@ -76,7 +78,8 @@ export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarC
 
 
         const handleFocusInput = () => {
-            // Handle focus input - could be used for stopping streaming
+            // Focus the chat input when streaming stops or user wants to interact
+            chatInputRef.current?.focus();
         };
 
         // Expose the open chat and comment functions via ref
@@ -195,6 +198,7 @@ export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarC
 
                                     <div className="flex-shrink-0 p-4 border-t bg-muted/10">
                                         <ChatInput
+                                            ref={chatInputRef}
                                             onSendMessage={handleSendMessage}
                                             placeholder="Ask AI about this vision..."
                                         />

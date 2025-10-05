@@ -1,8 +1,7 @@
-import { mutation, query, QueryCtx } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v, Infer } from "convex/values";
-import { requireAuth } from "./utils/auth";
+import { requireAuth, optionalAuth } from "./utils/auth";
 import { OrgMemberRole } from "./tables/organizationMember";
-import { Id } from "./_generated/dataModel";
 
 // Args schemas
 const getByIdArgs = v.object({
@@ -67,7 +66,12 @@ export const getById = query({
 export const getUserOrganizations = query({
     args: getUserOrganizationsArgs,
     handler: async (ctx, { userId }) => {
-        const identity = await requireAuth(ctx);
+        // Check authentication - return empty array if not authenticated
+        const identity = await optionalAuth(ctx);
+        if (!identity) {
+            return [];
+        }
+
         const userIdToUse = userId || identity.userId?.toString();
 
         if (!userIdToUse) {

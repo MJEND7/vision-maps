@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { SidebarProvider } from '@/contexts/sidebar-context';
 import { VisionTitleSkeleton, DraggableSidebarSkeleton } from '@/components/vision-skeletons';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 enum ViewMode {
     CHANNEL = "channel",
@@ -98,6 +99,7 @@ function TitleCard({ isLoading, vision, OpenSettings, className }: {
 
 function VisionDetailPageContent() {
     const { user } = useUser();
+    const router = useRouter();
     const params = useParams();
     const visionId = params.id as Id<"visions">;
     const [tabs, setTabs] = useState<Map<string, { title: string, id: string, type: ViewMode }>>(new Map());
@@ -707,7 +709,7 @@ function VisionDetailPageContent() {
             rightCollapsed: false,
             rightOpen: isMobile ? true : prev.rightOpen
         }));
-        
+
         // Open the comment chat via ref, pass both chatId and nodeId for local state
         setTimeout(() => {
             rightSidebarContentRef.current?.openCommentChat(chatId, nodeId);
@@ -941,20 +943,19 @@ function VisionDetailPageContent() {
                                 height: '100vh'
                             }}
                         >
-                            <div className="flex-1 space-y-2 overflow-hidden">
-                                {isVisionLoading ? (
-                                    <VisionTitleSkeleton />
-                                ) : (
-                                    <TitleCard
-                                        OpenSettings={(id) => {
-                                            openTab(ViewMode.SETTINGS, id, ViewMode.SETTINGS);
-                                        }}
-                                        isLoading={isVisionLoading}
-                                        vision={vision}
-                                    />
-                                )}
-
-                                <>
+                            <div className="flex flex-col justify-between flex-1 overflow-hidden">
+                                <div className="space-y-2">
+                                    {isVisionLoading ? (
+                                        <VisionTitleSkeleton />
+                                    ) : (
+                                        <TitleCard
+                                            OpenSettings={(id) => {
+                                                openTab(ViewMode.SETTINGS, id, ViewMode.SETTINGS);
+                                            }}
+                                            isLoading={isVisionLoading}
+                                            vision={vision}
+                                        />
+                                    )}
                                     <hr />
                                     <div className="px-3 w-full space-y-4">
                                         <div className="w-full flex items-center justify-between">
@@ -1014,7 +1015,31 @@ function VisionDetailPageContent() {
                                             </div>
                                         )}
                                     </div>
-                                </>
+                                </div>
+                                {/* Bottom Section */}
+                                <div className="px-3 py-5 border-t border-border space-y-2">
+                                    <button
+                                        className="flex items-center gap-2 p-2  rounded-md hover:bg-accent w-full text-left transition-colors"
+                                        onClick={() => {
+                                            router.push("/dashboard/profile")
+                                        }}
+                                    >
+                                        <Avatar className="w-8 h-8">
+                                            <AvatarImage src={user?.imageUrl} />
+                                            <AvatarFallback>
+                                                {user?.firstName?.[0]}{user?.lastName?.[0]}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-medium truncate">
+                                                {user?.firstName} {user?.lastName}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground truncate">
+                                                {user?.emailAddresses?.[0]?.emailAddress}
+                                            </div>
+                                        </div>
+                                    </button>
+                                </div>
                             </div>
 
                             <Button

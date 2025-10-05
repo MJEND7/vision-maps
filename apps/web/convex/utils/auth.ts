@@ -19,6 +19,10 @@ export async function requireAuth(ctx: QueryCtx | MutationCtx) {
     return identity;
 }
 
+export async function optionalAuth(ctx: QueryCtx | MutationCtx) {
+    return await ctx.auth.getUserIdentity();
+}
+
 export async function requireVisionAccess(
     ctx: QueryCtx | MutationCtx,
     visionId: Id<"visions"> | undefined,
