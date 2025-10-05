@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useUser, SignOutButton, useClerk, useAuth } from "@clerk/nextjs";
+import { useUser, SignOutButton, useAuth } from "@clerk/nextjs";
 import { useOrganization, useOrganizationList } from "@/contexts/OrganizationContext";
 import { useRouter, usePathname } from "next/navigation"; // Added usePathname
 import { Badge } from "@/components/ui/badge";
