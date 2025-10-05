@@ -917,6 +917,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
 
         await node();
         await clearMedia(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [media, clearMedia, onCreateNode, textContent, isTextMode, isAiMode, chatId, isUploading, mode, transcriptChunks, pasteBinData]);
 
     const isValidForCreation = useCallback(() => {

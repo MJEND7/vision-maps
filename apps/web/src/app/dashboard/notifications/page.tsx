@@ -6,7 +6,7 @@ import { Bell, Check, Trash2, Users, MessageSquare, Settings, UserCheck, UserX }
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@clerk/nextjs";
-import { useOrganization, useOrganizationList } from "@/contexts/OrganizationContext";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import { NotionSidebar } from "@/components/ui/notion-sidebar";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
