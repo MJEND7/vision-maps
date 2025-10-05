@@ -54,7 +54,6 @@ const formatTimestamp = (timestamp: string) => {
 export default function NotificationsPage() {
     const { isLoaded: userLoaded, isSignedIn } = useUser();
     const { isLoaded: orgLoaded } = useOrganization();
-    const { setActive } = useOrganizationList();
     const router = useRouter();
     const [filter, setFilter] = useState<"all" | "unread">("all");
 

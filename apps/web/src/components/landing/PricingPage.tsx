@@ -83,7 +83,6 @@ const plans = [
 
 export function PricingComponent() {
     const router = useRouter();
-    const searchParams = useSearchParams();
     const { userId } = useAuth();
     const [isAnnual, setIsAnnual] = useState(false);
     const [currentPlan, setCurrentPlan] = useState<string>("free");
@@ -137,7 +136,7 @@ export function PricingComponent() {
 
         try {
             let endpoint = '/api/stripe/checkout';
-            let body: any = {
+            const body: any = {
                 priceId: plans.find(p => p.key === planKey)?.priceId,
                 planType: planKey,
             };

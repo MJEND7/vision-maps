@@ -84,9 +84,6 @@ function relativeTimeFromNow(date?: Date) {
     return "just now";
 }
 
-function ClockIcon(props: React.ComponentProps<typeof Globe>) {
-    return <Globe {...props} />;
-}
 
 function getDeviceIcon(activity?: {
     isMobile?: boolean;
@@ -106,11 +103,6 @@ function getDeviceIcon(activity?: {
     return Monitor;
 }
 
-function compactId(id: string) {
-    if (!id) return "—";
-    if (id.length <= 12) return id;
-    return `${id.slice(0, 6)}...${id.slice(-6)}`;
-}
 
 // Provider visuals for Connected Accounts
 type ProviderKey =
@@ -402,6 +394,7 @@ export default function ProfilePage() {
 
     useEffect(() => {
         fetchSessions();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
     const handleManageSubscription = async () => {
@@ -419,7 +412,7 @@ export default function ProfilePage() {
                 toast.error("Failed to create portal session");
                 setIsLoadingPortal(false);
             }
-        } catch (error) {
+        } catch {
             toast.error("Failed to open customer portal");
             setIsLoadingPortal(false);
         }
@@ -549,6 +542,7 @@ export default function ProfilePage() {
                             {/* Avatar + Name */}
                             <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
                                 <div className="relative">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
                                         src={
                                             profileImagePreview ||
@@ -887,7 +881,7 @@ export default function ProfilePage() {
                             {planType === "free" && (
                                 <div className="rounded-lg bg-muted/50 p-4">
                                     <p className="text-sm text-muted-foreground">
-                                        You're currently on the free plan. Upgrade to unlock
+                                        You&apos;re currently on the free plan. Upgrade to unlock
                                         unlimited visions, AI features, and more!
                                     </p>
                                 </div>
