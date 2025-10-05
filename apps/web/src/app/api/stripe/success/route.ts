@@ -1,5 +1,4 @@
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
 import { redirect } from "next/navigation";
 import { redis } from "@/lib/redis";
 import {
@@ -7,7 +6,7 @@ import {
   syncOrgStripeDataToKV,
 } from "@/lib/stripe/sync";
 
-export async function GET(req: Request) {
+export async function GET() {
   const { userId, orgId } = await auth();
 
   if (!userId) {

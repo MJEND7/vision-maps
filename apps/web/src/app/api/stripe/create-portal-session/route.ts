@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/client";
 import { redis } from "@/lib/redis";
 
-export async function POST(req: Request) {
+export async function POST() {
   try {
     const { userId, orgId } = await auth();
 
