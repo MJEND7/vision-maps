@@ -143,7 +143,7 @@ export const upsertOrgPlan = internalMutation({
 /**
  * Create initial org plan mapping (Stripe customer to organizationId)
  */
-export const createOrgPlanMapping = internalMutation({
+export const createOrgPlanMapping = mutation({
   args: {
     organizationId: v.string(),
     stripeCustomerId: v.string(),

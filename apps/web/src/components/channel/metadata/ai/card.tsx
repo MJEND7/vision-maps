@@ -77,7 +77,7 @@ export function ChatCard({ chatId, drivenIds, onFocusInput }: AiCardProps) {
         status,
         loadMore,
     } = usePaginatedQuery(
-        (api as any)["messages/functions"].listMessagesByChat,
+        api.messages.listMessagesByChat,
         { chatId: chatId as Id<"chats"> },
         { initialNumItems: 20 }
     );

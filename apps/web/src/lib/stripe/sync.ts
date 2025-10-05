@@ -27,20 +27,20 @@ export async function syncUserStripeDataToKV(
     // If a user can have multiple subscriptions, that's your problem
     const subscription = subscriptions.data[0];
 
-    // Store complete subscription state
+    // Store complete subscription state with seat info
     const subData: STRIPE_SUB_CACHE = {
       subscriptionId: subscription.id,
       status: subscription.status,
       priceId: subscription.items.data[0]?.price.id ?? null,
-      currentPeriodEnd: subscription.currentPeriodEnd,
-      currentPeriodStart: subscription.currentPeriodStart,
-      cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+      currentPeriodEnd: subscription.ended_at,
+      currentPeriodStart: subscription.start_date,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
       paymentMethod:
-        subscription.defaultPaymentMethod &&
-        typeof subscription.defaultPaymentMethod !== "string"
+        subscription.default_payment_method &&
+        typeof subscription.default_payment_method !== "string"
           ? {
-              brand: subscription.defaultPaymentMethod.card?.brand ?? null,
-              last4: subscription.defaultPaymentMethod.card?.last4 ?? null,
+              brand: subscription.default_payment_method.card?.brand ?? null,
+              last4: subscription.default_payment_method.card?.last4 ?? null,
             }
           : null,
     };
@@ -92,16 +92,16 @@ export async function syncOrgStripeDataToKV(
       subscriptionId: subscription.id,
       status: subscription.status,
       priceId: subscription.items.data[0]?.price.id ?? null,
-      currentPeriodEnd: subscription.currentPeriodEnd,
-      currentPeriodStart: subscription.currentPeriodStart,
-      cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+      currentPeriodEnd: subscription.ended_at,
+      currentPeriodStart: subscription.start_date,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
       seats,
       paymentMethod:
-        subscription.defaultPaymentMethod &&
-        typeof subscription.defaultPaymentMethod !== "string"
+        subscription.default_payment_method &&
+        typeof subscription.default_payment_method !== "string"
           ? {
-              brand: subscription.defaultPaymentMethod.card?.brand ?? null,
-              last4: subscription.defaultPaymentMethod.card?.last4 ?? null,
+              brand: subscription.default_payment_method.card?.brand ?? null,
+              last4: subscription.default_payment_method.card?.last4 ?? null,
             }
           : null,
     };

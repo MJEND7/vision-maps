@@ -150,7 +150,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     const canUseAI = hasPermission(Permission.AI_NODES);
 
     const createChat = useMutation(api.chats.createChat);
-    const sendMessage = useMutation((api as any)["messages/functions"].sendMessage);
+    const sendMessage = useMutation(api.messages.sendMessage);
     const deleteChat = useMutation(api.chats.deleteChat);
 
     // Convex mutations for paste bin persistence

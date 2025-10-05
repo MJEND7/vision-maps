@@ -39,7 +39,7 @@ export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarC
 
         // Mutations for chat operations
         const createChatWithNode = useConvexMutation(api.chats.createChatWithNode);
-        const sendMessage = useConvexMutation((api as any)["messages/functions"].sendMessage);
+        const sendMessage = useConvexMutation(api.messages.sendMessage);
 
         const handleNewChat = async () => {
             try {
@@ -64,9 +64,13 @@ export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarC
                     chatId: selectedChatId as Id<"chats">,
                     content: message
                 });
+                if (!result) {
+                    throw new Error("Missing result")
+                }
                 setDrivenMessageIds((ids) => ids.add(result.messageId));
-            } catch {
+            } catch (e) {
                 // Error already shown as toast by useConvexMutation
+                console.error(e)
             }
         };
 

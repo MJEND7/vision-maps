@@ -158,7 +158,7 @@ export function CommentChat({ chatId, className, onClose, localCommentData, visi
     }
   }, [replyingTo, editingComment]);
 
-  const sendMessage = useMutation((api as any)["messages/functions"].sendMessage);
+  const sendMessage = useMutation(api.messages.sendMessage);
 
   const handleSendComment = async () => {
     if (!newComment.trim()) return;
