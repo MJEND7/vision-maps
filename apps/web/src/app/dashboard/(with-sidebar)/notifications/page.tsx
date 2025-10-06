@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@clerk/nextjs";
 import { useOrganization } from "@/contexts/OrganizationContext";
-import { NotionSidebar } from "@/components/ui/notion-sidebar";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/../convex/_generated/api";
@@ -173,24 +172,17 @@ export default function NotificationsPage() {
 
     if (!isAuthStable) {
         return (
-            <div className="flex h-screen bg-background">
-                <NotionSidebar />
-                <main className="flex-1 overflow-y-auto flex items-center justify-center">
-                    <div className="text-center p-8 bg-card/50 rounded-lg border border-dashed border-border">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                        <p className="text-muted-foreground">Loading notifications...</p>
-                    </div>
-                </main>
+            <div className="flex items-center justify-center h-full">
+                <div className="text-center p-8 bg-card/50 rounded-lg border border-dashed border-border">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Loading notifications...</p>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="flex h-screen bg-background">
-            <NotionSidebar />
-
-            <main className="flex-1 overflow-y-auto">
-                <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="max-w-4xl mx-auto px-6 py-8">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -409,8 +401,6 @@ export default function NotificationsPage() {
                             )}
                         </div>
                     </motion.div>
-                </div>
-            </main>
         </div>
     );
 }

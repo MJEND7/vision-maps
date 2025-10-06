@@ -141,7 +141,7 @@ function ChannelNode({
                 {!nodeUser ? (
                     <div className="p-4 bg-gray-200 rounded-full animate-pulse" />
                 ) : (
-                    <Avatar className="h-8 w-8">
+                    <Avatar className="sm:h-8 sm:w-8 h-7 w-7">
                         <AvatarImage src={nodeUser.profileImage} alt={nodeUser.name} />
                         <AvatarFallback className="text-xs">
                             {nodeUser.name.split(" ").map(n => n[0]).join("").toUpperCase()}
@@ -154,7 +154,7 @@ function ChannelNode({
                             {!nodeUser ? (
                                 <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
                             ) : (
-                                <span className="font-semibold">{nodeUser.name}</span>
+                                <span className="text-sm sm:text-md font-semibold">{nodeUser.name}</span>
                             )}
                             {isReference && originalNode && (
                                 <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
