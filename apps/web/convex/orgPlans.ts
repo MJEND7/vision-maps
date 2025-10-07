@@ -131,6 +131,7 @@ export const upsertOrgPlan = internalMutation({
         paymentMethod: args.paymentMethod,
         isOnTrial: args.isOnTrial,
         trialEndsAt: args.trialEndsAt,
+        isValidated: true, // Validated through updatePlanFromStripeData
         createdAt: now,
         updatedAt: now,
       });
@@ -181,6 +182,7 @@ export const createOrgPlanMapping = mutation({
       planType: "team",
       seats: args.seats,
       isOnTrial: false,
+      isValidated: true, // Free/mapping-only plans are always valid
       createdAt: now,
       updatedAt: now,
     });

@@ -47,7 +47,7 @@ export function NotionSidebar() {
     const pathname = usePathname(); // Get current pathname
     const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
     const [orgSettingsOpen, setOrgSettingsOpen] = useState(false);
-    const [userPlan, setUserPlan] = useState<string>("free");
+    const [userPlan, setUserPlan] = useState<string | null>(null);
     const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
 
     const notificationCount = useQuery(

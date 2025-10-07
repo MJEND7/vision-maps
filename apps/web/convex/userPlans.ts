@@ -101,6 +101,7 @@ export const upsertUserPlan = internalMutation({
         paymentMethod: args.paymentMethod,
         isOnTrial: args.isOnTrial,
         trialEndsAt: args.trialEndsAt,
+        isValidated: true, // Validated through updatePlanFromStripeData
         createdAt: now,
         updatedAt: now,
       });
@@ -156,6 +157,7 @@ export const createUserPlanMapping = mutation({
       status: "none",
       planType: "free",
       isOnTrial: false,
+      isValidated: true, // Free plans are always valid
       createdAt: now,
       updatedAt: now,
     });

@@ -34,6 +34,23 @@ export const UserPlans = {
     isOnTrial: v.boolean(),
     trialEndsAt: v.optional(v.number()),
 
+    // Error tracking for billing issues
+    error: v.optional(
+      v.object({
+        type: v.string(), // "payment_failed", "payment_action_required", "uncollectible"
+        message: v.string(),
+        timestamp: v.number(),
+        invoiceId: v.optional(v.string()),
+        invoiceUrl: v.optional(v.string()),
+      })
+    ),
+
+    // Validation tracking
+    isValidated: v.boolean(), // Whether subscription has been confirmed by Stripe
+
+    // Soft delete - never actually delete plans
+    isDeleted: v.optional(v.boolean()),
+
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),

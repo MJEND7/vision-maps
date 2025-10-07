@@ -1,6 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/client";
+import { TRIAL_PERIOD_DAYS } from "@/lib/stripe/constants";
 import { redis } from "@/lib/redis";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/../convex/_generated/api";
@@ -91,25 +92,92 @@ export async function POST(req: Request) {
         }
 
         // ALWAYS create a checkout with a stripeCustomerId
-        const checkout = await stripe.checkout.sessions.create({
-            customer: stripeCustomerId,
-            success_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/stripe/success?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing`,
-            line_items: [
-                {
-                    price: priceId,
-                    quantity: seats, // Seat-based billing
+        let checkout;
+        try {
+            checkout = await stripe.checkout.sessions.create({
+                customer: stripeCustomerId,
+                success_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/stripe/success?session_id={CHECKOUT_SESSION_ID}`,
+                cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing`,
+                line_items: [
+                    {
+                        price: priceId,
+                        quantity: seats, // Seat-based billing
+                    },
+                ],
+                subscription_data: {
+                    trial_period_days: TRIAL_PERIOD_DAYS,
                 },
-            ],
-            mode: "subscription",
-            allow_promotion_codes: true,
-            billing_address_collection: "auto",
-            metadata: {
-                organizationId: orgId,
-                ownerId: userId,
-                planType: "team",
-            },
-        });
+                mode: "subscription",
+                allow_promotion_codes: true,
+                billing_address_collection: "auto",
+                metadata: {
+                    organizationId: orgId,
+                    ownerId: userId,
+                    planType: "team",
+                },
+            });
+        } catch (error: any) {
+            // If customer doesn't exist in Stripe, create a new one
+            if (error?.code === 'resource_missing' || error?.message?.includes('No such customer')) {
+                console.log(`[STRIPE CHECKOUT ORG] Customer ${stripeCustomerId} not found in Stripe, creating new customer`);
+
+                const user = await currentUser();
+
+                if (!user) {
+                    throw new Error("No user found")
+                }
+
+                const email = user?.primaryEmailAddress;
+
+                if (!email) {
+                    throw new Error("Failed to get user email")
+                }
+
+                const newCustomer = await stripe.customers.create({
+                    email: email.toString(),
+                    name: org.name,
+                    metadata: {
+                        organizationId: orgId,
+                        ownerId: userId,
+                    },
+                });
+
+                // Update Redis with new customer ID
+                await redis.set(`stripe:org:${orgId}`, newCustomer.id);
+                stripeCustomerId = newCustomer.id;
+
+                // Update/create mapping in Convex
+                await convex.mutation(api.orgPlans.createOrgPlanMapping, {
+                    organizationId: orgId,
+                    stripeCustomerId: newCustomer.id,
+                    ownerId: userId,
+                    seats,
+                });
+
+                // Retry checkout creation with new customer
+                checkout = await stripe.checkout.sessions.create({
+                    customer: stripeCustomerId,
+                    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/stripe/success?session_id={CHECKOUT_SESSION_ID}`,
+                    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing`,
+                    line_items: [
+                        {
+                            price: priceId,
+                            quantity: seats,
+                        },
+                    ],
+                    mode: "subscription",
+                    allow_promotion_codes: true,
+                    billing_address_collection: "auto",
+                    metadata: {
+                        organizationId: orgId,
+                        ownerId: userId,
+                        planType: "team",
+                    },
+                });
+            } else {
+                throw error;
+            }
+        }
 
         return NextResponse.json({ url: checkout.url });
     } catch (error) {
