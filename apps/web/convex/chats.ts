@@ -5,7 +5,6 @@ import { paginationOptsValidator } from "convex/server";
 import { getUserPlan } from "./auth";
 import { requirePermission, Permission } from "./permissions";
 
-// Args schemas
 const createChatArgs = v.object({
     title: v.string(),
     visionId: v.id("visions"),
@@ -62,7 +61,6 @@ export const createChat = mutation({
             throw new Error("Failed to get the user Id")
         }
 
-        // Check AI permission
         const plan = await getUserPlan(ctx.auth, ctx.db);
         requirePermission(plan, Permission.AI_NODES);
 
@@ -94,12 +92,10 @@ export const listUserChats = query({
 
         let chats = await query.collect();
 
-        // Filter by vision if provided
         if (args.visionId) {
             chats = chats.filter(chat => chat.visionId === args.visionId);
         }
 
-        // Filter by channel if provided
         if (args.channelId) {
             chats = chats.filter(chat => chat.channelId === args.channelId);
         }
@@ -127,20 +123,17 @@ export const listVisionChats = query({
             throw new Error("Failed to get the user Id");
         }
 
-        // Get chats for the specific vision
         const chats = await ctx.db
             .query("chats")
             .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
             .filter((q) => q.eq(q.field("userId"), userId.toString()))
             .collect();
 
-        // Enrich chats with channel and node information
         const enrichedChats = await Promise.all(
             chats.map(async (chat) => {
                 let channelInfo = null;
                 let nodeInfo = null;
 
-                // Get channel information if channelId exists
                 if (chat.channelId) {
                     const channel = await ctx.db.get(chat.channelId);
                     if (channel) {
@@ -151,7 +144,6 @@ export const listVisionChats = query({
                     }
                 }
 
-                // Get node information if nodeId exists
                 if (chat.nodeId) {
                     const node = await ctx.db.get(chat.nodeId);
                     if (node) {
@@ -187,7 +179,6 @@ export const listChannelChats = query({
             throw new Error("Failed to get the user Id");
         }
 
-        // Get chats for the specific channel (excluding comment chats)
         return await ctx.db
             .query("chats")
             .withIndex("by_channelId", (q) => q.eq("channelId", args.channelId))
@@ -207,7 +198,6 @@ export const listVisionChatsPaginated = query({
             throw new Error("Failed to get the user Id");
         }
 
-        // Get paginated chats for the specific vision, ordered by most recent (excluding comment chats)
         const result = await ctx.db
             .query("chats")
             .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
@@ -216,13 +206,11 @@ export const listVisionChatsPaginated = query({
             .order("desc")
             .paginate(args.paginationOpts);
 
-        // Enrich chats with channel and node information
         const enrichedChats = await Promise.all(
             result.page.map(async (chat) => {
                 let channelInfo = null;
                 let nodeInfo = null;
 
-                // Get channel information if channelId exists
                 if (chat.channelId) {
                     const channel = await ctx.db.get(chat.channelId);
                     if (channel) {
@@ -233,7 +221,6 @@ export const listVisionChatsPaginated = query({
                     }
                 }
 
-                // Get node information if nodeId exists
                 if (chat.nodeId) {
                     const node = await ctx.db.get(chat.nodeId);
                     if (node) {
@@ -245,7 +232,6 @@ export const listVisionChatsPaginated = query({
                     }
                 }
 
-                // Get the latest message for preview
                 const latestMessage = await ctx.db
                     .query("messages")
                     .withIndex("by_chatId", (q) => q.eq("chatId", chat._id))
@@ -278,7 +264,6 @@ export const createChatWithNode = mutation({
             throw new Error("Failed to get the user Id");
         }
 
-        // Check AI permission
         const plan = await getUserPlan(ctx.auth, ctx.db);
         requirePermission(plan, Permission.AI_NODES);
 
@@ -288,10 +273,8 @@ export const createChatWithNode = mutation({
             throw new Error("Failed to get userId from identity");
         }
 
-        // Get the channel to use - either provided or first channel in vision
         let channelId = args.channelId;
         if (!channelId) {
-            // Get the first channel in the vision
             const firstChannel = await ctx.db
                 .query("channels")
                 .withIndex("by_vision", (q) => q.eq("vision", args.visionId))
@@ -304,13 +287,11 @@ export const createChatWithNode = mutation({
             channelId = firstChannel._id;
         }
 
-        // Get channel info for validation
         const channel = await ctx.db.get(channelId);
         if (!channel) {
             throw new Error("Channel not found");
         }
 
-        // Create the chat first
         const chatId = await ctx.db.insert("chats", {
             title: args.title,
             userId: identity.userId?.toString(),
@@ -318,12 +299,11 @@ export const createChatWithNode = mutation({
             channelId: channelId,
         });
 
-        // Create the AI node
         const now = new Date().toISOString();
         const nodeId = await ctx.db.insert("nodes", {
             title: args.title,
             variant: "AI",
-            value: chatId, // Store chat ID as the node value
+            value: chatId, 
             thought: "AI-powered conversation node",
             channel: channelId,
             vision: args.visionId,
@@ -331,14 +311,11 @@ export const createChatWithNode = mutation({
             updatedAt: now,
         });
 
-        // Update the chat to reference the node
         await ctx.db.patch(chatId, {
             nodeId: nodeId
         });
 
-        // If frameId and position are provided, add the node to the frame
         if (args.frameId && args.position) {
-            // Create the React Flow node structure
             const reactFlowNode = {
                 id: crypto.randomUUID(),
                 position: args.position,
@@ -346,13 +323,11 @@ export const createChatWithNode = mutation({
                 data: nodeId,
             };
 
-            // Insert into framed_node for current state
             await ctx.db.insert("framed_node", {
                 frameId: args.frameId,
                 node: reactFlowNode,
             });
 
-            // Insert into frame_positions for batch tracking
             await ctx.db.insert("frame_positions", {
                 frameId: args.frameId,
                 nodeId: nodeId,
@@ -360,7 +335,6 @@ export const createChatWithNode = mutation({
                 batchTimestamp: Date.now(),
             });
 
-            // Update the node to reference this frame
             await ctx.db.patch(nodeId, {
                 frame: args.frameId,
             });
@@ -383,7 +357,6 @@ export const updateChatTitle = mutation({
             throw new Error("Failed to get the user Id");
         }
 
-        // Get the chat to verify ownership
         const chat = await ctx.db.get(args.chatId);
         if (!chat) {
             throw new Error("Chat not found");
@@ -393,12 +366,10 @@ export const updateChatTitle = mutation({
             throw new Error("Unauthorized: You can only update your own chats");
         }
 
-        // Update the chat title
         await ctx.db.patch(args.chatId, {
             title: args.title.trim(),
         });
 
-        // If there's a linked node, update its title too
         if (chat.nodeId) {
             const node = await ctx.db.get(chat.nodeId);
             if (node) {
@@ -422,7 +393,6 @@ export const updateChatNodeId = mutation({
             throw new Error("Failed to get the user Id");
         }
 
-        // Get the chat to verify ownership
         const chat = await ctx.db.get(args.chatId);
         if (!chat) {
             throw new Error("Chat not found");
@@ -432,7 +402,6 @@ export const updateChatNodeId = mutation({
             throw new Error("Unauthorized: You can only update your own chats");
         }
 
-        // Update the chat to reference the node
         await ctx.db.patch(args.chatId, {
             nodeId: args.nodeId,
         });
@@ -450,7 +419,6 @@ export const deleteChat = mutation({
             throw new Error("Failed to get the user Id")
         }
 
-        // Get the chat to verify ownership
         const chat = await ctx.db.get(args.chatId);
         if (!chat) {
             throw new Error("Chat not found");
@@ -460,7 +428,6 @@ export const deleteChat = mutation({
             throw new Error("Unauthorized: You can only delete your own chats");
         }
 
-        // Delete all messages first
         const messages = await ctx.db
             .query("messages")
             .withIndex("by_chatId", (q) => q.eq("chatId", args.chatId))
@@ -468,11 +435,9 @@ export const deleteChat = mutation({
             
         await Promise.all(messages.map((message) => ctx.db.delete(message._id)));
 
-        // If there's a linked node, delete it too
         if (chat.nodeId) {
             const node = await ctx.db.get(chat.nodeId);
             if (node) {
-                // Delete node from frames if it exists there
                 const framedNodes = await ctx.db
                     .query("framed_node")
                     .filter((q) => q.eq(q.field("node.data"), chat.nodeId))
@@ -480,7 +445,6 @@ export const deleteChat = mutation({
                 
                 await Promise.all(framedNodes.map((fn) => ctx.db.delete(fn._id)));
 
-                // Delete frame positions
                 const framePositions = await ctx.db
                     .query("frame_positions")
                     .withIndex("by_node_frame", (q) => q.eq("nodeId", chat.nodeId!))
@@ -488,19 +452,16 @@ export const deleteChat = mutation({
                 
                 await Promise.all(framePositions.map((fp) => ctx.db.delete(fp._id)));
 
-                // Finally delete the node
                 await ctx.db.delete(chat.nodeId);
             }
         }
 
-        // Then delete the chat
         await ctx.db.delete(args.chatId);
         
         return { success: true };
     },
 });
 
-// Type exports
 export type CreateChatArgs = Infer<typeof createChatArgs>;
 export type CreateChatWithNodeArgs = Infer<typeof createChatWithNodeArgs>;
 export type ListUserChatsArgs = Infer<typeof listUserChatsArgs>;

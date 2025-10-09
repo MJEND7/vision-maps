@@ -20,9 +20,9 @@ export interface Vision {
     description?: string,
     organization?: string,
     updatedAt?: number,
+    createdWithPlan?: string,
 }
 
-// Group of channels that build a vision
 export class Visions {
     static TABLE_NAME = "visions" as "visions"
     static TABLE_CONNECTED_USERS_NAME = "vision_users"
@@ -31,7 +31,8 @@ export class Visions {
         banner: v.string(),
         description: v.optional(v.string()),
         updatedAt: v.number(),
-        organization: v.optional(v.string())
+        organization: v.optional(v.string()),
+        createdWithPlan: v.optional(v.string()),
     });
     static TableConnectedUsers = defineTable({
         userId: v.string(),

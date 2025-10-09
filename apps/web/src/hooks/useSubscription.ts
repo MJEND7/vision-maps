@@ -9,14 +9,14 @@ export function useSubscription() {
 
     // Fetch user plan from Convex
     const userPlan = useQuery(
-        api.userPlans.getUserPlanByExternalId,
-        userId ? { externalId: userId } : "skip"
+        api.plans.getPlanByOwner,
+        userId ? { ownerType: "user", ownerId: userId } : "skip"
     );
 
     // Fetch org plan from Convex if in an organization
     const orgPlan = useQuery(
-        api.orgPlans.getOrgPlanByOrganizationId,
-        orgId ? { organizationId: orgId } : "skip"
+        api.plans.getPlanByOwner,
+        orgId ? { ownerType: "org", ownerId: orgId } : "skip"
     );
 
     // Determine the active plan (org plan takes precedence)

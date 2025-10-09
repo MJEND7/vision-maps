@@ -2,9 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v, Infer } from "convex/values";
 import { requireVisionAccess } from "./utils/auth";
 import { nodeValidator } from "./reactflow/types";
-import { Nodes } from "./tables/nodes";
 
-// Args schemas
 const createArgs = v.object({
     channelId: v.id("channels"),
     title: v.string(),
@@ -50,7 +48,6 @@ export const create = mutation({
 
         const now = new Date().toISOString();
 
-        // Get the next sort order for this channel
         const existingFrames = await ctx.db
             .query("frames")
             .withIndex("by_channel", (q) => q.eq("channel", args.channelId))
@@ -106,7 +103,6 @@ export const remove = mutation({
             await requireVisionAccess(ctx, frame.vision);
         }
 
-        // 1. Delete all framed_node entries
         const framedNodes = await ctx.db
             .query("framed_node")
             .withIndex("by_frame", (q) => q.eq("frameId", args.id))
@@ -115,7 +111,6 @@ export const remove = mutation({
             await ctx.db.delete(fn._id);
         }
 
-        // 2. Delete all frame_positions entries
         const framePositions = await ctx.db
             .query("frame_positions")
             .withIndex("by_frame", (q) => q.eq("frameId", args.id))
@@ -124,7 +119,6 @@ export const remove = mutation({
             await ctx.db.delete(fp._id);
         }
 
-        // 3. Delete all edges
         const edges = await ctx.db
             .query("edges")
             .withIndex("frame", (q) => q.eq("frameId", args.id))
@@ -133,7 +127,6 @@ export const remove = mutation({
             await ctx.db.delete(edge._id);
         }
 
-        // 4. Delete all nodes
         const nodes = await ctx.db
             .query("nodes")
             .withIndex("by_frame", (q) => q.eq("frame", args.id))
@@ -142,7 +135,6 @@ export const remove = mutation({
             await ctx.db.delete(node._id);
         }
 
-        // 5. Finally delete the frame itself
         await ctx.db.delete(args.id);
     },
 });
@@ -180,7 +172,6 @@ export const listByChannel = query({
             .withIndex("by_channel", (q) => q.eq("channel", args.channelId))
             .collect();
 
-        // Sort by sortOrder, fallback to creation time for legacy data
         frames.sort((a, b) => {
             const orderA = a.sortOrder ?? 0;
             const orderB = b.sortOrder ?? 0;
@@ -203,7 +194,6 @@ export const reorder = mutation({
             await requireVisionAccess(ctx, channel.vision);
         }
 
-        // Update sort order for each frame based on its position in the array
         for (let i = 0; i < args.frameIds.length; i++) {
             const frameId = args.frameIds[i];
             const frame = await ctx.db.get(frameId);
@@ -234,7 +224,6 @@ export const listByVision = query({
             .withIndex("by_vision", (q) => q.eq("vision", args.visionId))
             .collect();
 
-        // Sort by sortOrder, fallback to creation time for legacy data
         frames.sort((a, b) => {
             const orderA = a.sortOrder ?? 0;
             const orderB = b.sortOrder ?? 0;
@@ -256,15 +245,11 @@ export const batchMovment = mutation({
             throw new Error("Invalid frame");
         }
 
-        // requireVisionAccess throws on failure, no need for conditional
         await requireVisionAccess(ctx, frame.vision);
 
-        // Create a shared timestamp for this batch
         const batchTimestamp = Date.now();
         let batchId: string | null = null;
-        // Process each node in the batch
         for (const batchNode of args.batch) {
-            // Update framed_node with the newest state
             const existingFramedNode = await ctx.db
                 .query("framed_node")
                 .withIndex("id", (q) => q.eq("node.id", batchNode.id))
@@ -276,21 +261,18 @@ export const batchMovment = mutation({
                 });
             }
 
-            // Create or update frame_positions for this specific node
             const existingFramePosition = await ctx.db
                 .query("frame_positions")
                 .withIndex("by_node_frame", (q) => q.eq("nodeId", batchNode.data).eq("frameId", args.frameId))
                 .first();
 
             if (existingFramePosition) {
-                // Patch existing frame_positions with new batch
                 batchId = existingFramePosition._id.toString();
                 await ctx.db.patch(existingFramePosition._id, {
                     batch: args.batch,
                     batchTimestamp,
                 });
             } else {
-                // Create new frame_positions entry for this node
                 batchId = await ctx.db.insert("frame_positions", {
                     frameId: args.frameId,
                     nodeId: batchNode.data,
@@ -314,12 +296,10 @@ export const listMovments = query({
             throw new Error("Invalid frame");
         }
 
-        // requireVisionAccess throws on failure, no need for conditional
         await requireVisionAccess(ctx, frame.vision);
         
         const framePositions = await ctx.db.query("frame_positions").withIndex("by_frame", (q) => q.eq("frameId", args.frameId)).collect()
 
-        // Return batches sorted by timestamp
         return framePositions.sort((a, b) => 
             new Date(a.batchTimestamp).getTime() - new Date(b.batchTimestamp).getTime()
         )
@@ -347,12 +327,9 @@ export const getFrameNodes = query({
             .withIndex("by_frame", (q) => q.eq("frameId", args.frameId))
             .collect();
 
-        // Enhance the nodes with proper type based on actual node data
         const enhancedNodes = (await Promise.all(framedNodes.map(async (framedNode) => {
-            // Get the actual node data to access the variant
             const nodeData = await ctx.db.get(framedNode.node.data as any);
             if (nodeData && 'variant' in nodeData) {
-                // Update the node type to match the variant
                 const enhancedNode = {
                     ...framedNode,
                     node: {
@@ -436,12 +413,10 @@ export const updateFramedNodePosition = mutation({
             .first();
 
         if (!existingFramedNode) {
-            // Node was likely deleted, silently ignore the position update
             console.log(`Position update ignored for deleted node: ${args.nodeId}`);
             return null;
         }
 
-        // Update only the position in the node
         const updatedNode = {
             ...existingFramedNode.node,
             position: args.position,
@@ -457,12 +432,12 @@ export const updateFramedNodePosition = mutation({
 
 const removeNodeFromFrameArgs = v.object({
     frameId: v.id("frames"),
-    nodeId: v.string(), // The node.id (React Flow node ID)
+    nodeId: v.string(), 
 });
 
 const removeMultipleNodesFromFrameArgs = v.object({
     frameId: v.id("frames"),
-    nodeIds: v.array(v.string()), // Array of React Flow node IDs
+    nodeIds: v.array(v.string()), 
 });
 
 export const removeNodeFromFrame = mutation({
@@ -477,7 +452,6 @@ export const removeNodeFromFrame = mutation({
             await requireVisionAccess(ctx, frame.vision);
         }
 
-        // 1. Find and remove the framed_node entry
         const framedNode = await ctx.db
             .query("framed_node")
             .withIndex("id", (q) => q.eq("node.id", args.nodeId))
@@ -487,7 +461,6 @@ export const removeNodeFromFrame = mutation({
             await ctx.db.delete(framedNode._id);
         }
 
-        // 2. Clean up frame_positions entries for this node in this frame
         const framePositions = await ctx.db
             .query("frame_positions")
             .withIndex("by_node_frame", (q) => 
@@ -499,7 +472,6 @@ export const removeNodeFromFrame = mutation({
             await ctx.db.delete(position._id);
         }
 
-        // 3. Remove connected edges
         const edges = await ctx.db
             .query("edges")
             .withIndex("frame", (q) => q.eq("frameId", args.frameId))
@@ -513,7 +485,6 @@ export const removeNodeFromFrame = mutation({
             await ctx.db.delete(edge._id);
         }
 
-        // 4. Remove frameId from the actual node (don't delete the node itself)
         if (framedNode && framedNode.node.data) {
             const actualNode = await ctx.db.get(framedNode.node.data as any);
             if (actualNode && 'frame' in actualNode && actualNode.frame === args.frameId) {
@@ -541,10 +512,8 @@ export const removeMultipleNodesFromFrame = mutation({
 
         const deletedNodeIds: string[] = [];
 
-        // Process each node for deletion
         for (const nodeId of args.nodeIds) {
             try {
-                // 1. Find and remove the framed_node entry
                 const framedNode = await ctx.db
                     .query("framed_node")
                     .withIndex("id", (q) => q.eq("node.id", nodeId))
@@ -553,7 +522,6 @@ export const removeMultipleNodesFromFrame = mutation({
                 if (framedNode) {
                     await ctx.db.delete(framedNode._id);
 
-                    // 2. Clean up frame_positions entries for this node in this frame
                     const framePositions = await ctx.db
                         .query("frame_positions")
                         .withIndex("by_node_frame", (q) => 
@@ -565,7 +533,6 @@ export const removeMultipleNodesFromFrame = mutation({
                         await ctx.db.delete(position._id);
                     }
 
-                    // 3. Remove frameId from the actual node (don't delete the node itself)
                     if (framedNode.node.data) {
                         const actualNode = await ctx.db.get(framedNode.node.data as any);
                         if (actualNode && 'frame' in actualNode && actualNode.frame === args.frameId) {
@@ -579,11 +546,9 @@ export const removeMultipleNodesFromFrame = mutation({
                 }
             } catch (error) {
                 console.error(`Failed to delete node ${nodeId}:`, error);
-                // Continue with other nodes even if one fails
             }
         }
 
-        // 4. Remove connected edges for all deleted nodes in one go
         const edges = await ctx.db
             .query("edges")
             .withIndex("frame", (q) => q.eq("frameId", args.frameId))
@@ -605,7 +570,6 @@ export const removeMultipleNodesFromFrame = mutation({
     },
 });
 
-// Type exports
 export type CreateFrameArgs = Infer<typeof createArgs>;
 export type UpdateFrameArgs = Infer<typeof updateArgs>;
 export type RemoveFrameArgs = Infer<typeof removeArgs>;

@@ -2,7 +2,6 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { UserPasteBin } from "./tables/userPasteBin";
 
-// Get the paste bin for a user in a specific vision
 export const get = query({
     args: {
         visionId: v.id("visions"),
@@ -35,7 +34,6 @@ export const get = query({
     },
 });
 
-// Update or create paste bin state
 export const upsert = mutation({
     args: {
         visionId: v.id("visions"),
@@ -68,7 +66,6 @@ export const upsert = mutation({
 
         const { visionId, ...updateData } = args;
 
-        // Check if paste bin already exists
         const existing = await ctx.db
             .query(UserPasteBin.TABLE_NAME)
             .withIndex("by_user_vision", (q) =>
@@ -79,14 +76,12 @@ export const upsert = mutation({
         const now = Date.now();
 
         if (existing) {
-            // Update existing paste bin
             await ctx.db.patch(existing._id, {
                 ...updateData,
                 updatedAt: now,
             });
             return existing._id;
         } else {
-            // Create new paste bin
             const pasteBinId = await ctx.db.insert(UserPasteBin.TABLE_NAME, {
                 userId: user._id,
                 visionId,
@@ -99,7 +94,6 @@ export const upsert = mutation({
     },
 });
 
-// Clear paste bin for a vision
 export const clear = mutation({
     args: {
         visionId: v.id("visions"),
@@ -162,7 +156,6 @@ export const updateTranscriptArray = mutation({
 
         const { visionId, valueArray } = args;
 
-        // Check if paste bin already exists
         const existing = await ctx.db
             .query(UserPasteBin.TABLE_NAME)
             .withIndex("by_user_vision", (q) =>
@@ -173,7 +166,6 @@ export const updateTranscriptArray = mutation({
         const now = Date.now();
 
         if (existing) {
-            // Update existing paste bin
             await ctx.db.patch(existing._id, {
                 valueArray,
                 mode: "transcription",
@@ -182,7 +174,6 @@ export const updateTranscriptArray = mutation({
             });
             return existing._id;
         } else {
-            // Create new paste bin with transcription
             const pasteBinId = await ctx.db.insert(UserPasteBin.TABLE_NAME, {
                 userId: user._id,
                 visionId,

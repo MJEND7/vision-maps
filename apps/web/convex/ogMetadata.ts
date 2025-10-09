@@ -16,7 +16,6 @@ export const getByUrl = query({
     const expiresAt = new Date(metadata.expiresAt);
     
     if (now > expiresAt) {
-      // Return null for expired data (cleanup will be handled by mutation)
       return null;
     }
     
@@ -27,14 +26,13 @@ export const getByUrl = query({
 export const store = mutation({
   args: {
     url: v.string(),
-    metadata: v.any(), // Use v.any() to allow flexible metadata structure
+    metadata: v.any(), 
     platformType: v.string(),
   },
   handler: async (ctx, args) => {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
     
-    // Check if URL already exists and update it
     const existing = await ctx.db
       .query("og_metadata")
       .withIndex("by_url", (q) => q.eq("url", args.url))

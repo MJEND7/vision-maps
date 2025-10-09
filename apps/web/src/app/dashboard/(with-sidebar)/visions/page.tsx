@@ -24,7 +24,7 @@ import { usePermissions } from '@/contexts/PermissionsContext';
 import { Plan } from '@/lib/permissions';
 import { UpgradeDialog } from '@/components/ui/upgrade-dialog';
 
-export default function SheetsPage() {
+export default function VisionsPage() {
     const router = useRouter();
     const { organization } = useOrganization();
     const { isOrgSwitching } = useOrgSwitch();
@@ -128,9 +128,6 @@ export default function SheetsPage() {
 
     const isLoading = visionsData === undefined;
 
-    // Determine if content should be grayed out (in org without Teams)
-    const shouldGrayOut = isInOrgWithoutTeams;
-
     // Component for vision menu items with role awareness
     const VisionMenuItems = ({ visionId }: { visionId: Id<"visions"> }) => {
         const userRole = useQuery(api.visions.getUserRole, { visionId });
@@ -181,7 +178,7 @@ export default function SheetsPage() {
             <div className="max-w-7xl space-y-5 mx-auto px-4 sm:px-6 lg:px-8 pb-8 pt-8 lg:pt-16">
 
                     <div
-                        className={`bg-card border border-border rounded-xl p-4 sm:p-6 lg:p-8 shadow-sm ${shouldGrayOut ? 'opacity-50 pointer-events-none' : ''}`}
+                        className={`bg-card border border-border rounded-xl p-4 sm:p-6 lg:p-8 shadow-sm ${isInOrgWithoutTeams ? 'opacity-50 pointer-events-none' : ''}`}
                     >
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 lg:gap-6">
                             <div className="space-y-1">
@@ -200,7 +197,7 @@ export default function SheetsPage() {
                                 className="rounded-xl px-6 py-3 text-base font-medium"
                                 onClick={newVision}
                                 title={
-                                    shouldGrayOut
+                                    isInOrgWithoutTeams
                                         ? "Upgrade to Teams to use organizations"
                                         : (!canCreate ? `Upgrade to create more visions (limit: ${visionLimit})` : "")
                                 }
@@ -211,7 +208,7 @@ export default function SheetsPage() {
                         </div>
                     </div>
 
-                    <div className={`sm:w-auto sm:items-center sm:justify-end w-full flex gap-2 ${shouldGrayOut ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div className={`sm:w-auto sm:items-center sm:justify-end w-full flex gap-2 ${isInOrgWithoutTeams ? 'opacity-50 pointer-events-none' : ''}`}>
                         <div className="relative w-full sm:w-[300px]">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
                             <Input
@@ -272,8 +269,7 @@ export default function SheetsPage() {
 
                     {/* Rest of your content remains the same */}
                     <div className="relative">
-                        {/* Teams Upgrade Banner - Centered on Screen */}
-                        {shouldGrayOut && (
+                        {isInOrgWithoutTeams && (
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
@@ -304,12 +300,12 @@ export default function SheetsPage() {
                         )}
 
                         {/* Gray overlay only for visions list */}
-                        <div className={shouldGrayOut ? 'relative' : ''}>
+                        <div className={isInOrgWithoutTeams ? 'relative' : ''}>
                             {
                                 isLoading || isOrgSwitching ? (
                                     viewMode === "grid" ? <VisionGridSkeleton /> : <VisionTableSkeleton />
                                 ) : visions.length === 0 ? (
-                                    <div className={`${shouldGrayOut ? "hidden" : ""} text-center text-gray-500 py-10`}>
+                                    <div className={`${isInOrgWithoutTeams ? "hidden" : ""} text-center text-gray-500 py-10`}>
                                         No visions to display yet. Create one!
                                     </div>
                                 ) : viewMode === "grid" ? (

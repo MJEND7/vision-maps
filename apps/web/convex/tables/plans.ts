@@ -1,12 +1,15 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
-export const OrgPlans = {
+export const Plans = {
   Table: defineTable({
-    // Link to organization
-    organizationId: v.string(),
+    // Type of plan owner: "user" or "org"
+    ownerType: v.union(v.literal("user"), v.literal("org")),
 
-    // Stripe customer ID for the organization
+    // Owner identifier (externalId for users, organizationId for orgs)
+    ownerId: v.string(),
+
+    // Stripe customer ID
     stripeCustomerId: v.string(),
 
     // Subscription details
@@ -14,12 +17,12 @@ export const OrgPlans = {
     status: v.string(), // "none", "active", "canceled", "past_due", "trialing", etc.
     priceId: v.optional(v.string()),
 
-    // Plan type (should always be "team" for organizations)
-    planType: v.string(), // "team"
+    // Plan type (free, pro, team)
+    planType: v.string(), // "free" | "pro" | "team"
 
-    // Seat-based billing
-    seats: v.number(), // Number of seats (members) in the organization
-    maxSeats: v.optional(v.number()), // Optional max seats limit
+    // Seat-based billing (for organizations)
+    seats: v.optional(v.number()),
+    maxSeats: v.optional(v.number()),
 
     // Period information
     currentPeriodStart: v.optional(v.number()),
@@ -52,18 +55,19 @@ export const OrgPlans = {
     // Validation tracking
     isValidated: v.boolean(), // Whether subscription has been confirmed by Stripe
 
-    // Soft delete - never actually delete plans, just disable
+    // Soft delete - never actually delete plans
     isDeleted: v.optional(v.boolean()),
 
-    // Owner of the organization (only they can manage billing)
-    ownerId: v.string(), // Clerk externalId of the owner
+    // For organization plans: owner who can manage billing
+    billingOwnerId: v.optional(v.string()), // Clerk externalId of the billing owner (for org plans)
 
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_organization_id", ["organizationId"])
+    .index("by_owner", ["ownerType", "ownerId"])
     .index("by_stripe_customer_id", ["stripeCustomerId"])
     .index("by_status", ["status"])
-    .index("by_owner_id", ["ownerId"]),
+    .index("by_plan_type", ["planType"])
+    .index("by_billing_owner_id", ["billingOwnerId"]),
 };

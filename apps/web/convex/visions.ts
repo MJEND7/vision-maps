@@ -3,7 +3,7 @@ import { v, Infer } from "convex/values";
 import { requireAuth, requireVisionAccess } from "./utils/auth";
 import { Vision, VisionAccessRole, VisionUserStatus } from "./tables/visions";
 import { createDefaultChannel } from "./utils/channel";
-import { getUserPlan, getOrganizationId } from "./auth";
+import { getUserPlan } from "./auth";
 import { canCreateVision, canInviteToVision, requireTeamsForOrg, PermissionError, VISION_LIMITS, COLLABORATION_LIMITS } from "./permissions";
 
 // Args schemas
@@ -95,19 +95,23 @@ export const create = mutation({
 
     // Check permissions
     const plan = await getUserPlan(ctx.auth, ctx.db);
-    const sessionOrgId = await getOrganizationId(ctx.auth);
 
     // Validate organization membership - user can only create visions in orgs they belong to
-    // If args.organizationId is provided, it must match their session org
     if (args.organizationId) {
-      if (args.organizationId !== sessionOrgId) {
+      const membership = await ctx.db
+        .query("organization_members")
+        .withIndex("by_user", (q) => q.eq("userId", identity.userId!.toString()))
+        .filter((q) => q.eq(q.field("organizationId"), args.organizationId!))
+        .first();
+
+      if (!membership) {
         throw new PermissionError(
           "You can only create visions in organizations you are a member of."
         );
       }
     }
 
-    const organizationId = args.organizationId || sessionOrgId;
+    const organizationId = args.organizationId;
 
     // Require Teams tier if creating vision in organization
     requireTeamsForOrg(plan, organizationId);
@@ -135,6 +139,7 @@ export const create = mutation({
       description: "",
       organization: organizationId || "",
       updatedAt: now,
+      createdWithPlan: plan.toLowerCase(),
     });
 
     // Add the creator as owner
@@ -159,13 +164,21 @@ export const update = mutation({
     // If organizationId is being changed, validate membership and Teams tier
     if (args.organizationId !== undefined) {
       const plan = await getUserPlan(ctx.auth, ctx.db);
-      const sessionOrgId = await getOrganizationId(ctx.auth);
+      const identity = await ctx.auth.getUserIdentity();
 
       // Validate organization membership - user can only move visions to orgs they belong to
-      if (args.organizationId && args.organizationId !== sessionOrgId) {
-        throw new PermissionError(
-          "You can only move visions to organizations you are a member of."
-        );
+      if (args.organizationId && identity) {
+        const membership = await ctx.db
+          .query("organization_members")
+          .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+          .filter((q) => q.eq(q.field("organizationId"), args.organizationId!))
+          .first();
+
+        if (!membership) {
+          throw new PermissionError(
+            "You can only move visions to organizations you are a member of."
+          );
+        }
       }
 
       // Require Teams tier if moving to organization

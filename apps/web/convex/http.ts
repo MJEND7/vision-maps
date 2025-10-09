@@ -4,7 +4,6 @@ import { internal } from "./_generated/api";
 import type { WebhookEvent } from "@clerk/backend";
 import { Webhook } from "svix";
 import { streamChat } from "./messages";
-import { requireAuth } from "./utils/auth";
 import { webhook as stripeWebhook } from "./stripe";
 
 const http = httpRouter();
@@ -48,7 +47,7 @@ http.route({
       return new Response("Error occured", { status: 400 });
     }
     switch (event.type) {
-      case "user.created": // intentional fallthrough
+      case "user.created": 
       case "user.updated":
         await ctx.runMutation(internal.user.upsertFromClerk, {
           data: event.data,

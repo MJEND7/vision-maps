@@ -1,11 +1,9 @@
 import { mutation, query } from "./_generated/server";
 import { v, Infer } from "convex/values";
 import { requireAuth, requireVisionAccess } from "./utils/auth";
-import { Id } from "./_generated/dataModel";
 import { getUserPlan } from "./auth";
 import { requirePermission, Permission } from "./permissions";
 
-// Args schemas
 const createCommentArgs = v.object({
     content: v.string(),
     nodeId: v.id("nodes"),
@@ -66,14 +64,11 @@ export const createComment = mutation({
             throw new Error("Failed to get the user Id");
         }
 
-        // Check commenting permission
         const plan = await getUserPlan(ctx.auth, ctx.db);
         requirePermission(plan, Permission.COMMENTING);
 
-        // Verify access to vision
         await requireVisionAccess(ctx, args.visionId);
 
-        // Get the node to verify it exists and get channel info
         const node = await ctx.db.get(args.nodeId);
         if (!node) {
             throw new Error("Node not found");
@@ -81,7 +76,6 @@ export const createComment = mutation({
 
         const now = new Date().toISOString();
         
-        // Create the comment
         const commentId = await ctx.db.insert("comments", {
             content: args.content,
             authorId: identity.userId.toString(),
@@ -95,7 +89,6 @@ export const createComment = mutation({
             isDeleted: false
         });
 
-        // Create notifications for mentions
         if (args.mentions && args.mentions.length > 0) {
             const commentAuthor = await ctx.db
                 .query("users")
@@ -103,7 +96,6 @@ export const createComment = mutation({
                 .first();
 
             const mentionNotifications = args.mentions.map(async (mentionedUserId) => {
-                // Don't notify yourself
                 if (mentionedUserId === identity.userId!.toString()) return;
 
                 return ctx.db.insert("notifications", {
@@ -140,7 +132,6 @@ export const updateComment = mutation({
             throw new Error("Comment not found");
         }
 
-        // Only author can edit their comment
         if (comment.authorId !== identity.userId.toString()) {
             throw new Error("You can only edit your own comments");
         }
@@ -168,12 +159,10 @@ export const deleteComment = mutation({
             throw new Error("Comment not found");
         }
 
-        // Only author can delete their comment
         if (comment.authorId !== identity.userId.toString()) {
             throw new Error("You can only delete your own comments");
         }
 
-        // Soft delete
         await ctx.db.patch(args.commentId, {
             isDeleted: true,
             updatedAt: new Date().toISOString()
@@ -186,10 +175,8 @@ export const deleteComment = mutation({
 export const getNodeComments = query({
     args: getNodeCommentsArgs,
     handler: async (ctx, args) => {
-        // Verify access to vision
         await requireVisionAccess(ctx, args.visionId);
 
-        // Get all comments for the node (excluding soft deleted)
         const comments = await ctx.db
             .query("comments")
             .withIndex("by_node", (q) => q.eq("nodeId", args.nodeId))
@@ -197,7 +184,6 @@ export const getNodeComments = query({
             .order("asc")
             .collect();
 
-        // Enrich with author information
         const enrichedComments = await Promise.all(
             comments.map(async (comment) => {
                 const author = await ctx.db
@@ -230,14 +216,11 @@ export const createCommentChat = mutation({
             throw new Error("Failed to get the user Id");
         }
 
-        // Check commenting permission
         const plan = await getUserPlan(ctx.auth, ctx.db);
         requirePermission(plan, Permission.COMMENTING);
 
-        // Verify access to vision
         await requireVisionAccess(ctx, args.visionId);
 
-        // Get the node to verify it exists and get channel info
         const node = await ctx.db.get(args.nodeId);
         if (!node) {
             throw new Error("Node not found");
@@ -245,7 +228,6 @@ export const createCommentChat = mutation({
 
         const now = new Date().toISOString();
         
-        // Create the root comment first
         const rootCommentId = await ctx.db.insert("comments", {
             content: args.initialComment,
             authorId: identity.userId.toString(),
@@ -258,7 +240,6 @@ export const createCommentChat = mutation({
             isDeleted: false
         });
 
-        // Create the comment chat
         const chatTitle = args.title || `Comment on ${node.title}`;
         const chatId = await ctx.db.insert("chats", {
             title: chatTitle,
@@ -271,7 +252,6 @@ export const createCommentChat = mutation({
             isActive: true
         });
 
-        // Create the initial message in the chat using the comment content
         await ctx.db.insert("messages", {
             chatId: chatId,
             content: args.initialComment,
@@ -296,10 +276,8 @@ export const getCommentChat = query({
             throw new Error("Comment not found");
         }
 
-        // Verify access to vision
         await requireVisionAccess(ctx, comment.visionId);
 
-        // Find the chat associated with this comment
         const chat = await ctx.db
             .query("chats")
             .withIndex("by_rootComment", (q) => q.eq("rootCommentId", args.commentId))
@@ -309,7 +287,6 @@ export const getCommentChat = query({
             return null;
         }
 
-        // Get node information
         const node = chat.nodeId ? await ctx.db.get(chat.nodeId) : null;
 
         return {
@@ -326,10 +303,8 @@ export const getCommentChat = query({
 export const getNodeCommentChats = query({
     args: getNodeCommentChatsArgs,
     handler: async (ctx, args) => {
-        // Verify access to vision
         await requireVisionAccess(ctx, args.visionId);
 
-        // Get all comment chats for the node
         const chats = await ctx.db
             .query("chats")
             .withIndex("by_nodeId", (q) => q.eq("nodeId", args.nodeId))
@@ -338,27 +313,22 @@ export const getNodeCommentChats = query({
             .order("desc")
             .collect();
 
-        // Enrich with comment and message information
         const enrichedChats = await Promise.all(
             chats.map(async (chat) => {
-                // Get the root comment
                 const rootComment = chat.rootCommentId ? await ctx.db.get(chat.rootCommentId) : null;
                 
-                // Get the latest message for preview
                 const latestMessage = await ctx.db
                     .query("messages")
                     .withIndex("by_chatId", (q) => q.eq("chatId", chat._id))
                     .order("desc")
                     .first();
 
-                // Get message count
                 const messageCount = await ctx.db
                     .query("messages")
                     .withIndex("by_chatId", (q) => q.eq("chatId", chat._id))
                     .collect()
                     .then(messages => messages.length);
 
-                // Get comment author if root comment exists
                 let commentAuthor = null;
                 if (rootComment) {
                     commentAuthor = await ctx.db
@@ -402,12 +372,10 @@ export const closeCommentChat = mutation({
             throw new Error("Chat not found");
         }
 
-        // Only the chat owner can close it
         if (chat.userId !== identity.userId.toString()) {
             throw new Error("You can only close your own chats");
         }
 
-        // Mark chat as inactive
         await ctx.db.patch(args.chatId, {
             isActive: false
         });
@@ -419,10 +387,8 @@ export const closeCommentChat = mutation({
 export const getInactiveCommentChats = query({
     args: getInactiveCommentChatsArgs,
     handler: async (ctx, args) => {
-        // Verify access to vision
         await requireVisionAccess(ctx, args.visionId);
 
-        // Get all inactive comment chats for the node
         const chats = await ctx.db
             .query("chats")
             .withIndex("by_nodeId", (q) => q.eq("nodeId", args.nodeId))
@@ -431,27 +397,22 @@ export const getInactiveCommentChats = query({
             .order("desc")
             .collect();
 
-        // Enrich with comment and message information
         const enrichedChats = await Promise.all(
             chats.map(async (chat) => {
-                // Get the root comment
                 const rootComment = chat.rootCommentId ? await ctx.db.get(chat.rootCommentId) : null;
                 
-                // Get the latest message for preview
                 const latestMessage = await ctx.db
                     .query("messages")
                     .withIndex("by_chatId", (q) => q.eq("chatId", chat._id))
                     .order("desc")
                     .first();
 
-                // Get message count
                 const messageCount = await ctx.db
                     .query("messages")
                     .withIndex("by_chatId", (q) => q.eq("chatId", chat._id))
                     .collect()
                     .then(messages => messages.length);
 
-                // Get comment author if root comment exists
                 let commentAuthor = null;
                 if (rootComment) {
                     commentAuthor = await ctx.db
@@ -484,10 +445,8 @@ export const getInactiveCommentChats = query({
 export const getAllInactiveCommentChats = query({
     args: getAllInactiveCommentChatsArgs,
     handler: async (ctx, args) => {
-        // Verify access to vision
         await requireVisionAccess(ctx, args.visionId);
 
-        // Get all inactive comment chats for the vision
         const chats = await ctx.db
             .query("chats")
             .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
@@ -496,27 +455,22 @@ export const getAllInactiveCommentChats = query({
             .order("desc")
             .collect();
 
-        // Enrich with comment and message information
         const enrichedChats = await Promise.all(
             chats.map(async (chat) => {
-                // Get the root comment
                 const rootComment = chat.rootCommentId ? await ctx.db.get(chat.rootCommentId) : null;
                 
-                // Get the latest message for preview
                 const latestMessage = await ctx.db
                     .query("messages")
                     .withIndex("by_chatId", (q) => q.eq("chatId", chat._id))
                     .order("desc")
                     .first();
 
-                // Get message count
                 const messageCount = await ctx.db
                     .query("messages")
                     .withIndex("by_chatId", (q) => q.eq("chatId", chat._id))
                     .collect()
                     .then(messages => messages.length);
 
-                // Get comment author if root comment exists
                 let commentAuthor = null;
                 if (rootComment) {
                     commentAuthor = await ctx.db
@@ -525,7 +479,6 @@ export const getAllInactiveCommentChats = query({
                         .first();
                 }
 
-                // Get node information if nodeId exists
                 let nodeInfo = null;
                 if (chat.nodeId) {
                     const node = await ctx.db.get(chat.nodeId);
@@ -560,7 +513,6 @@ export const getAllInactiveCommentChats = query({
     }
 });
 
-// Type exports
 export type CreateCommentArgs = Infer<typeof createCommentArgs>;
 export type UpdateCommentArgs = Infer<typeof updateCommentArgs>;
 export type DeleteCommentArgs = Infer<typeof deleteCommentArgs>;

@@ -3,7 +3,6 @@ import { v, Infer } from "convex/values";
 import { requireVisionAccess } from "./utils/auth";
 import { Doc, Id } from "./_generated/dataModel";
 
-// Args schemas
 const createArgs = v.object({
   visionId: v.id("visions"),
   title: v.string(),
@@ -61,7 +60,6 @@ export const create = mutation({
 
     const now = new Date().toISOString();
 
-    // Get the next sort order for this vision
     const existingChannels = await ctx.db
       .query("channels")
       .withIndex("by_vision", (q) => q.eq("vision", args.visionId))
@@ -124,7 +122,6 @@ export const remove = mutation({
       .collect();
 
     for (const frame of frames) {
-      // Delete all framed_node entries for this frame
       const framedNodes = await ctx.db
         .query("framed_node")
         .withIndex("by_frame", (q) => q.eq("frameId", frame._id))
@@ -133,7 +130,6 @@ export const remove = mutation({
         await ctx.db.delete(fn._id);
       }
 
-      // Delete all frame_positions entries for this frame
       const framePositions = await ctx.db
         .query("frame_positions")
         .withIndex("by_frame", (q) => q.eq("frameId", frame._id))
@@ -142,7 +138,6 @@ export const remove = mutation({
         await ctx.db.delete(fp._id);
       }
 
-      // Delete all edges in this frame
       const edges = await ctx.db
         .query("edges")
         .withIndex("frame", (q) => q.eq("frameId", frame._id))
@@ -151,7 +146,6 @@ export const remove = mutation({
         await ctx.db.delete(edge._id);
       }
 
-      // Delete all nodes in this frame
       const nodes = await ctx.db
         .query("nodes")
         .withIndex("by_frame", (q) => q.eq("frame", frame._id))
@@ -160,7 +154,6 @@ export const remove = mutation({
         await ctx.db.delete(node._id);
       }
 
-      // Delete the frame itself
       await ctx.db.delete(frame._id);
     }
 
@@ -220,7 +213,6 @@ export const listByVision = query({
       .withIndex("by_vision", (q) => q.eq("vision", args.visionId))
       .collect();
 
-    // Sort by sortOrder, fallback to creation time for legacy data
     channels.sort((a, b) => {
       const orderA = a.sortOrder ?? 0;
       const orderB = b.sortOrder ?? 0;
@@ -236,33 +228,28 @@ export const listWithFramesByVision = query({
   handler: async (ctx, args) => {
     await requireVisionAccess(ctx, args.visionId);
 
-    // Get all channels for this vision
     const channels = await ctx.db
       .query("channels")
       .withIndex("by_vision", (q) => q.eq("vision", args.visionId))
       .collect();
 
-    // Sort channels by sortOrder
     channels.sort((a, b) => {
       const orderA = a.sortOrder ?? 0;
       const orderB = b.sortOrder ?? 0;
       return orderA - orderB;
     });
 
-    // Get all frames for this vision in one query
     const allFrames = await ctx.db
       .query("frames")
       .withIndex("by_vision", (q) => q.eq("vision", args.visionId))
       .collect();
 
-    // Sort frames by sortOrder
     allFrames.sort((a, b) => {
       const orderA = a.sortOrder ?? 0;
       const orderB = b.sortOrder ?? 0;
       return orderA - orderB;
     });
 
-    // Group frames by channel
     const framesByChannel: Record<string, any[]> = {};
     for (const frame of allFrames) {
       const channelId = frame.channel;
@@ -284,20 +271,16 @@ export const getVisionUsers = query({
   handler: async (ctx, args) => {
     await requireVisionAccess(ctx, args.visionId);
 
-    // Get all vision users
     const visionUsers = await ctx.db
       .query("vision_users")
       .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
       .collect();
 
-    // Fetch user details for each vision user
     const usersWithDetails = await Promise.all(
       visionUsers.map(async (visionUser) => {
         try {
-          // Handle both string and Id formats
           let userId: Id<"users">;
           if (typeof visionUser.userId === 'string') {
-            // If it's a string, find the user by external ID or tokenIdentifier
             const userByIdentifier = await ctx.db
               .query("users")
               .filter((q) => q.eq(q.field("externalId"), visionUser.userId))
@@ -329,7 +312,6 @@ export const getVisionUsers = query({
       })
     );
 
-    // Filter out null users and apply search filter
     let filteredUsers = usersWithDetails.filter((user): user is NonNullable<typeof user> => user !== null);
 
     if (args.search) {
@@ -361,7 +343,6 @@ export const getUser = query({
   },
 });
 
-// Type exports
 export type CreateChannelArgs = Infer<typeof createArgs>;
 export type UpdateChannelArgs = Infer<typeof updateArgs>;
 export type RemoveChannelArgs = Infer<typeof removeArgs>;

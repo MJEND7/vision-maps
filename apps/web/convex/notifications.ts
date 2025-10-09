@@ -3,7 +3,6 @@ import { v, Infer } from "convex/values";
 import { requireAuth, requireVisionAccess } from "./utils/auth";
 import { Id } from "./_generated/dataModel";
 
-// Args schemas
 const getUserNotificationsArgs = v.object({
   limit: v.optional(v.number()),
   onlyUnread: v.optional(v.boolean()),
@@ -84,7 +83,6 @@ export const getUserNotifications = query({
 
     const notifications = await query.take(args.limit || 50);
 
-    // Populate sender information
     const enrichedNotifications = await Promise.all(
       notifications.map(async (notification) => {
         const sender = await ctx.db
@@ -209,7 +207,6 @@ export const deleteNotification = mutation({
       throw new Error("You can only delete your own notifications");
     }
 
-    // Soft delete
     await ctx.db.patch(args.notificationId, {
       isDeleted: true
     });
@@ -269,11 +266,9 @@ export const acceptInvite = mutation({
       throw new Error("This invitation has already been processed");
     }
 
-    // Check if this is a vision invite (has visionId)
     if ("visionId" in notification.inviteData) {
       const visionInviteData = notification.inviteData as { visionId: Id<"visions">, role: string };
       
-      // Add user to vision
       const existingVisionUser = await ctx.db
         .query("vision_users")
         .withIndex("by_visionId", (q) => q.eq("visionId", visionInviteData.visionId))
@@ -294,7 +289,6 @@ export const acceptInvite = mutation({
       throw new Error("This function only handles vision invites");
     }
 
-    // Update notification status
     await ctx.db.patch(args.notificationId, {
       inviteStatus: "accepted",
       isRead: true,
@@ -331,7 +325,6 @@ export const rejectInvite = mutation({
       throw new Error("This invitation has already been processed");
     }
 
-    // Update notification status
     await ctx.db.patch(args.notificationId, {
       inviteStatus: "rejected",
       isRead: true,
@@ -351,16 +344,13 @@ export const createInviteNotification = mutation({
       throw new Error("Failed to get userId");
     }
 
-    // Verify the sender has permission to invite to this vision
     await requireVisionAccess(ctx, args.visionId);
 
-    // Get vision info for the message
     const vision = await ctx.db.get(args.visionId);
     if (!vision) {
       throw new Error("Vision not found");
     }
 
-    // Get sender info
     const sender = await ctx.db
       .query("users")
       .filter((q) => q.eq(q.field("externalId"), identity.userId!.toString()))
@@ -395,7 +385,6 @@ export const createOrgInviteNotification = mutation({
       throw new Error("Failed to get userId");
     }
 
-    // Find user by email
     const recipient = await ctx.db
       .query("users")
       .filter((q) => q.eq(q.field("email"), args.recipientEmail))
@@ -405,7 +394,6 @@ export const createOrgInviteNotification = mutation({
       throw new Error("User not found with this email address");
     }
 
-    // Get sender info
     const sender = await ctx.db
       .query("users")
       .filter((q) => q.eq(q.field("externalId"), identity.userId!.toString()))
@@ -457,14 +445,12 @@ export const acceptOrgInvite = mutation({
       throw new Error("This invitation has already been processed");
     }
 
-    // Check if this is an org invite (has organizationId)
     if (!("organizationId" in notification.inviteData)) {
       throw new Error("This function only handles organization invites");
     }
 
     const orgId = notification.inviteData.organizationId;
 
-    // Check if user is already a member
     const existingMembership = await ctx.db
       .query("organization_members")
       .withIndex("by_org_and_user", (q) =>
@@ -476,7 +462,6 @@ export const acceptOrgInvite = mutation({
       throw new Error("You are already a member of this organization");
     }
 
-    // Add user to organization
     await ctx.db.insert("organization_members", {
       organizationId: orgId as any,
       userId: identity.userId!.toString(),
@@ -485,7 +470,6 @@ export const acceptOrgInvite = mutation({
       updatedAt: Date.now(),
     });
 
-    // Update members count
     const org = await ctx.db.get(orgId as any) as any;
     if (org) {
       await ctx.db.patch(orgId as any, {
@@ -494,7 +478,6 @@ export const acceptOrgInvite = mutation({
       });
     }
 
-    // Update notification status
     await ctx.db.patch(args.notificationId, {
       inviteStatus: "accepted",
       isRead: true,
@@ -535,7 +518,6 @@ export const rejectOrgInvite = mutation({
       throw new Error("This invitation has already been processed");
     }
 
-    // Update notification status
     await ctx.db.patch(args.notificationId, {
       inviteStatus: "rejected",
       isRead: true,
@@ -555,7 +537,6 @@ export const getOrgPendingInvites = query({
       throw new Error("Failed to get userId");
     }
 
-    // Check if user is an admin of the organization
     const membership = await ctx.db
       .query("organization_members")
       .withIndex("by_org_and_user", (q) =>
@@ -563,12 +544,10 @@ export const getOrgPendingInvites = query({
       )
       .first();
 
-    // Return empty array if not an admin (instead of throwing error)
     if (!membership || membership.role !== "admin") {
       return [];
     }
 
-    // Get all pending org invite notifications for this organization
     const allNotifications = await ctx.db
       .query("notifications")
       .filter((q) =>
@@ -580,12 +559,10 @@ export const getOrgPendingInvites = query({
       )
       .collect();
 
-    // Filter by organizationId in inviteData
     const orgInvites = allNotifications.filter(
       (n) => n.inviteData && "organizationId" in n.inviteData && n.inviteData.organizationId === args.organizationId
     );
 
-    // Enrich with recipient information
     const enrichedInvites = await Promise.all(
       orgInvites.map(async (invite) => {
         const recipient = await ctx.db
@@ -610,7 +587,6 @@ export const getOrgPendingInvites = query({
   }
 });
 
-// Type exports
 export type GetUserNotificationsArgs = Infer<typeof getUserNotificationsArgs>;
 export type GetUnreadNotificationCountArgs = Infer<typeof getUnreadCountArgs>;
 export type MarkNotificationAsReadArgs = Infer<typeof markAsReadArgs>;

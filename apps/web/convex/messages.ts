@@ -12,7 +12,6 @@ import { fetchYoutubeTranscripts } from "./utils/youtube";
 import { createNodeContext } from "./messageHelpers";
 import { AssistantMode, prompt } from "./utils/context";
 
-// Args schemas
 const listMessagesByChatArgs = v.object({
     chatId: v.id("chats"),
     cursor: v.optional(v.string()),
@@ -61,10 +60,8 @@ export const listMessagesByChat = query({
             throw new Error("Authentication required");
         }
 
-        // Verify user owns the chat
         const chat = await ctx.db.get(args.chatId);
         if (!chat) {
-            // Return empty result instead of throwing error for deleted chats
             return { page: [], isDone: true, continueCursor: "" };
         }
 
@@ -72,7 +69,6 @@ export const listMessagesByChat = query({
             throw new Error("Unauthorized: You can only access your own chats");
         }
 
-        // Handle both direct args and paginationOpts for compatibility
         const numItems = args.paginationOpts?.numItems ?? args.numItems ?? 20;
         const cursor = args.paginationOpts?.cursor ?? args.cursor ?? null;
 
@@ -110,11 +106,9 @@ export const sendMessage = mutation({
             throw new Error("Failed to get the user Id")
         }
 
-        // Check AI permission
         const plan = await getUserPlan(ctx.auth, ctx.db);
         requirePermission(plan, Permission.AI_NODES);
 
-        // Check if this is the first user message in the chat
         const existingMessages = await ctx.db
             .query("messages")
             .withIndex("by_chatId", (q) => q.eq("chatId", args.chatId))
@@ -134,7 +128,6 @@ export const sendMessage = mutation({
         });
 
         if (isFirstMessage) {
-            // Schedule the naming action to run asynchronously (non-blocking)
             await ctx.scheduler.runAfter(0, internal.messages.generateChatNameAction, {
                 chatId: args.chatId,
                 messageContent: args.content
@@ -217,16 +210,12 @@ export const streamChat = httpAction(async (ctx, request) => {
 
             const youtubeTranscripts = await fetchYoutubeTranscripts(nodeContext);
 
-            // Build context array using the context helpers
             const contextArray: string[] = [];
             const mediaContent: any[] = [];
 
-            // Process each connected node using the context helpers
             nodeContext.connectedNodes.forEach((node: any) => {
-                // Find matching YouTube transcript if exists
                 const transcript = youtubeTranscripts.find(t => t.value === node.value)?.transcript;
 
-                // Create node context using the helper function
                 const nodeContextOutput = createNodeContext(
                     {
                         title: node.title,
@@ -240,24 +229,19 @@ export const streamChat = httpAction(async (ctx, request) => {
                     }
                 );
 
-                // Add context to array
                 contextArray.push(nodeContextOutput.context);
 
-                // Add media if present
                 if (nodeContextOutput.media) {
                     mediaContent.push(nodeContextOutput.media);
                 }
             });
 
-            // Get the last user message
             const lastUserMessage = history.length > 0 ? history[history.length - 1]?.content || "" : "";
 
-            // Build context description
             const contextDescription = contextArray.length > 0
                 ? `Additional context from ${contextArray.length} connected node(s) in the visual workspace`
                 : "Connected workspace nodes";
 
-            // Use the prompt function to create the stream
             const stream = await prompt(
                 AssistantMode.General,
                 lastUserMessage,
@@ -280,7 +264,6 @@ export const streamChat = httpAction(async (ctx, request) => {
     return response;
 });
 
-// Internal mutation for updating chat and node titles
 export const updateChatAndNodeTitle = internalMutation({
     args: v.object({
         chatId: v.id("chats"),
@@ -289,12 +272,10 @@ export const updateChatAndNodeTitle = internalMutation({
     handler: async (ctx, args) => {
         const chat = await ctx.db.get(args.chatId);
 
-        // Update the chat title
         await ctx.db.patch(args.chatId, {
             title: args.title,
         });
 
-        // If there's a linked node, update its title too
         if (chat?.nodeId) {
             const node = await ctx.db.get(chat.nodeId);
             if (node) {
@@ -307,11 +288,9 @@ export const updateChatAndNodeTitle = internalMutation({
     },
 });
 
-// Get connected node context for AI chat
 export const getConnectedNodeContext = internalQuery({
     args: getConnectedNodeContextArgs,
     handler: async (ctx, args) => {
-        // Get the chat to find its associated AI node
         const chat = await ctx.db.get(args.chatId);
         if (!chat) {
             return { connectedNodes: [], contextText: "" };
@@ -324,13 +303,11 @@ export const getConnectedNodeContext = internalQuery({
             return { connectedNodes: [], contextText: "" };
         }
 
-        // Get the AI node details
         const framedNode = await ctx.db.query("framed_node").withIndex("nodeId", (q) => q.eq("node.data", nodeId)).first();
         if (!framedNode || !framedNode.node.id) {
             return { connectedNodes: [], contextText: "" };
         }
 
-        // Find all edges where the AI node is the target (data flows INTO the AI)
         const edges = await ctx.db
             .query("edges")
             .withIndex("target", (q) => q.eq("target", framedNode._id))
@@ -340,20 +317,16 @@ export const getConnectedNodeContext = internalQuery({
             return { connectedNodes: [], contextText: "" };
         }
 
-        // Get source nodes from incoming edges
         const sourceNodeIds = edges.map(edge => edge.source);
 
-        // Get framed nodes that match our source node IDs using the id index
         const sourceFramedNodes = await Promise.all(
             sourceNodeIds.map(async (nodeId) => {
                 return await ctx.db.get(nodeId)
             })
         );
 
-        // Filter out any null results
         const validSourceFramedNodes = sourceFramedNodes.filter(fn => fn !== null);
 
-        // Get actual node data for each source node
         const connectedNodeData = await Promise.all(
             validSourceFramedNodes.map(async (framedNode) => {
                 const nodeData = await ctx.db.get(framedNode.node.data);
@@ -361,7 +334,6 @@ export const getConnectedNodeContext = internalQuery({
             })
         );
 
-        // Filter for Text and media nodes (all nodes except AI), and ensure they have valid data
         const relevantNodes = connectedNodeData
             .filter(({ nodeData }) =>
                 nodeData &&
@@ -377,7 +349,6 @@ export const getConnectedNodeContext = internalQuery({
                 thought: nodeData!.thought
             }));
 
-        // Fetch OG metadata for media nodes (exclude Text nodes)
         const mediaNodesWithMetadata = await Promise.all(
             relevantNodes
                 .filter(node => node.type !== "Text")
@@ -388,7 +359,6 @@ export const getConnectedNodeContext = internalQuery({
                             .withIndex("by_url", (q) => q.eq("url", node.value))
                             .first();
 
-                        // Check if expired (30 days)
                         if (ogData) {
                             const now = new Date();
                             const expiresAt = new Date(ogData.expiresAt);
@@ -415,21 +385,18 @@ export const getConnectedNodeContext = internalQuery({
                 })
         );
 
-        // Combine text nodes (no metadata needed) with media nodes (with metadata)
         const textNodes = relevantNodes.filter(node => node.type === "Text");
         const allNodesWithMetadata = [
             ...textNodes.map(node => ({ ...node, ogMetadata: null })),
             ...mediaNodesWithMetadata
         ];
 
-        // Create context text from connected nodes with OG metadata
         let contextText = "";
         if (allNodesWithMetadata.length > 0) {
             contextText = "CONNECTED NODE CONTEXT:\n\n";
             allNodesWithMetadata.forEach(node => {
                 contextText += `--- ${node.title} (${node.type}) ---\n`;
 
-                // For Text nodes, include content and thought
                 if (node.type === "Text") {
                     contextText += `Content: ${node.value}\n`;
                     if (node.thought && node.thought.trim().length > 0) {
@@ -437,7 +404,6 @@ export const getConnectedNodeContext = internalQuery({
                     }
                     contextText += "\n";
                 } else {
-                    // For media nodes, include URL, thought, and metadata if available
                     contextText += `URL: ${node.value}\n`;
 
                     if (node.thought && node.thought.trim().length > 0) {
@@ -502,7 +468,6 @@ export const generateChatNameAction = internalAction({
                 return { success: false, message: "Failed to generate title" };
             }
 
-            // Use internal mutation to update titles
             await ctx.runMutation(internal.messages.updateChatAndNodeTitle, {
                 chatId: args.chatId,
                 title: generatedTitle,
@@ -520,7 +485,6 @@ export const generateChatNameAction = internalAction({
 });
 
 
-// Type exports
 export type ListMessagesByChatArgs = Infer<typeof listMessagesByChatArgs>;
 export type ClearMessagesArgs = Infer<typeof clearMessagesArgs>;
 export type SendMessageArgs = Infer<typeof sendMessageArgs>;
@@ -528,4 +492,3 @@ export type GetChatHistoryArgs = Infer<typeof getChatHistoryArgs>;
 export type GetStreamBodyArgs = Infer<typeof getStreamBodyArgs>;
 export type GenerateChatNameActionArgs = Infer<typeof generateChatNameActionArgs>;
 export type GetConnectedNodeContextArgs = Infer<typeof getConnectedNodeContextArgs>;
-// Note: streamChat is an httpAction, not a mutation/query, so we don't export types for it

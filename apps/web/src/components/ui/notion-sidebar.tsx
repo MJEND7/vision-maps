@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { api } from "@/../convex/_generated/api";
 import { useOrgSwitch } from "@/contexts/OrgSwitchContext";
+import { usePermissions } from "@/contexts/PermissionsContext";
 import {
     Map,
     Settings,
@@ -47,13 +48,17 @@ export function NotionSidebar() {
     const pathname = usePathname(); // Get current pathname
     const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
     const [orgSettingsOpen, setOrgSettingsOpen] = useState(false);
-    const [userPlan, setUserPlan] = useState<string | null>(null);
-    const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
 
     const notificationCount = useQuery(
         api.notifications.getUnreadCount,
         (isOrgSwitching) ? "skip" : {}
     ) ?? 0;
+
+    // Get plan data from PermissionsContext (which fetches from Convex)
+    const { plan, trialDaysLeft } = usePermissions();
+
+    // Map Plan enum to string for display
+    const userPlan = plan.toLowerCase();
 
     // Helper function to check if a route is active
     const isActiveRoute = (route: string) => {
@@ -88,24 +93,6 @@ export function NotionSidebar() {
             }, 3000);
         }
     }, [isSignedIn, user, isOrgSwitching, setIsOrgSwitching]);
-
-    // Fetch user plan data
-    useEffect(() => {
-        if (isSignedIn && !isOrgSwitching) {
-            fetch('/api/user-plan')
-                .then(res => res.json())
-                .then(data => {
-                    console.log('Fetched user plan data:', data);
-                    setUserPlan(data.plan || "free");
-                    setTrialDaysLeft(data.trialDaysLeft);
-                })
-                .catch(error => {
-                    console.error('Error fetching user plan:', error);
-                    setUserPlan("free");
-                    setTrialDaysLeft(null);
-                });
-        }
-    }, [isSignedIn, isOrgSwitching]);
 
     const handleProfileClick = () => {
         router.push("profile")

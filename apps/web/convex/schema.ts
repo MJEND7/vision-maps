@@ -14,8 +14,7 @@ import { FramedNode } from "./tables/framed_node";
 import { UserPasteBin } from "./tables/userPasteBin";
 import { Organizations } from "./tables/organization";
 import { OrganizationMembers } from "./tables/organizationMember";
-import { UserPlans } from "./tables/userPlans";
-import { OrgPlans } from "./tables/orgPlans";
+import { Plans } from "./tables/plans";
 
 // The schema is entirely optional.
 // You can delete this file (schema.ts) and the
@@ -39,6 +38,5 @@ export default defineSchema({
     user_paste_bin: UserPasteBin.Table,
     organizations: Organizations.Table,
     organization_members: OrganizationMembers.Table,
-    user_plans: UserPlans.Table,
-    org_plans: OrgPlans.Table,
+    plans: Plans.Table,
 });

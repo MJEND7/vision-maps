@@ -2,7 +2,6 @@ import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import Stripe from "stripe";
 
-// Export the internal mutation for processing Stripe events
 export { processStripeEvent } from "./stripe/processEvent";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -63,13 +62,11 @@ export const webhook = httpAction(async (ctx, request) => {
       signatureLength: signature.length,
       bodyLength: body.length,
       timestamp: new Date().toISOString(),
-      // Don't log the actual signature or body for security
     });
 
     return new Response("Webhook signature verification failed", { status: 400 });
   }
 
-  // Skip processing if the event isn't one we're tracking
   if (!ALLOWED_STRIPE_EVENTS.includes(event.type)) {
     console.log(`[STRIPE WEBHOOK CONVEX] Skipping event type: ${event.type}`);
     return new Response(JSON.stringify({ received: true }), { status: 200 });
@@ -78,7 +75,6 @@ export const webhook = httpAction(async (ctx, request) => {
   console.log(`[STRIPE WEBHOOK CONVEX] Processing event ${event.type}`);
 
   try {
-    // Process the event asynchronously via action (actions can call Stripe API)
     await ctx.runAction(internal.stripe.processEvent.processStripeEvent, {
       event: JSON.stringify(event),
     });

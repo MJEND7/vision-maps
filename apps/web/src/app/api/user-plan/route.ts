@@ -16,30 +16,26 @@ export async function GET() {
             );
         }
 
-        // Get user plan from Convex
-        const userPlan = await convex.query(api.userPlans.getUserPlanByExternalId, {
-            externalId: userId,
-        });
-
-        // Get org plan from Convex if in an organization
-        let orgPlan = null;
-        if (orgId) {
-            orgPlan = await convex.query(api.orgPlans.getOrgPlanByOrganizationId, {
-                organizationId: orgId,
+        // Check org plan first if user is in an organization, otherwise check user plan
+        const plan = orgId
+            ? await convex.query(api.plans.getPlanByOwner, {
+                ownerType: "org",
+                ownerId: orgId,
+            })
+            : await convex.query(api.plans.getPlanByOwner, {
+                ownerType: "user",
+                ownerId: userId,
             });
-        }
 
-        // Determine the active plan (org plan takes precedence)
-        const activePlan = orgPlan || userPlan;
-        const planType = activePlan?.planType || "free";
-        const status = activePlan?.status || "none";
-        const isOnTrial = activePlan?.isOnTrial || false;
+        const planType = plan?.planType || "free";
+        const status = plan?.status || "none";
+        const isOnTrial = plan?.isOnTrial || false;
 
         // Calculate trial days left if on trial
         let trialDaysLeft = null;
-        if (isOnTrial && activePlan?.trialEndsAt) {
+        if (isOnTrial && plan?.trialEndsAt) {
             const now = Date.now();
-            trialDaysLeft = Math.ceil((activePlan.trialEndsAt - now) / (24 * 60 * 60 * 1000));
+            trialDaysLeft = Math.ceil((plan.trialEndsAt - now) / (24 * 60 * 60 * 1000));
             if (trialDaysLeft < 0) trialDaysLeft = 0;
         }
 
@@ -50,9 +46,7 @@ export async function GET() {
             status,
             isOnTrial,
             trialDaysLeft,
-            activePlan,
-            userPlan,
-            orgPlan,
+            activePlan: plan,
         });
     } catch (error) {
         console.error("Error fetching user plan:", error);

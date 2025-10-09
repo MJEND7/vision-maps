@@ -10,7 +10,9 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function POST(req: Request) {
     try {
-        const { userId, orgId } = await auth();
+        const { userId } = await auth();
+        const { searchParams } = new URL(req.url);
+        const orgId = searchParams.get("org_id");
 
         if (!userId || !orgId) {
             return NextResponse.json(
@@ -65,7 +67,7 @@ export async function POST(req: Request) {
                 throw new Error("No user found")
             }
 
-            const email = user?.primaryEmailAddress;
+            const email = user?.emailAddresses[0]?.emailAddress;
 
             if (!email) {
                 throw new Error("Failed to get user email")
@@ -83,11 +85,12 @@ export async function POST(req: Request) {
             await redis.set(`stripe:org:${orgId}`, newCustomer.id);
             stripeCustomerId = newCustomer.id;
 
-            await convex.mutation(api.orgPlans.createOrgPlanMapping, {
-                organizationId: orgId,
+            await convex.mutation(api.plans.createPlanMapping, {
+                ownerType: "org",
+                ownerId: orgId, // This is the organizationId
                 stripeCustomerId: newCustomer.id,
-                ownerId: userId,
                 seats,
+                billingOwnerId: userId, // This is the user who manages billing
             });
         }
 
@@ -147,11 +150,12 @@ export async function POST(req: Request) {
                 stripeCustomerId = newCustomer.id;
 
                 // Update/create mapping in Convex
-                await convex.mutation(api.orgPlans.createOrgPlanMapping, {
-                    organizationId: orgId,
+                await convex.mutation(api.plans.createPlanMapping, {
+                    ownerType: "org",
+                    ownerId: orgId, // This is the organizationId
                     stripeCustomerId: newCustomer.id,
-                    ownerId: userId,
                     seats,
+                    billingOwnerId: userId, // This is the user who manages billing
                 });
 
                 // Retry checkout creation with new customer
@@ -165,6 +169,9 @@ export async function POST(req: Request) {
                             quantity: seats,
                         },
                     ],
+                    subscription_data: {
+                        trial_period_days: TRIAL_PERIOD_DAYS,
+                    },
                     mode: "subscription",
                     allow_promotion_codes: true,
                     billing_address_collection: "auto",

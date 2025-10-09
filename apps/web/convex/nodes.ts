@@ -5,7 +5,6 @@ import { getUserByIdenityId, requireAuth, requireVisionAccess } from "./utils/au
 import { paginationOptsValidator } from "convex/server";
 import { nodeValidator } from "./reactflow/types";
 
-// Args schemas
 const createArgs = v.object({
     frameId: v.optional(v.id("frames")),
     channel: v.id("channels"),
@@ -69,7 +68,6 @@ export const create = mutation({
             await requireVisionAccess(ctx, channel.vision);
         }
 
-        // If frameId provided, verify it belongs to the same channel
         if (args.frameId) {
             const frame = await ctx.db.get(args.frameId);
             if (!frame) {
@@ -106,13 +104,11 @@ export const create = mutation({
         if (args.position && args.frameId) {
             const node = { ...args.position, data: nodeId, type: args.variant || "Text" }
 
-            // Insert into framed_node for current state
             await ctx.db.insert("framed_node", {
                 frameId: args.frameId,
                 node
             })
 
-            // Insert into frame_positions for batch tracking
             await ctx.db.insert("frame_positions", {
                 frameId: args.frameId,
                 nodeId: nodeId,
@@ -220,7 +216,7 @@ const listByChannelArgs = v.object({
         search: v.optional(v.string()),
         variant: v.optional(v.string()),
         userIds: v.optional(v.array(v.id("users"))),
-        sortBy: v.optional(v.string()), // "latest" or "oldest"
+        sortBy: v.optional(v.string()), 
     })),
 })
 export const listByChannel = query({
@@ -240,7 +236,6 @@ export const listByChannel = query({
 
         let nodesQuery;
 
-        // If search is provided → use search index
         if (args.filters?.search) {
             nodesQuery = ctx.db
                 .query("nodes")
@@ -250,20 +245,17 @@ export const listByChannel = query({
                         .eq("channel", args.channelId)
                 )
         } else {
-            // Otherwise → use normal index
             nodesQuery = ctx.db
                 .query("nodes")
                 .withIndex("by_channel", (q) => q.eq("channel", args.channelId)).order(sortBy === "latest" ? "asc" : "desc");
         }
 
-        // Apply variant filter
         if (args.filters?.variant) {
             nodesQuery = nodesQuery.filter((q) =>
                 q.eq(q.field("variant"), args.filters!.variant)
             );
         }
 
-        // Apply user filter
         if (args.filters?.userIds && args.filters.userIds.length > 0) {
             nodesQuery = nodesQuery.filter((q) =>
                 q.or(
@@ -272,12 +264,10 @@ export const listByChannel = query({
             );
         }
 
-        // Pagination
         const { page, isDone, continueCursor } = await nodesQuery.paginate(
             paginationOpts
         );
 
-        // Fetch frame info
         const nodesWithFrames = await Promise.all(
             page.map(async (node) => {
                 let frameTitle = null;
@@ -300,7 +290,6 @@ export const listByChannel = query({
     },
 });
 
-// Type exports
 export type CreateNodeArgs = Infer<typeof createArgs>;
 
 export type UpdateNodeArgs = Infer<typeof updateArgs>;
@@ -339,12 +328,10 @@ export const findDuplicateNodes = query({
 
         const duplicateNodes = await query.collect();
 
-        // Filter out the excluded node if provided
         const filteredNodes = args.excludeNodeId
             ? duplicateNodes.filter(node => node._id !== args.excludeNodeId)
             : duplicateNodes;
 
-        // Get channel info and user info for each node
         const nodesWithChannelInfo = await Promise.all(
             filteredNodes.map(async (node) => {
                 const channel = await ctx.db.get(node.channel);
@@ -359,7 +346,6 @@ export const findDuplicateNodes = query({
             })
         );
 
-        // Sort by creation time (oldest first)
         return nodesWithChannelInfo.sort((a, b) =>
             new Date(a._creationTime).getTime() - new Date(b._creationTime).getTime()
         );
@@ -394,7 +380,6 @@ export const addToFrame = mutation({
             await requireVisionAccess(ctx, frame.vision);
         }
 
-        // Check if node is already in this frame
         const existingFramedNode = await ctx.db
             .query("framed_node")
             .withIndex("by_frame", (q) => q.eq("frameId", args.frameId))
@@ -405,7 +390,6 @@ export const addToFrame = mutation({
             throw new Error("Node is already in this frame");
         }
 
-        // Create the React Flow node structure
         const reactFlowNode = {
             id: crypto.randomUUID(),
             position: args.position,
@@ -413,13 +397,11 @@ export const addToFrame = mutation({
             data: args.nodeId,
         };
 
-        // Insert into framed_node for current state
         await ctx.db.insert("framed_node", {
             frameId: args.frameId,
             node: reactFlowNode,
         });
 
-        // Insert into frame_positions for batch tracking
         await ctx.db.insert("frame_positions", {
             frameId: args.frameId,
             nodeId: args.nodeId,
@@ -427,7 +409,6 @@ export const addToFrame = mutation({
             batchTimestamp: Date.now(),
         });
 
-        // Update the node to reference this frame
         await ctx.db.patch(args.nodeId, {
             frame: args.frameId,
         });
@@ -564,13 +545,11 @@ const checkChatNodeOnFrameArgs = v.object({
 export const checkChatNodeOnFrame = query({
     args: checkChatNodeOnFrameArgs,
     handler: async (ctx, args) => {
-        // Get the chat to find the linked AI node
         const chat = await ctx.db.get(args.chatId);
         if (!chat || !chat.nodeId) {
             return false;
         }
 
-        // Check if the AI node is placed on any frame (check framed_node table)
         const framedAiNode = await ctx.db
             .query("framed_node")
             .filter((q) => q.eq(q.field("node.data"), chat.nodeId))

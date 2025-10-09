@@ -1,9 +1,5 @@
-/**
- * Authentication and authorization helpers for Convex
- */
-
 import { Auth } from "convex/server";
-import { parsePlan, Plan } from "./permissions";
+import { Plan } from "./permissions";
 import { QueryCtx } from "./_generated/server";
 
 /**
@@ -17,24 +13,28 @@ export async function getUserPlan(auth: Auth, db: QueryCtx["db"]): Promise<Plan>
   }
 
   const userId = identity.subject;
-  const orgId = (identity as any).org_id as string | undefined;
 
-  // First check for org plan if user is in an organization
-  if (orgId) {
+  const memberships = await db
+    .query("organization_members")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .collect();
+
+  for (const membership of memberships) {
     const orgPlan = await db
-      .query("org_plans")
-      .withIndex("by_organization_id", (q) => q.eq("organizationId", orgId))
+      .query("plans")
+      .withIndex("by_owner", (q) => q.eq("ownerType", "org").eq("ownerId", membership.organizationId))
       .first();
 
     if (orgPlan && (orgPlan.status === "active" || orgPlan.status === "trialing")) {
-      return orgPlan.planType === "team" ? Plan.TEAMS : Plan.FREE;
+      if (orgPlan.planType === "team") {
+        return Plan.TEAMS;
+      }
     }
   }
 
-  // Check for user plan
   const userPlan = await db
-    .query("user_plans")
-    .withIndex("by_external_id", (q) => q.eq("externalId", userId))
+    .query("plans")
+    .withIndex("by_owner", (q) => q.eq("ownerType", "user").eq("ownerId", userId))
     .first();
 
   if (userPlan && (userPlan.status === "active" || userPlan.status === "trialing")) {
@@ -42,36 +42,4 @@ export async function getUserPlan(auth: Auth, db: QueryCtx["db"]): Promise<Plan>
   }
 
   return Plan.FREE;
-}
-
-/**
- * Get organization ID from auth context
- */
-export async function getOrganizationId(auth: Auth): Promise<string | undefined> {
-  const identity = await auth.getUserIdentity();
-  if (!identity) {
-    return undefined;
-  }
-
-  return (identity as any).org_id as string | undefined;
-}
-
-/**
- * Get user info from auth context
- */
-export async function getUserInfo(auth: Auth, db: QueryCtx["db"]): Promise<{
-  userId: string;
-  plan: Plan;
-  organizationId: string | undefined;
-} | null> {
-  const identity = await auth.getUserIdentity();
-  if (!identity) {
-    return null;
-  }
-
-  return {
-    userId: identity.subject,
-    plan: await getUserPlan(auth, db),
-    organizationId: await getOrganizationId(auth),
-  };
 }

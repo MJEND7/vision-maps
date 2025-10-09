@@ -8,7 +8,7 @@ import { Button } from "../ui/button";
 import { ROUTES } from "@/lib/constants";
 import { SignedIn, useAuth } from "@clerk/clerk-react";
 import { useOrganization, useOrganizationList } from "@/contexts/OrganizationContext";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/../convex/_generated/api";
 import {
     Dialog,
@@ -83,12 +83,11 @@ const plans = [
 
 export function PricingComponent() {
     const router = useRouter();
-    const { userId } = useAuth();
+    const { userId, orgId } = useAuth();
     const [isAnnual, setIsAnnual] = useState(false);
     const [currentPlan, setCurrentPlan] = useState<string>("free");
     const [isLoadingPlan, setIsLoadingPlan] = useState(true);
     const [showOrgSelector, setShowOrgSelector] = useState(false);
-    const [selectedOrgForTeam, setSelectedOrgForTeam] = useState<{ id: string | null, name: string } | null>(null);
     const [isProcessingOrgSelection, setIsProcessingOrgSelection] = useState(false);
     const [proAlreadyOwned, setProAlreadyOwned] = useState(false);
     const [showCreateOrg, setShowCreateOrg] = useState(false);
@@ -100,24 +99,29 @@ export function PricingComponent() {
     const { userMemberships, isLoaded: orgListLoaded, setActive } = useOrganizationList();
     const createOrgMutation = useMutation(api.orgs.create);
 
-    // Fetch current user plan from API
+    // Fetch plan from Convex - org plan if orgId exists, otherwise user plan
+    const planData = useQuery(
+        api.plans.getPlanByOwner,
+        !userId ? "skip" : {
+            ownerType: orgId ? "org" : "user",
+            ownerId: orgId || userId,
+        }
+    );
+
+    // Update current plan when planData changes
     useEffect(() => {
-        fetch('/api/user-plan')
-            .then(res => res.json())
-            .then(data => {
-                setCurrentPlan(data.plan || "free");
-                // Set proAlreadyOwned if user has pro plan and is in an organization
-                if (data.plan === 'pro' && organization) {
-                    setProAlreadyOwned(true);
-                }
-                setIsLoadingPlan(false);
-            })
-            .catch(error => {
-                console.error('Error fetching user plan:', error);
-                setCurrentPlan("free");
-                setIsLoadingPlan(false);
-            });
-    }, [organization]);
+        if (planData) {
+            setCurrentPlan(planData.planType || "free");
+            // Set proAlreadyOwned if user has pro plan and is in an organization
+            if (planData.planType === 'pro' && organization) {
+                setProAlreadyOwned(true);
+            }
+            setIsLoadingPlan(false);
+        } else if (planData === null) {
+            setCurrentPlan("free");
+            setIsLoadingPlan(false);
+        }
+    }, [planData, organization]);
 
     // Update proAlreadyOwned state when organization changes
     useEffect(() => {
@@ -129,7 +133,7 @@ export function PricingComponent() {
     }, [organization, currentPlan]);
 
     // Handle Stripe checkout
-    const handleCheckout = async (planKey: string) => {
+    const handleCheckout = async (planKey: string, selectedOrgId?: string) => {
         if (!userId) return;
 
         setIsCheckingOut(true);
@@ -141,11 +145,10 @@ export function PricingComponent() {
                 planType: planKey,
             };
 
-            // For team plans, use the org checkout endpoint
-            if (planKey === 'team' && selectedOrgForTeam?.id) {
-                endpoint = '/api/stripe/checkout-org';
+            if (planKey === 'team' && selectedOrgId) {
+                endpoint = `/api/stripe/checkout-org?org_id=${selectedOrgId}`;
                 // Get member count for seat calculation
-                const orgData = userMemberships.data?.find(m => m.organization.id === selectedOrgForTeam.id);
+                const orgData = userMemberships.data?.find(m => m.organization.id === selectedOrgId);
                 body.seats = orgData?.organization.membersCount || 1;
             }
 
@@ -205,9 +208,8 @@ export function PricingComponent() {
     };
 
     // Handle org selection and proceed to checkout
-    const handleOrgSelection = async (orgId: string | null, orgName: string) => {
+    const handleOrgSelection = async (orgId: string | null) => {
         setIsProcessingOrgSelection(true);
-        setSelectedOrgForTeam({ id: orgId, name: orgName });
         setShowOrgSelector(false);
 
         // Switch to the selected organization
@@ -218,7 +220,7 @@ export function PricingComponent() {
         }
 
         // Proceed to checkout
-        await handleCheckout('team');
+        await handleCheckout('team', orgId || undefined);
         setIsProcessingOrgSelection(false);
     };
 
@@ -235,11 +237,9 @@ export function PricingComponent() {
             // Wait a moment for org switch to complete
             await new Promise(resolve => setTimeout(resolve, 1500));
 
-            // Check if user already has Pro plan on personal account
-            const response = await fetch('/api/user-plan');
-            const data = await response.json();
-
-            if (data.plan === 'pro') {
+            // The planData will automatically update when org switches to null
+            // We can check proAlreadyOwned state which is updated by the useEffect
+            if (currentPlan === 'pro') {
                 toast.error("You already own the Pro plan on your personal account");
                 setProAlreadyOwned(true);
                 return;
@@ -272,17 +272,12 @@ export function PricingComponent() {
             const orgId = await createOrgMutation({ name: newOrgName.trim() });
             if (orgId) {
                 toast.success("Organization created successfully!");
-
-                // Refresh the memberships list to include the new org
                 userMemberships.revalidate?.();
 
                 setShowCreateOrg(false);
                 setNewOrgName("");
 
-                // Go directly to checkout with the newly created org
-                setTimeout(() => {
-                    handleOrgSelection(orgId, newOrgName.trim());
-                }, 500);
+                handleOrgSelection(orgId);
             }
         } catch (error) {
             console.error("Failed to create organization:", error);
@@ -524,7 +519,7 @@ export function PricingComponent() {
                                 key={membership.organization.id}
                                 variant="outline"
                                 className="w-full p-4 h-auto justify-start"
-                                onClick={() => handleOrgSelection(membership.organization.id, membership.organization.name)}
+                                onClick={() => handleOrgSelection(membership.organization.id)}
                                 disabled={isProcessingOrgSelection}
                             >
                                 <div className="flex items-center gap-3">

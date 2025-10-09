@@ -5,7 +5,6 @@ import { Presence } from "@convex-dev/presence";
 import { requireAuth } from "./utils/auth";
 import { ActiveUsers } from "./tables/user";
 
-// Args schemas
 const heartbeatArgs = v.object({
     roomId: v.string(),
     userId: v.string(),
@@ -111,12 +110,10 @@ export const list = query({
 export const disconnect = mutation({
     args: disconnectArgs,
     handler: async (ctx, { sessionToken }) => {
-        // Can't check auth here because it's called over http from sendBeacon.
         return await presence.disconnect(ctx, sessionToken);
     },
 });
 
-// Type exports
 export type PresenceHeartbeatArgs = Infer<typeof heartbeatArgs>;
 export type ListPresenceRoomArgs = Infer<typeof listRoomArgs>;
 export type ListPresenceArgs = Infer<typeof listArgs>;

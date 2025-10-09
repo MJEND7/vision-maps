@@ -9,7 +9,6 @@ import { requireVisionAccess } from "./utils/auth";
 export const get = query({
     args: { frameId: v.id("frames") },
     handler: async (ctx, args) => {
-        // Verify access to the frame's vision
         const frame = await ctx.db.get(args.frameId);
         if (!frame) {
             throw new Error("Frame not found");
@@ -32,7 +31,6 @@ export const update = mutation({
         changes: v.array(edgeChangeValidator(rfEdge)),
     },
     handler: async (ctx, args) => {
-        // Verify access to the frame's vision
         const frame = await ctx.db.get(args.frameId as Id<"frames">);
         if (!frame) {
             throw new Error("Frame not found");
@@ -41,12 +39,10 @@ export const update = mutation({
             await requireVisionAccess(ctx, frame.vision);
         }
 
-        // Get the ids of the edges that are being changed
         const ids = args.changes.flatMap((change) =>
             change.type === "add" && change.item
                 ? [change.item.id] : []
         );
-        // Only fetch the edges that are being changed
         const edges = (
             await Promise.all(
                 ids.map(async (id) =>
@@ -59,7 +55,6 @@ export const update = mutation({
         ).flatMap((n) => (n ? [n] : []));
         const edgesById = new Map(edges.map((n) => [n.edge.id, n]));
 
-        // Filter out add/reset changes with undefined items
         const validChanges = args.changes.filter(change => {
             if (change.type === 'add') {
                 return change.item !== undefined;
@@ -68,7 +63,7 @@ export const update = mutation({
         });
 
         const updatedEdges = applyEdgeChanges(
-            validChanges as any, // Type assertion needed due to custom validator
+            validChanges as any, 
             edges.map((edge) => edge.edge),
         );
         const updatedIds = new Set(updatedEdges.map((n) => n.id));
@@ -91,7 +86,6 @@ export const update = mutation({
                 if (!source || !target) {
                     throw new Error("Source or target node not found");
                 }
-                // Remove this line since label property doesn't exist in the validator
                 if (existing) {
                     await ctx.db.patch(existing._id, { edge, source, target });
                 } else {
@@ -104,7 +98,6 @@ export const update = mutation({
                 }
             }),
         );
-        // Handle deletions
         await Promise.all(
             edges.map(async (edge) => {
                 if (!updatedIds.has(edge.edge.id)) {
@@ -121,7 +114,6 @@ export const deleteEdge = mutation({
         edgeId: v.string(),
     },
     handler: async (ctx, args) => {
-        // Verify access to the frame's vision
         const frame = await ctx.db.get(args.frameId);
         if (!frame) {
             throw new Error("Frame not found");
@@ -137,7 +129,6 @@ export const deleteEdge = mutation({
             .collect();
         
         if (edges.length > 0) {
-            // Delete all edges with this ID (in case there are duplicates)
             await Promise.all(edges.map(edge => ctx.db.delete(edge._id)));
             return { success: true, deletedCount: edges.length };
         }
@@ -152,7 +143,6 @@ export const connect = mutation({
         connection: connectionValidator,
     },
     handler: async (ctx, args) => {
-        // Verify access to the frame's vision
         const frame = await ctx.db.get(args.frameId as Id<"frames">);
         if (!frame) {
             throw new Error("Frame not found");
@@ -203,19 +193,17 @@ export const connect = mutation({
         if (!targetNode) {
             throw new Error(`Target node with id ${target} not found`);
         }
-        // Create edge with proper structure
         const newEdge = {
             id: `${source}-${target}`,
             source,
             target,
-            sourceHandle: sourceHandle || "bottom", // Default to bottom if no sourceHandle provided
-            targetHandle: targetHandle || "left", // Default to left if no targetHandle provided
-            data: { name: undefined }, // Match the expected edge data type
+            sourceHandle: sourceHandle || "bottom", 
+            targetHandle: targetHandle || "left", 
+            data: { name: undefined },
         };
         const edges = addEdge(newEdge, []);
         await Promise.all(
             edges.map(async (edge) => {
-                // Ensure edge has proper data type
                 const edgeWithData = {
                     ...edge,
                     data: edge.data || { name: undefined }

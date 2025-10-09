@@ -43,8 +43,9 @@ export async function POST(req: Request) {
             stripeCustomerId = newCustomer.id;
 
             // Also create the mapping in Convex
-            await convex.mutation(api.userPlans.createUserPlanMapping, {
-                externalId: userId,
+            await convex.mutation(api.plans.createPlanMapping, {
+                ownerType: "user",
+                ownerId: userId,
                 stripeCustomerId: newCustomer.id,
             });
         }
@@ -91,8 +92,9 @@ export async function POST(req: Request) {
                 stripeCustomerId = newCustomer.id;
 
                 // Update/create mapping in Convex
-                await convex.mutation(api.userPlans.createUserPlanMapping, {
-                    externalId: userId,
+                await convex.mutation(api.plans.createPlanMapping, {
+                    ownerType: "user",
+                    ownerId: userId,
                     stripeCustomerId: newCustomer.id,
                 });
 

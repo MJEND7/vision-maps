@@ -3,7 +3,6 @@ import { v, Infer } from "convex/values";
 import { requireAuth, optionalAuth } from "./utils/auth";
 import { OrgMemberRole } from "./tables/organizationMember";
 
-// Args schemas
 const getByIdArgs = v.object({
     organizationId: v.id("organizations"),
 });
@@ -66,7 +65,6 @@ export const getById = query({
 export const getUserOrganizations = query({
     args: getUserOrganizationsArgs,
     handler: async (ctx, { userId }) => {
-        // Check authentication - return empty array if not authenticated
         const identity = await optionalAuth(ctx);
         if (!identity) {
             return [];
@@ -78,13 +76,11 @@ export const getUserOrganizations = query({
             return [];
         }
 
-        // Get all organization memberships for the user
         const memberships = await ctx.db
             .query("organization_members")
             .withIndex("by_user", (q) => q.eq("userId", userIdToUse))
             .collect();
 
-        // Fetch organization details for each membership
         const organizations = await Promise.all(
             memberships.map(async (membership) => {
                 const org = await ctx.db.get(membership.organizationId);
@@ -110,7 +106,6 @@ export const getMembers = query({
             .withIndex("by_organization", (q) => q.eq("organizationId", organizationId))
             .collect();
 
-        // Fetch user details for each member
         const membersWithUserInfo = await Promise.all(
             members.map(async (member) => {
                 const user = await ctx.db
@@ -139,7 +134,6 @@ export const addMember = mutation({
     handler: async (ctx, { organizationId, userId, role }) => {
         const identity = await requireAuth(ctx);
 
-        // Check if requester is an admin of the organization
         const requesterMembership = await ctx.db
             .query("organization_members")
             .withIndex("by_org_and_user", (q) =>
@@ -151,7 +145,6 @@ export const addMember = mutation({
             throw new Error("Only admins can add members to the organization");
         }
 
-        // Check if user is already a member
         const existingMembership = await ctx.db
             .query("organization_members")
             .withIndex("by_org_and_user", (q) =>
@@ -163,7 +156,6 @@ export const addMember = mutation({
             throw new Error("User is already a member of this organization");
         }
 
-        // Add the member
         await ctx.db.insert("organization_members", {
             organizationId,
             userId,
@@ -172,7 +164,6 @@ export const addMember = mutation({
             updatedAt: Date.now(),
         });
 
-        // Update members count
         const org = await ctx.db.get(organizationId);
         if (org) {
             await ctx.db.patch(organizationId, {
@@ -188,7 +179,6 @@ export const inviteMember = mutation({
     handler: async (ctx, { organizationId, recipientEmail, role }) => {
         const identity = await requireAuth(ctx);
 
-        // Check if requester is an admin of the organization
         const requesterMembership = await ctx.db
             .query("organization_members")
             .withIndex("by_org_and_user", (q) =>
@@ -200,13 +190,11 @@ export const inviteMember = mutation({
             throw new Error("Only admins can invite members to the organization");
         }
 
-        // Get organization details
         const org = await ctx.db.get(organizationId);
         if (!org) {
             throw new Error("Organization not found");
         }
 
-        // Find user by email
         const recipient = await ctx.db
             .query("users")
             .filter((q) => q.eq(q.field("email"), recipientEmail))
@@ -216,7 +204,6 @@ export const inviteMember = mutation({
             throw new Error("User not found with this email address");
         }
 
-        // Check if user is already a member
         const existingMembership = await ctx.db
             .query("organization_members")
             .withIndex("by_org_and_user", (q) =>
@@ -228,7 +215,6 @@ export const inviteMember = mutation({
             throw new Error("User is already a member of this organization");
         }
 
-        // Check if there's already a pending invite
         const allNotifications = await ctx.db
             .query("notifications")
             .filter((q) =>
@@ -249,13 +235,11 @@ export const inviteMember = mutation({
             throw new Error("User already has a pending invitation to this organization");
         }
 
-        // Get sender info
         const sender = await ctx.db
             .query("users")
             .filter((q) => q.eq(q.field("externalId"), identity.userId!.toString()))
             .first();
 
-        // Create notification
         const notificationId = await ctx.db.insert("notifications", {
             recipientId: recipient.externalId,
             senderId: identity.userId!.toString(),
@@ -283,7 +267,6 @@ export const removeMember = mutation({
 
         const isSelfRemoval = identity.userId?.toString() === userId;
 
-        // If not removing self, check if requester is an admin
         if (!isSelfRemoval) {
             const requesterMembership = await ctx.db
                 .query("organization_members")
@@ -297,7 +280,6 @@ export const removeMember = mutation({
             }
         }
 
-        // Find the member to remove
         const memberToRemove = await ctx.db
             .query("organization_members")
             .withIndex("by_org_and_user", (q) =>
@@ -309,7 +291,6 @@ export const removeMember = mutation({
             throw new Error("User is not a member of this organization");
         }
 
-        // Prevent removing the last admin
         if (memberToRemove.role === OrgMemberRole.Admin) {
             const adminCount = await ctx.db
                 .query("organization_members")
@@ -322,10 +303,8 @@ export const removeMember = mutation({
             }
         }
 
-        // Remove the member
         await ctx.db.delete(memberToRemove._id);
 
-        // Update members count
         const org = await ctx.db.get(organizationId);
         if (org) {
             await ctx.db.patch(organizationId, {
@@ -341,7 +320,6 @@ export const updateMemberRole = mutation({
     handler: async (ctx, { organizationId, userId, newRole }) => {
         const identity = await requireAuth(ctx);
 
-        // Check if requester is an admin of the organization
         const requesterMembership = await ctx.db
             .query("organization_members")
             .withIndex("by_org_and_user", (q) =>
@@ -353,7 +331,6 @@ export const updateMemberRole = mutation({
             throw new Error("Only admins can update member roles");
         }
 
-        // Find the member to update
         const memberToUpdate = await ctx.db
             .query("organization_members")
             .withIndex("by_org_and_user", (q) =>
@@ -365,7 +342,6 @@ export const updateMemberRole = mutation({
             throw new Error("User is not a member of this organization");
         }
 
-        // If demoting an admin, check if they're the last one
         if (memberToUpdate.role === OrgMemberRole.Admin && newRole !== OrgMemberRole.Admin) {
             const adminCount = await ctx.db
                 .query("organization_members")
@@ -378,7 +354,6 @@ export const updateMemberRole = mutation({
             }
         }
 
-        // Update the role
         await ctx.db.patch(memberToUpdate._id, {
             role: newRole,
             updatedAt: Date.now(),
@@ -398,7 +373,6 @@ export const create = mutation({
         const now = Date.now();
         const generatedSlug = slug || `${name.toLowerCase().replace(/\s+/g, '-')}-${now}`;
 
-        // Create the organization
         const orgId = await ctx.db.insert("organizations", {
             name,
             slug: generatedSlug,
@@ -414,7 +388,6 @@ export const create = mutation({
             updatedAt: now,
         });
 
-        // Add creator as admin member
         await ctx.db.insert("organization_members", {
             organizationId: orgId,
             userId: identity.userId.toString(),
@@ -432,7 +405,6 @@ export const update = mutation({
     handler: async (ctx, { organizationId, name, imageUrl, maxAllowedMemberships }) => {
         const identity = await requireAuth(ctx);
 
-        // Check if requester is an admin of the organization
         const requesterMembership = await ctx.db
             .query("organization_members")
             .withIndex("by_org_and_user", (q) =>
@@ -464,7 +436,6 @@ export const remove = mutation({
     handler: async (ctx, { organizationId }) => {
         const identity = await requireAuth(ctx);
 
-        // Check if requester is an admin of the organization
         const requesterMembership = await ctx.db
             .query("organization_members")
             .withIndex("by_org_and_user", (q) =>
@@ -476,7 +447,6 @@ export const remove = mutation({
             throw new Error("Only admins can delete the organization");
         }
 
-        // Delete all members first
         const members = await ctx.db
             .query("organization_members")
             .withIndex("by_organization", (q) => q.eq("organizationId", organizationId))
@@ -486,12 +456,10 @@ export const remove = mutation({
             await ctx.db.delete(member._id);
         }
 
-        // Delete the organization
         await ctx.db.delete(organizationId);
     },
 });
 
-// Type exports
 export type GetOrgByIdArgs = Infer<typeof getByIdArgs>;
 export type GetUserOrganizationsArgs = Infer<typeof getUserOrganizationsArgs>;
 export type GetOrgMembersArgs = Infer<typeof getMembersArgs>;
