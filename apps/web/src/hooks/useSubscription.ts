@@ -2,43 +2,32 @@
 
 import { useQuery } from "convex/react";
 import { api } from "@/../convex/_generated/api";
-import { useAuth } from "@clerk/nextjs";
 
-export function useSubscription() {
-    const { userId, orgId } = useAuth();
+export enum OwnerType {
+    User = "user",
+    Org = "org"
+}
 
-    // Fetch user plan from Convex
-    const userPlan = useQuery(
+export function useSubscription(ownerId: string | undefined, ownerType: OwnerType) {
+    const plan = useQuery(
         api.plans.getPlanByOwner,
-        userId ? { ownerType: "user", ownerId: userId } : "skip"
+        ownerId ? { ownerType: (ownerType as OwnerType.User | OwnerType.Org), ownerId } : "skip"
     );
 
-    // Fetch org plan from Convex if in an organization
-    const orgPlan = useQuery(
-        api.plans.getPlanByOwner,
-        orgId ? { ownerType: "org", ownerId: orgId } : "skip"
-    );
+    const planType = plan?.planType || "free";
+    const isOnTrial = (plan?.trialEndsAt || 0) > Date.now();
+    const status = plan?.status || "none";
 
-    // Determine the active plan (org plan takes precedence)
-    const activePlan = orgPlan || userPlan;
-    const planType = activePlan?.planType || "free";
-    const isOnTrial = activePlan?.isOnTrial || false;
-    const status = activePlan?.status || "none";
-
-    // Check if user has specific plan access
     const hasPlan = (planName: string) => {
         return planType === planName;
     };
 
-    // Helper functions for common plan checks
     const hasFreePlan = () => planType === "free";
     const hasProPlan = () => planType === "pro";
     const hasTeamPlan = () => planType === "team";
 
-    // Check if subscription is active (including trialing)
     const isActive = status === "active" || status === "trialing";
 
-    // Helper functions for common feature checks
     const hasUnlimitedMaps = () => isActive && (hasProPlan() || hasTeamPlan());
     const hasAIAssistant = () => isActive && (hasProPlan() || hasTeamPlan());
     const hasTeamCollaboration = () => isActive && hasTeamPlan();
@@ -46,9 +35,7 @@ export function useSubscription() {
     const hasPrioritySupport = () => isActive && (hasProPlan() || hasTeamPlan());
 
     return {
-        userPlan,
-        orgPlan,
-        activePlan,
+        plan,
         planType,
         isOnTrial,
         status,

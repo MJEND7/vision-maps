@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v, Infer } from "convex/values";
 import { requireAuth, optionalAuth } from "./utils/auth";
 import { OrgMemberRole } from "./tables/organizationMember";
+import { internal } from "./_generated/api";
 
 const getByIdArgs = v.object({
     organizationId: v.id("organizations"),
@@ -171,6 +172,11 @@ export const addMember = mutation({
                 updatedAt: Date.now(),
             });
         }
+
+        // Increment seat count for billing
+        await ctx.scheduler.runAfter(0, internal.seatManagement.incrementOrgSeats, {
+            organizationId,
+        });
     },
 });
 
@@ -303,6 +309,9 @@ export const removeMember = mutation({
             }
         }
 
+        // Store when the member was added (for grace period calculation)
+        const memberAddedAt = memberToRemove.createdAt;
+
         await ctx.db.delete(memberToRemove._id);
 
         const org = await ctx.db.get(organizationId);
@@ -312,6 +321,12 @@ export const removeMember = mutation({
                 updatedAt: Date.now(),
             });
         }
+
+        // Handle seat decrement with 24-hour grace period logic
+        await ctx.scheduler.runAfter(0, internal.seatManagement.decrementOrgSeats, {
+            organizationId,
+            memberAddedAt,
+        });
     },
 });
 

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { ROUTES } from '@/lib/constants';
 import { ProfileUserProvider } from '@/contexts/ProfileUserContext';
-import { OrgSwitchProvider } from '@/contexts/OrgSwitchContext';
 import { PermissionsProvider } from '@/contexts/PermissionsContext';
 
 interface DashboardLayoutClientProps {
@@ -27,11 +26,9 @@ export default function DashboardLayoutClient({ children }: DashboardLayoutClien
     return (
         <PermissionsProvider>
             <ProfileUserProvider user={user}>
-                <OrgSwitchProvider>
-                    <div className="h-full min-h-screen">
-                        {children}
-                    </div>
-                </OrgSwitchProvider>
+                <div className="h-full min-h-screen">
+                    {children}
+                </div>
             </ProfileUserProvider>
         </PermissionsProvider>
     );

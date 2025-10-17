@@ -65,7 +65,7 @@ export const Plans = {
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_owner", ["ownerType", "ownerId"])
+    .index("by_owner", ["ownerType", "ownerId", "status"])
     .index("by_stripe_customer_id", ["stripeCustomerId"])
     .index("by_status", ["status"])
     .index("by_plan_type", ["planType"])

@@ -8,7 +8,7 @@ import { Button } from "../ui/button";
 import { ROUTES } from "@/lib/constants";
 import { SignedIn, useAuth } from "@clerk/clerk-react";
 import { useOrganization, useOrganizationList } from "@/contexts/OrganizationContext";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@/../convex/_generated/api";
 import {
     Dialog,
@@ -22,6 +22,7 @@ import { Users, Plus, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { OwnerType, useSubscription } from "@/hooks/useSubscription";
 
 // Pricing configuration
 const plans = [
@@ -100,13 +101,7 @@ export function PricingComponent() {
     const createOrgMutation = useMutation(api.orgs.create);
 
     // Fetch plan from Convex - org plan if orgId exists, otherwise user plan
-    const planData = useQuery(
-        api.plans.getPlanByOwner,
-        !userId ? "skip" : {
-            ownerType: orgId ? "org" : "user",
-            ownerId: orgId || userId,
-        }
-    );
+    const { plan: planData } = useSubscription(orgId || userId || undefined, orgId ? OwnerType.Org : OwnerType.User);
 
     // Update current plan when planData changes
     useEffect(() => {

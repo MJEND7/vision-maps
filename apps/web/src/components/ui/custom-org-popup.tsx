@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useOrganization, useOrganizationList } from "@/contexts/OrganizationContext";
-import { useOrgSwitch } from "@/contexts/OrgSwitchContext";
 import { api } from "@/../convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import {
@@ -64,7 +63,6 @@ export function CustomOrgPopup({ children, onOrgChange }: CustomOrgPopupProps) {
     const { user } = useUser();
     const { organization } = useOrganization();
     const { userMemberships, setActive, isLoaded } = useOrganizationList();
-    const { setIsOrgSwitching } = useOrgSwitch();
 
     const [createOrgOpen, setCreateOrgOpen] = useState(false);
     const [inviteUsersOpen, setInviteUsersOpen] = useState(false);
@@ -72,17 +70,11 @@ export function CustomOrgPopup({ children, onOrgChange }: CustomOrgPopupProps) {
 
     const handleOrganizationSwitch = async (orgId: Id<"organizations"> | null) => {
         try {
-            setIsOrgSwitching(true);
             await setActive({ organization: orgId });
             onOrgChange?.(orgId);
             toast.success(`Switched to ${orgId ? 'organization' : 'personal workspace'}`);
-
-            setTimeout(() => {
-                setIsOrgSwitching(false);
-            }, 1500);
         } catch {
             toast.error("Failed to switch organization");
-            setIsOrgSwitching(false);
         }
     };
 
@@ -215,7 +207,6 @@ function CreateOrgPopup({ open, onOpenChange, onOrgCreated }: CreateOrgPopupProp
 
     const createOrganization = useMutation(api.orgs.create);
     const { setActive } = useOrganizationList();
-    const { setIsOrgSwitching } = useOrgSwitch();
 
     const handleCreateOrg = async () => {
         if (!orgName.trim()) return;
@@ -225,21 +216,15 @@ function CreateOrgPopup({ open, onOpenChange, onOrgCreated }: CreateOrgPopupProp
             const orgId = await createOrganization({ name: orgName.trim() });
             if (orgId) {
                 setCreatedOrgId(orgId);
-                setIsOrgSwitching(true);
 
                 // Switch to the newly created organization
                 await setActive({ organization: orgId });
                 toast.success("Organization created successfully!");
                 setShowInviteStep(true);
-
-                setTimeout(() => {
-                    setIsOrgSwitching(false);
-                }, 1500);
             }
         } catch (error) {
             console.error("Failed to create organization:", error);
             toast.error("Failed to create organization");
-            setIsOrgSwitching(false);
         } finally {
             setLoading(false);
         }

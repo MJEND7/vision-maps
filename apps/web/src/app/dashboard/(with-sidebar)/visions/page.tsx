@@ -19,7 +19,6 @@ import { toast } from 'sonner';
 import { StaticFacePile } from '@/components/ui/face-pile';
 import { VisionTableSkeleton, VisionGridSkeleton } from '@/components/vision-skeletons';
 import { useOrganization } from '@/contexts/OrganizationContext';
-import { useOrgSwitch } from '@/contexts/OrgSwitchContext';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { Plan } from '@/lib/permissions';
 import { UpgradeDialog } from '@/components/ui/upgrade-dialog';
@@ -27,7 +26,6 @@ import { UpgradeDialog } from '@/components/ui/upgrade-dialog';
 export default function VisionsPage() {
     const router = useRouter();
     const { organization } = useOrganization();
-    const { isOrgSwitching } = useOrgSwitch();
     const { canCreateVision: checkCanCreateVision, visionLimit, plan } = usePermissions();
     const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
@@ -68,13 +66,12 @@ export default function VisionsPage() {
     // Convex queries and mutations - only call when authenticated
     const visionsData = useQuery(
         api.visions.list,
-        (isOrgSwitching) ? "skip" :
-            {
-                search: debouncedSearch || undefined,
-                organizationId: organization?._id || null,
-                sortBy: sortBy as "updatedAt" | "createdAt" | "title",
-                limit: 50
-            },
+        {
+            search: debouncedSearch || undefined,
+            organizationId: organization?._id || null,
+            sortBy: sortBy as "updatedAt" | "createdAt" | "title",
+            limit: 50
+        },
     );
 
     const createVision = useMutation(api.visions.create);
@@ -300,9 +297,9 @@ export default function VisionsPage() {
                         )}
 
                         {/* Gray overlay only for visions list */}
-                        <div className={isInOrgWithoutTeams ? 'relative' : ''}>
+                        <div className={isInOrgWithoutTeams ? 'relative opacity-50 pointer-events-none' : ''}>
                             {
-                                isLoading || isOrgSwitching ? (
+                                isLoading ? (
                                     viewMode === "grid" ? <VisionGridSkeleton /> : <VisionTableSkeleton />
                                 ) : visions.length === 0 ? (
                                     <div className={`${isInOrgWithoutTeams ? "hidden" : ""} text-center text-gray-500 py-10`}>

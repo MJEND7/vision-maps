@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { api } from "@/../convex/_generated/api";
-import { useOrgSwitch } from "@/contexts/OrgSwitchContext";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import {
     Map,
@@ -32,12 +31,12 @@ import Link from "next/link";
 import ThemeSwitcher from "../ThemeSwitcher";
 import { CustomOrgPopup } from "@/components/ui/custom-org-popup";
 import { OrgSettingsDialog } from "@/components/ui/org-settings-dialog";
+import { ProfileSettingsDialog } from "@/components/ui/profile-settings-dialog";
 
 export function NotionSidebar() {
     const { user } = useUser();
     const { isSignedIn } = useAuth();
     const { organization } = useOrganization();
-    const { isOrgSwitching, setIsOrgSwitching } = useOrgSwitch();
     const {
         userMemberships,
         userInvitations,
@@ -48,10 +47,11 @@ export function NotionSidebar() {
     const pathname = usePathname(); // Get current pathname
     const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
     const [orgSettingsOpen, setOrgSettingsOpen] = useState(false);
+    const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
 
     const notificationCount = useQuery(
         api.notifications.getUnreadCount,
-        (isOrgSwitching) ? "skip" : {}
+        {}
     ) ?? 0;
 
     // Get plan data from PermissionsContext (which fetches from Convex)
@@ -72,30 +72,8 @@ export function NotionSidebar() {
         }
     }, [orgListLoaded, hasInitiallyLoaded, userMemberships.data?.length]);
 
-    useEffect(() => {
-        if (orgListLoaded && (isOrgSwitching)) {
-            const resetTimer = setTimeout(() => {
-                if (isOrgSwitching) setIsOrgSwitching(false);
-            }, 1000);
-
-            return () => clearTimeout(resetTimer);
-        }
-    }, [organization?._id, orgListLoaded, isOrgSwitching, setIsOrgSwitching]);
-
-    useEffect(() => {
-        if (!isSignedIn && user && !isOrgSwitching) {
-            console.log("Detected org switch via auth state change");
-            setIsOrgSwitching(true);
-
-            // Auto-reset after a reasonable time
-            setTimeout(() => {
-                setIsOrgSwitching(false);
-            }, 3000);
-        }
-    }, [isSignedIn, user, isOrgSwitching, setIsOrgSwitching]);
-
     const handleProfileClick = () => {
-        router.push("profile")
+        setProfileSettingsOpen(true);
     };
 
     const handleSettingsClick = () => {
@@ -104,28 +82,19 @@ export function NotionSidebar() {
 
     const handleOrganizationSelect = async (orgId: string) => {
         try {
-            // Set both local and global switching states
-            setIsOrgSwitching(true);
-
             if (orgId === "personal") {
                 await setActive?.({ organization: null });
             } else {
                 await setActive?.({ organization: orgId as any });
             }
 
-            // Small delay to allow Clerk auth to stabilize
-            setTimeout(() => {
-                setIsOrgSwitching(false);
-
-                // Only revalidate after switch is complete
-                if (hasInitiallyLoaded) {
-                    userMemberships.revalidate?.();
-                    userInvitations.revalidate?.();
-                }
-            }, 1500); // Increased delay to ensure auth stabilizes
+            // Only revalidate after switch is complete
+            if (hasInitiallyLoaded) {
+                userMemberships.revalidate?.();
+                userInvitations.revalidate?.();
+            }
         } catch (error) {
             console.error("Error switching organization:", error);
-            setIsOrgSwitching(false);
         }
     };
 
@@ -269,21 +238,19 @@ export function NotionSidebar() {
             {/* Organization Selector */}
             <div className="flex items-center gap-2 p-3 border-b border-border">
                 <CustomOrgPopup onOrgChange={(orgId) => handleOrganizationSelect(orgId || "personal")}>
-                    <Button variant="ghost" className="flex-1 justify-between p-2 h-auto" disabled={isOrgSwitching}>
+                    <Button variant="ghost" className="flex-1 justify-between p-2 h-auto">
                         <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded bg-blue-500 flex items-center justify-center text-white text-xs font-semibold">
                                 {organization?.name?.[0] || user?.firstName?.[0] || "P"}
                             </div>
                             <div className="flex flex-col items-start">
                                 <span className="text-sm font-medium truncate max-w-32">
-                                    {isOrgSwitching ? "Switching..." : (organization?.name || "Personal")}
+                                    {organization?.name || "Personal"}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
-                                    {isOrgSwitching
-                                        ? "Please wait..."
-                                        : organization
-                                            ? `${organization.membersCount} member${organization.membersCount !== 1 ? "s" : ""}`
-                                            : "Personal workspace"
+                                    {organization
+                                        ? `${organization.membersCount} member${organization.membersCount !== 1 ? "s" : ""}`
+                                        : "Personal workspace"
                                     }
                                 </span>
                             </div>
@@ -402,6 +369,12 @@ export function NotionSidebar() {
                     onOpenChange={setOrgSettingsOpen}
                 />
             )}
+
+            {/* Profile Settings Dialog */}
+            <ProfileSettingsDialog
+                open={profileSettingsOpen}
+                onOpenChange={setProfileSettingsOpen}
+            />
         </div>
     );
 }

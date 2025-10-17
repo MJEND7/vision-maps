@@ -21,16 +21,14 @@ function formatTimeAgo(dateString: string): string {
     return `${Math.floor(diffInSeconds / 86400)}d ago`;
 }
 import { Id } from "@convex/_generated/dataModel";
-import { useOrgSwitch } from "@/contexts/OrgSwitchContext";
 
 export default function NotificationsDropdown() {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
-    const { isOrgSwitching } = useOrgSwitch();
 
     const notifications = useQuery(api.notifications.getUserNotifications, { limit: 20 });
-    const unreadCount = useQuery(api.notifications.getUnreadCount, (isOrgSwitching) ? "skip" : {});
+    const unreadCount = useQuery(api.notifications.getUnreadCount, {});
     const markAsRead = useMutation(api.notifications.markAsRead);
     const markAllAsRead = useMutation(api.notifications.markAllAsRead);
     const deleteNotification = useMutation(api.notifications.deleteNotification);

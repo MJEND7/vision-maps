@@ -17,7 +17,9 @@ export const getPlanByOwner = query({
       )
       .first();
 
-    console.log(plan, args)
+    if (plan && plan.status === "none") {
+        return null
+    }
 
     return plan;
   },

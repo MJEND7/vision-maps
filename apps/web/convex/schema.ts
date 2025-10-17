@@ -15,6 +15,7 @@ import { UserPasteBin } from "./tables/userPasteBin";
 import { Organizations } from "./tables/organization";
 import { OrganizationMembers } from "./tables/organizationMember";
 import { Plans } from "./tables/plans";
+import { Invoices } from "./tables/invoices";
 
 // The schema is entirely optional.
 // You can delete this file (schema.ts) and the
@@ -39,4 +40,5 @@ export default defineSchema({
     organizations: Organizations.Table,
     organization_members: OrganizationMembers.Table,
     plans: Plans.Table,
+    invoices: Invoices.Table,
 });

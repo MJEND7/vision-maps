@@ -909,8 +909,8 @@ export const handleInvoicePaid = internalMutation({
         await ctx.db.patch(plan._id, {
             currentPeriodStart: args.periodStart * 1000,
             currentPeriodEnd: args.periodEnd * 1000,
-            status: "active", 
-            error: undefined, 
+            status: "active",
+            error: undefined,
             updatedAt: Date.now(),
         });
 
@@ -924,6 +924,25 @@ export const handleInvoicePaid = internalMutation({
             `${titlePrefix}${invoiceText} Paid`,
             message
         );
+
+        // Store invoice record for history
+        await ctx.db.insert("invoices", {
+            stripeCustomerId: args.customerId,
+            ownerType: plan.ownerType,
+            ownerId: plan.ownerId,
+            invoiceId: args.invoiceId,
+            subscriptionId: args.subscriptionId ?? undefined,
+            amountPaid: args.amountPaid,
+            currency: "usd",
+            status: "paid",
+            invoiceNumber: args.invoiceNumber ?? undefined,
+            hostedInvoiceUrl: args.invoiceUrl ?? undefined,
+            periodStart: args.periodStart,
+            periodEnd: args.periodEnd,
+            quantity: plan.ownerType === "org" ? plan.seats : undefined,
+            createdAt: Date.now(),
+            paidAt: Date.now(),
+        });
 
         console.log(`[STRIPE] Invoice paid for ${plan.ownerType} plan ${plan.ownerId}`);
     },

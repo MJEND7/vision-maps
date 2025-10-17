@@ -279,7 +279,12 @@ export function ImprovedChatList({ visionId, selectedChatId, onChatSelect, onNew
         return (
             <div className={cn("flex flex-col h-full", className)}>
                 <div className="flex items-center justify-between p-4 border-b">
-                    <h3 className="text-lg font-semibold">AI Chats</h3>
+                    <div>
+                        <h3 className="text-lg font-semibold">AI Chats</h3>
+                        <p className="text-sm text-muted-foreground">
+                            0 conversations
+                        </p>
+                    </div>
                     <Button
                         onClick={onNewChat}
                         size="sm"

@@ -11,11 +11,13 @@ import { Authenticated, Unauthenticated } from "convex/react";
 import UserAvatar from "../ui/user-avatar";
 import MissingAvatar from "@/icons/missing_avatar";
 import NotificationsDropdown from "../ui/notifications-dropdown";
+import { ProfileSettingsDialog } from "../ui/profile-settings-dialog";
 import { ROUTES } from "@/lib/constants";
 
 export default function ProfileNav() {
     const { isLoaded } = useUser();
     const [menuOpen, setMenuOpen] = useState(false);
+    const [profileDialogOpen, setProfileDialogOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -67,19 +69,22 @@ export default function ProfileNav() {
                         </motion.p>
                     </Link>
                     <div className="sm:flex hidden justify-center gap-2">
-                        {[
-                            { name: "Visions", href: ROUTES.PROFILE.VISIONS },
-                            { name: "Profile", href: ROUTES.PROFILE.PROFILE },
-                        ].map((item) => (
-                            <Link
-                                key={item.name}
-                                href={item.href}
-                                className="px-3 py-2 rounded-lg text-base font-medium text-gray-800 dark:text-gray-200 m-[1px] hover:m-0 hover:border transition"
-                                onClick={() => setMenuOpen(false)}
-                            >
-                                {item.name}
-                            </Link>
-                        ))}
+                        <Link
+                            href={ROUTES.PROFILE.VISIONS}
+                            className="px-3 py-2 rounded-lg text-base font-medium text-gray-800 dark:text-gray-200 m-[1px] hover:m-0 hover:border transition"
+                            onClick={() => setMenuOpen(false)}
+                        >
+                            Visions
+                        </Link>
+                        <button
+                            onClick={() => {
+                                setProfileDialogOpen(true);
+                                setMenuOpen(false);
+                            }}
+                            className="px-3 py-2 rounded-lg text-base font-medium text-gray-800 dark:text-gray-200 m-[1px] hover:m-0 hover:border transition"
+                        >
+                            Profile
+                        </button>
                     </div>
                 </div>
                 {/* Nav Links */}
@@ -130,19 +135,22 @@ export default function ProfileNav() {
                         >
                             {/* Nav Links */}
                             <div className="flex flex-col gap-2 px-4">
-                                {[
-                                    { name: "Visions", href: ROUTES.PROFILE.VISIONS },
-                                    { name: "Profile", href: ROUTES.PROFILE.PROFILE },
-                                ].map((item) => (
-                                    <Link
-                                        key={item.name}
-                                        href={item.href}
-                                        className="px-4 py-2 rounded-lg text-base font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-                                        onClick={() => setMenuOpen(false)}
-                                    >
-                                        {item.name}
-                                    </Link>
-                                ))}
+                                <Link
+                                    href={ROUTES.PROFILE.VISIONS}
+                                    className="px-4 py-2 rounded-lg text-base font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                                    onClick={() => setMenuOpen(false)}
+                                >
+                                    Visions
+                                </Link>
+                                <button
+                                    onClick={() => {
+                                        setProfileDialogOpen(true);
+                                        setMenuOpen(false);
+                                    }}
+                                    className="px-4 py-2 rounded-lg text-base font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-left"
+                                >
+                                    Profile
+                                </button>
                                 <Authenticated>
                                     <div className="px-4 py-2">
                                         <NotificationsDropdown />
@@ -170,6 +178,12 @@ export default function ProfileNav() {
             >
                 <ThemeSwitcher size="sm" />
             </div>
+
+            {/* Profile Settings Dialog */}
+            <ProfileSettingsDialog
+                open={profileDialogOpen}
+                onOpenChange={setProfileDialogOpen}
+            />
         </div>
     );
 }

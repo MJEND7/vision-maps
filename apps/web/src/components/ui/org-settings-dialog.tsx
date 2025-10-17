@@ -5,7 +5,6 @@ import { useUser } from "@clerk/nextjs";
 import { useOrganization, useOrganizationList } from "@/contexts/OrganizationContext";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/../convex/_generated/api";
-import { useOrgSwitch } from "@/contexts/OrgSwitchContext";
 import {
     Dialog,
     DialogContent,
@@ -45,11 +44,15 @@ import {
     AlertTriangle,
     Camera,
     Save,
-    UserPlus
+    UserPlus,
+    DollarSign,
 } from "lucide-react";
 import { toast } from "sonner";
 import { RoleUtils } from "@/lib/roles";
 import { InviteUsersPopup } from "@/components/ui/custom-org-popup";
+import { OwnerType, useSubscription } from "@/hooks/useSubscription";
+import { Organization } from "@convex/tables/organization";
+import { BillingTab as SharedBillingTab } from "@/components/billing/BillingTab";
 
 interface OrgSettingsDialogProps {
     open: boolean;
@@ -83,11 +86,11 @@ interface DangerTabProps {
     onDelete: () => void;
 }
 
+
 export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps) {
     const { user } = useUser();
     const { organization, isAdmin } = useOrganization();
     const { setActive } = useOrganizationList();
-    const { setIsOrgSwitching } = useOrgSwitch();
 
     // Fetch members from Convex
     const convexMembers = useQuery(
@@ -148,8 +151,6 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
     
     const handleLeaveOrg = async () => {
         try {
-            setIsOrgSwitching(true);
-
             if (organization && user?.id) {
                 await removeMember({
                     organizationId: organization._id,
@@ -161,22 +162,14 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
 
             toast.success("Left organization successfully");
             onOpenChange(false);
-
-            // Reset org switching state after a delay to allow auth to settle
-            setTimeout(() => {
-                setIsOrgSwitching(false);
-            }, 1500);
         } catch (error) {
             console.error("Failed to leave organization:", error);
             toast.error("Failed to leave organization");
-            setIsOrgSwitching(false);
         }
     };
 
     const handleDeleteOrg = async () => {
         try {
-            setIsOrgSwitching(true);
-
             if (organization) {
                 await removeOrg({ organizationId: organization._id });
             }
@@ -185,15 +178,9 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
 
             toast.success("Organization deleted successfully");
             onOpenChange(false);
-
-            // Reset org switching state after a delay to allow auth to settle
-            setTimeout(() => {
-                setIsOrgSwitching(false);
-            }, 1500);
         } catch (error) {
             console.error("Failed to delete organization:", error);
             toast.error("Failed to delete organization");
-            setIsOrgSwitching(false);
         }
     };
 
@@ -345,20 +332,32 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
                                 <button
                                     onClick={() => setActiveTab("profile")}
                                     className={`flex-shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 text-left rounded-lg transition-colors ${
-                                        activeTab === "profile" 
-                                            ? "bg-primary text-primary-foreground shadow-sm" 
+                                        activeTab === "profile"
+                                            ? "bg-primary text-primary-foreground shadow-sm"
                                             : "hover:bg-accent hover:text-accent-foreground"
                                     }`}
                                 >
                                     <Settings className="w-4 h-4" />
                                     <span className="font-medium whitespace-nowrap">Profile</span>
                                 </button>
-                                
+
+                                <button
+                                    onClick={() => setActiveTab("billing")}
+                                    className={`flex-shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 text-left rounded-lg transition-colors ${
+                                        activeTab === "billing"
+                                            ? "bg-primary text-primary-foreground shadow-sm"
+                                            : "hover:bg-accent hover:text-accent-foreground"
+                                    }`}
+                                >
+                                    <DollarSign className="w-4 h-4" />
+                                    <span className="font-medium whitespace-nowrap">Billing</span>
+                                </button>
+
                                 <button
                                     onClick={() => setActiveTab("danger")}
                                     className={`flex-shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 text-left rounded-lg transition-colors ${
-                                        activeTab === "danger" 
-                                            ? "bg-destructive text-white shadow-sm" 
+                                        activeTab === "danger"
+                                            ? "bg-destructive text-white shadow-sm"
                                             : "hover:bg-destructive/10 hover:text-destructive"
                                     }`}
                                 >
@@ -399,6 +398,13 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
                                         setOrgName={setOrgName}
                                         onUpdateProfile={handleUpdateProfile}
                                         isUpdatingProfile={isUpdatingProfile}
+                                    />
+                                )}
+
+                                {activeTab === "billing" && (
+                                    <OrgBillingTab
+                                        organization={organization}
+                                        isAdmin={isAdmin}
                                     />
                                 )}
 
@@ -709,6 +715,44 @@ function ProfileTab({ organization, isAdmin, orgName, setOrgName, onUpdateProfil
         </div>
     );
 }
+
+// Wrapper for Org Billing Tab
+function OrgBillingTab({ organization, isAdmin }: { organization: Organization; isAdmin: boolean }) {
+    const { plan: orgPlan, planType, isOnTrial, status, isActive } = useSubscription(organization._id, OwnerType.Org);
+
+    const getPlanBadgeColor = () => {
+        if (isOnTrial)
+            return "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20";
+        if (planType === "team")
+            return "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20";
+        if (planType === "pro")
+            return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
+        return "bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20";
+    };
+
+    const getPlanDisplayName = () => {
+        if (planType === "team") return "Team";
+        if (planType === "pro") return "Pro";
+        return "Free";
+    };
+
+    return (
+        <SharedBillingTab
+            ownerId={organization._id}
+            ownerType="org"
+            plan={orgPlan}
+            planType={planType}
+            isOnTrial={isOnTrial}
+            status={status}
+            isActive={isActive}
+            organizationMembersCount={organization.membersCount}
+            getPlanBadgeColor={getPlanBadgeColor}
+            getPlanDisplayName={getPlanDisplayName}
+            canManageBilling={isAdmin}
+        />
+    );
+}
+
 
 // Danger Zone Tab Component
 function DangerTab({ isAdmin, organizationName, onLeave, onDelete }: DangerTabProps) {

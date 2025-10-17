@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v, Infer } from "convex/values";
 import { requireAuth, requireVisionAccess } from "./utils/auth";
 import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 
 const getUserNotificationsArgs = v.object({
   limit: v.optional(v.number()),
@@ -477,6 +478,11 @@ export const acceptOrgInvite = mutation({
         updatedAt: Date.now(),
       });
     }
+
+    // Increment seat count for billing
+    await ctx.scheduler.runAfter(0, internal.seatManagement.incrementOrgSeats, {
+      organizationId: orgId as any,
+    });
 
     await ctx.db.patch(args.notificationId, {
       inviteStatus: "accepted",
