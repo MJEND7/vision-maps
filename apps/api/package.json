@@ -1,0 +1,10 @@
+{
+  "name": "api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "rm -rf build && mkdir -p build && cp -r api requirements.txt build/ && pip install -q -r requirements.txt && python dev_server.py 3001",
+    "build": "rm -rf build && mkdir -p build && cp -r api requirements.txt vercel.json build/",
+    "clean": "rm -rf build"
+  }
+}

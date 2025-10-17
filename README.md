@@ -1,143 +1,218 @@
-# Vision Maps
+# Vision Maps - Turborepo Monorepo
 
-## Features by Plan Tier
+A monorepo powered by Turborepo containing Vision Maps web application and Python API services.
 
-### 🆓 Free – $0/month
+## What's inside?
 
-**Vision Management:**
-- ✅ 1 Vision (CRUD limited to 1)
-  - Location: `/src/app/dashboard/visions/page.tsx` (Vision list)
-  - Location: `/src/app/dashboard/visions/[id]/page.tsx` (Vision detail)
-  - Create mutation: `api.visions.create`
-  - Vision count check needed for permission
+This monorepo includes the following packages/apps:
 
-**Organization Management:**
-- ✅ Full CRUD Orgs
-  - Location: `/src/components/ui/org-settings-dialog.tsx`
-  - Location: `/src/components/ui/notion-sidebar.tsx` (org switcher)
+### Apps
 
-**Channel Management:**
-- ✅ Full CRUD Channels
-  - Location: `/src/app/dashboard/visions/[id]/page.tsx` (channel creation)
-  - Location: `/src/components/vision/channel.tsx` (channel view)
-  - Location: `/src/components/vision/settings.tsx` (channel settings/deletion)
+- `apps/web`: Next.js web application with Convex backend
+- `apps/api`: Python serverless functions (YouTube captions API)
 
-**Frame Management:**
-- ✅ Full CRUD Frames
-  - Location: `/src/app/dashboard/visions/[id]/page.tsx` (frame creation)
-  - Location: `/src/components/vision/frame.tsx` (frame view/canvas)
-  - Location: `/src/components/vision/settings.tsx` (frame settings/deletion)
+### Packages
 
-**Content Management:**
-- ✅ Channels for entering media
-  - Location: `/src/components/channel/paste-bin.tsx` (paste/upload content)
-  - Location: `/src/components/channel/metadata/` (various content type cards)
+- `packages/*`: Shared packages (to be added as needed)
 
-**Canvas:**
-- ✅ Infinite canvas for working with media
-  - Location: `/src/components/vision/frame.tsx` (React Flow canvas)
-  - Location: `/src/components/vision/nodes/` (node components)
+## Project Structure
 
-**Notifications:**
-- ✅ Notification system
-  - Location: `/src/app/dashboard/notifications/page.tsx`
-  - Location: `/src/components/ui/notifications-dropdown.tsx`
+```
+vision-maps/
+├── apps/
+│   ├── web/              # Next.js frontend + Convex backend
+│   │   ├── src/          # Source code
+│   │   ├── public/       # Static assets
+│   │   └── package.json
+│   └── api/              # Python serverless functions
+│       ├── api/          # API routes
+│       │   └── captions.py
+│       ├── requirements.txt
+│       └── package.json
+├── convex/               # Convex backend (shared at root)
+├── packages/             # Shared packages
+├── turbo.json           # Turborepo configuration
+└── package.json         # Root package.json
+```
 
-**View Mode:**
-- ✅ View Mode for public tracking
-  - Location: Vision settings (public/private toggle expected)
+## Getting Started
 
-**Export:**
-- ✅ Basic export options
-  - Location: Vision settings (export functionality planned)
+### Prerequisites
 
-**Limitations:**
-- ❌ No AI-based nodes for ideation
-- ❌ No AI linking and tree system for context mapping
-- ❌ No commenting system for team comms
-- ❌ No collaboration (solo only - 1 user per vision)
-- ❌ No advanced export
+- Node.js 18+ and pnpm
+- Python 3.9+ with pip (for API functions)
 
----
+```bash
+# Install pnpm globally
+npm install -g pnpm
+```
 
-### 💡 Pro – $15/month (Most Popular, 3-day free trial)
+### Installation
 
-**All Free Features Plus:**
+Install dependencies for all workspaces:
 
-**Vision Management:**
-- ✅ Unlimited visions (Full CRUD)
-  - No vision count limit
+```bash
+pnpm install
+```
 
-**AI Features:**
-- ✅ AI-based nodes for ideation
-  - Location: `/src/components/vision/nodes/AINode.tsx`
-  - Location: `/src/components/ai/chat-input.tsx`
-  - Location: `/src/components/ai/chat-list.tsx`
+**Note:** This will install dependencies for the web app and create necessary workspace structure for the Python API. The API itself uses Python dependencies (pip), which are handled by Vercel during deployment.
 
-- ✅ AI linking and tree system on frames for context mapping
-  - Location: `/src/components/vision/frame.tsx` (AI-powered node connections)
-  - Location: `/src/components/ai/improved-chat-list.tsx`
+### Development
 
-**Export:**
-- ✅ Advanced export options
-  - Location: Vision settings (enhanced export planned)
+Run all apps in development mode:
 
-**Collaboration:**
-- ✅ Invite up to 1 extra person per vision (light collaboration)
-  - Location: `/src/components/ui/invite-users-dialogue.tsx`
-  - Location: `/src/components/vision/settings.tsx` (user management)
-  - Max 2 users per vision (owner + 1 guest)
+```bash
+pnpm dev
+```
 
-**Support:**
-- ✅ Priority support
+This will start all services in parallel:
+- **Next.js** on http://localhost:3000
+- **Python API** on http://localhost:3001
+- **Convex backend** (syncs in background)
 
-**Limitations:**
-- ❌ No commenting system for team comms
-- ❌ No live canvas collaboration (no real-time multi-user editing)
+All three services run concurrently via Turborepo and npm-run-all.
 
----
+### Individual Service Commands
 
-### 👥 Teams – $50/month (3-day free trial, 1–20 users)
+Run services individually:
 
-**All Pro Features Plus:**
+```bash
+# Run only Turborepo workspaces (Next.js + Python API)
+pnpm dev:turbo
 
-**Enhanced Collaboration:**
-- ✅ Team collaboration features
-  - Full multi-user access for 1-20 users per vision
-  - Location: `/src/components/vision/settings.tsx` (user management)
-  - Location: `/src/components/ui/invite-users-dialogue.tsx`
+# Run only Convex
+pnpm dev:convex
 
-**Commenting System:**
-- ✅ Commenting system for team communication
-  - Location: `/src/components/comments/comment-chat.tsx`
-  - Location: `/src/components/comments/comment-chat-list.tsx`
-  - Location: `/src/components/comments/comment-indicator.tsx`
-  - Comments on channels and frames
+# Run specific workspace
+pnpm --filter web dev
+pnpm --filter api dev
+```
 
-**Live Collaboration:**
-- ✅ Live canvas collaboration (real-time editing + comms)
-  - Location: `/src/components/vision/frame.tsx` (real-time presence)
-  - Location: `/src/components/ui/face-pile.tsx` (presence indicators)
-  - Real-time multi-user editing on canvas
+### Build
 
----
+Build all apps:
 
-## Feature Implementation Status
+```bash
+pnpm build
+```
 
-### Implemented Features:
-- ✅ Vision CRUD
-- ✅ Organization CRUD
-- ✅ Channel CRUD
-- ✅ Frame CRUD
-- ✅ Infinite canvas (React Flow)
-- ✅ Notification system
-- ✅ AI nodes and chat
-- ✅ Commenting system
-- ✅ User invitations
-- ✅ Real-time collaboration
-- ✅ User presence indicators
+### Lint
 
-### Planned Features:
-- ⏳ Export functionality (basic & advanced)
-- ⏳ View mode (public tracking)
+Lint all apps:
 
+```bash
+pnpm lint
+```
+
+### Type Check
+
+Type check all TypeScript apps:
+
+```bash
+pnpm typecheck
+```
+
+## Convex Backend
+
+The Convex backend is located at the root level in the `convex/` directory and is shared across the monorepo.
+
+### Convex Commands
+
+```bash
+# Start Convex in development mode (runs automatically with pnpm dev)
+pnpm convex:dev
+
+# Deploy Convex to production
+pnpm convex:deploy
+```
+
+## Environment Variables
+
+Create a `.env.local` file at the root with the following variables:
+
+```bash
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_key
+CLERK_SECRET_KEY=your_secret
+CLERK_JWT_ISSUER_DOMAIN=your_domain
+
+# Convex
+CONVEX_DEPLOYMENT=your_deployment
+NEXT_PUBLIC_CONVEX_URL=your_url
+
+# OpenAI
+OPENAI_API_KEY=your_key
+
+# YouTube Captions API (optional - for production)
+YOUTUBE_CAPTIONS_API_ENDPOINT=https://your-app.vercel.app/api/captions
+```
+
+See `.env.local.example` for a complete list.
+
+## Deployment
+
+### Vercel Deployment
+
+The monorepo can be deployed to Vercel:
+
+1. Connect your repository to Vercel
+2. Vercel will automatically detect the Turborepo setup
+3. Set environment variables in Vercel dashboard
+4. Deploy!
+
+The Python API in `apps/api` will be automatically deployed as serverless functions.
+
+### Convex Deployment
+
+Deploy Convex separately:
+
+```bash
+npm run convex:deploy
+```
+
+## Turborepo Features
+
+### Caching
+
+Turborepo caches build outputs to speed up subsequent builds. The cache is stored in `.turbo/`.
+
+### Parallel Execution
+
+All workspace tasks run in parallel by default for maximum performance.
+
+### Task Pipeline
+
+Tasks are configured in `turbo.json` with dependency management:
+- `build` tasks depend on upstream builds
+- `dev` tasks run persistently without caching
+
+## Learn More
+
+- [Turborepo Documentation](https://turbo.build/repo/docs)
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Convex Documentation](https://docs.convex.dev)
+- [Vercel Documentation](https://vercel.com/docs)
+
+## Workspaces
+
+### apps/web
+
+Next.js application with:
+- React 19
+- TypeScript
+- Tailwind CSS
+- Convex realtime backend
+- Clerk authentication
+
+### apps/api
+
+Python serverless functions:
+- YouTube transcript fetching
+- Deployed as Vercel serverless functions
+
+## Contributing
+
+1. Create a new branch
+2. Make your changes
+3. Run `npm run typecheck` and `npm run lint`
+4. Submit a pull request
