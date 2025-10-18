@@ -44,6 +44,7 @@
     "cmdk": "^1.1.1",
     "convex": "^1.27.3",
     "gsap": "^3.13.0",
+    "hls.js": "1.6.10",
     "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.539.0",
     "motion": "^12.23.20",

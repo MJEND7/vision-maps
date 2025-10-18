@@ -282,10 +282,10 @@ function ChannelNode({
                             </div>
                         )}
                     </span>
-                    <div className="w-full flex flex-col gap-1">
+                    <div className="w-full">
                         <div className="flex-1">
                             {(node.thought && node.variant !== NodeVariants.Text) && (
-                                <p className="text-sm text-muted-foreground">
+                                <p className="text-sm">
                                     {node.thought}
                                 </p>
                             )}

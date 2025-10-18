@@ -81,22 +81,22 @@ const CodeComponent = ({ className, children, ...props }: any) => {
 // Custom Markdown styles for text nodes (much smaller text)
 const textNodeMarkdownComponents: Components = {
     h1: ({ ...props }) => (
-        <h1 className="text-md font-bold text-card-foreground py-3" {...props} />
+        <h1 className="text-md font-bold text-card-foreground pb-3" {...props} />
     ),
     h2: ({ ...props }) => (
-        <h2 className="text-md font-semibold text-card-foreground py-3" {...props} />
+        <h2 className="text-md font-semibold text-card-foreground pb-3" {...props} />
     ),
     h3: ({ ...props }) => (
-        <h2 className="text-xs font-semibold text-card-foreground py-3" {...props} />
+        <h2 className="text-xs font-semibold text-card-foreground pb-3" {...props} />
     ),
     th: ({ ...props }) => (
-        <th className="whitespace-nowrap text-sm list-disc list-inside space-y-0.5  font-semibold text-card-foreground py-2" {...props} />
+        <th className="whitespace-nowrap text-sm list-disc list-inside space-y-0.5 font-semibold text-card-foreground pb-2" {...props} />
     ),
     td: ({ ...props }) => (
-        <td className="text-sm list-disc list-inside space-y-0.5 text-card-foreground py-2" {...props} />
+        <td className="text-sm list-disc list-inside space-y-0.5 text-card-foreground pb-2" {...props} />
     ),
     p: ({ ...props }) => (
-        <p className="text-sm text-card-foreground leading-tight py-2" {...props} />
+        <p className="text-sm text-card-foreground leading-tight pb-2" {...props} />
     ),
     ul: ({ ...props }) => (
         <ul className="list-disc list-inside space-y-0.5 text-card-foreground my-2 text-xs" {...props} />
@@ -105,11 +105,11 @@ const textNodeMarkdownComponents: Components = {
         <ol className="list-decimal list-inside space-y-0.5 text-card-foreground my-2 text-xs" {...props} />
     ),
     li: ({ ...props }) => (
-        <li className="ml-1 text-card-foreground text-xs py-2" {...props} />
+        <li className="ml-1 text-card-foreground text-xs pb-2" {...props} />
     ),
     blockquote: ({ ...props }) => (
         <blockquote
-            className="y-2 border-l-2 border-border pl-1 italic text-muted-foreground text-xs"
+            className="mb-2 border-l-2 border-border pl-1 italic text-muted-foreground text-xs"
             {...props}
         />
     ),
