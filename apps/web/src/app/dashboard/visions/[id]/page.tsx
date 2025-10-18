@@ -560,11 +560,20 @@ function VisionDetailPageContent() {
     const toggleChannel = (channelId: string, open?: boolean) => {
         setOpenChannels(prev => {
             const newSet = new Set(prev);
-            if (open === true && !newSet.has(channelId)) {
-                newSet.add(channelId)
+
+            // If open is explicitly true, only add (never remove)
+            if (open === true) {
+                newSet.add(channelId);
                 return newSet;
             }
 
+            // If open is explicitly false, only remove (never add)
+            if (open === false) {
+                newSet.delete(channelId);
+                return newSet;
+            }
+
+            // If open is undefined, toggle
             if (newSet.has(channelId)) {
                 newSet.delete(channelId);
             } else {

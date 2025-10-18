@@ -159,7 +159,7 @@ function DraggableChannel({
                             <GripVertical size={isMobile ? 16 : 15} />
                         </motion.div>
 
-                        <button onClick={() => onToggle} className="p-0.5">
+                        <button onClick={() => onToggle()} className="p-0.5">
                             <ChevronRight
                                 className={`group-hover:text-muted-foreground/80 text-muted-foreground/50 transition-transform ${isOpen ? 'rotate-90' : ''
                                     }`}
