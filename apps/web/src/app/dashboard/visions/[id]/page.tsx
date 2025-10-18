@@ -557,9 +557,14 @@ function VisionDetailPageContent() {
         setSelectedTab(newTabData);
     }
 
-    const toggleChannel = (channelId: string) => {
+    const toggleChannel = (channelId: string, open?: boolean) => {
         setOpenChannels(prev => {
             const newSet = new Set(prev);
+            if (open === true && !newSet.has(channelId)) {
+                newSet.add(channelId)
+                return newSet;
+            }
+
             if (newSet.has(channelId)) {
                 newSet.delete(channelId);
             } else {

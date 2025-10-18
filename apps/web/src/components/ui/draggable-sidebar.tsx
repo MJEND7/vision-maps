@@ -30,7 +30,7 @@ interface DraggableSidebarProps {
     onChannelReorderEnd?: (channelIds: string[]) => void;
     onFrameReorder: (channelId: string, frameIds: string[]) => void;
     onFrameReorderEnd?: (channelId: string, frameIds: string[]) => void;
-    onToggleChannel: (channelId: string) => void;
+    onToggleChannel: (channelId: string, open?: boolean) => void;
     onOpenTab: (type: "channel" | "frame", id: string, title: string) => void;
     onCreateFrame: (channelId: string) => void;
     onEditChannel: (channelId: string, title: string) => void;
@@ -76,7 +76,7 @@ function DraggableChannel({
     isOpen: boolean;
     editingFrame: string | null;
     editingFrameName: string;
-    onToggle: () => void;
+    onToggle: (open?: boolean) => void;
     onOpenTab: (type: "channel" | "frame", id: string, title: string) => void;
     onCreateFrame: () => void;
     onEdit: () => void;
@@ -159,7 +159,7 @@ function DraggableChannel({
                             <GripVertical size={isMobile ? 16 : 15} />
                         </motion.div>
 
-                        <button onClick={onToggle} className="p-0.5">
+                        <button onClick={() => onToggle} className="p-0.5">
                             <ChevronRight
                                 className={`group-hover:text-muted-foreground/80 text-muted-foreground/50 transition-transform ${isOpen ? 'rotate-90' : ''
                                     }`}
@@ -196,7 +196,7 @@ function DraggableChannel({
 
                     <button
                         onClick={() => {
-                            onToggle()
+                            onToggle(true)
                             onCreateFrame()
                         }}
                         className={`text-muted-foreground hover:text-primary transition-colors ${
@@ -389,7 +389,7 @@ export function DraggableSidebar(props: DraggableSidebarProps) {
                         isOpen={props.openChannels.has(channel._id)}
                         editingFrame={props.editingFrame}
                         editingFrameName={props.editingFrameName}
-                        onToggle={() => props.onToggleChannel(channel._id)}
+                        onToggle={(open) => props.onToggleChannel(channel._id, open)}
                         onOpenTab={props.onOpenTab}
                         onCreateFrame={() => props.onCreateFrame(channel._id)}
                         onEdit={() => props.onEditChannel(channel._id, channel.title)}
