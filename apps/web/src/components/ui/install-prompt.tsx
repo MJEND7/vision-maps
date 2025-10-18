@@ -22,6 +22,7 @@ export function InstallPrompt() {
     const [isIOS, setIsIOS] = useState(false);
     const [isStandalone, setIsStandalone] = useState(false);
     const [isInstalling, setIsInstalling] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
         // Check if running in standalone mode (already installed/bookmarked)
@@ -34,9 +35,18 @@ export function InstallPrompt() {
             return;
         }
 
-        // Check if iOS
+        // Check if mobile device (iOS, Android, or mobile browser)
         const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+        const android = /Android/.test(navigator.userAgent);
+        const mobile = iOS || android || /Mobile|mobile/.test(navigator.userAgent);
+
         setIsIOS(iOS);
+        setIsMobile(mobile);
+
+        // Only show prompt on mobile devices
+        if (!mobile) {
+            return;
+        }
 
         // Handle the beforeinstallprompt event (Android/Chrome)
         const handleBeforeInstallPrompt = (e: Event) => {
@@ -46,8 +56,8 @@ export function InstallPrompt() {
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-        // Always show prompt after 3 seconds if not installed
-        // iOS users will see manual instructions, Android/Desktop will get auto-install button
+        // Always show prompt after 3 seconds if not installed and on mobile
+        // iOS users will see manual instructions, Android will get auto-install button
         const timer = setTimeout(() => {
             setShowPrompt(true);
         }, 3000);
@@ -91,7 +101,7 @@ export function InstallPrompt() {
         setShowPrompt(false);
     };
 
-    if (isStandalone || !showPrompt) {
+    if (isStandalone || !showPrompt || !isMobile) {
         return null;
     }
 

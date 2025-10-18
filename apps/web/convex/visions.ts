@@ -5,6 +5,7 @@ import { Vision, VisionAccessRole, VisionUserStatus } from "./tables/visions";
 import { createDefaultChannel } from "./utils/channel";
 import { getUserPlan } from "./auth";
 import { canCreateVision, canInviteToVision, requireTeamsForOrg, PermissionError, VISION_LIMITS, COLLABORATION_LIMITS } from "./permissions";
+import { NotificationType } from "./tables/notifications";
 
 // Args schemas
 const createArgs = v.object({
@@ -149,6 +150,26 @@ export const create = mutation({
       status: VisionUserStatus.Approved,
       visionId,
     });
+
+    // If vision is created in an organization, add all org members
+    if (organizationId) {
+      const orgMembers = await ctx.db
+        .query("organization_members")
+        .withIndex("by_organization", (q) => q.eq("organizationId", organizationId as any))
+        .collect();
+
+      for (const member of orgMembers) {
+        // Skip the creator as they're already added as owner
+        if (member.userId !== identity.userId.toString()) {
+          await ctx.db.insert("vision_users", {
+            userId: member.userId,
+            role: VisionAccessRole.Editor,
+            status: VisionUserStatus.Approved,
+            visionId,
+          });
+        }
+      }
+    }
 
     await createDefaultChannel(ctx, visionId);
 
@@ -683,7 +704,7 @@ export const requestToJoin = mutation({
       await ctx.db.insert("notifications", {
         recipientId: owner.userId,
         senderId: identity.userId!.toString(),
-        type: "join_request",
+        type: NotificationType.JOIN_REQUEST,
         title: "Join Request",
         message: `${requestingUser?.name || 'Someone'} wants to join "${vision?.title || 'your vision'}"`,
         visionId: args.visionId,
@@ -753,7 +774,7 @@ export const approveJoinRequest = mutation({
     await ctx.db.insert("notifications", {
       recipientId: args.userId,
       senderId: identity.userId!.toString(),
-      type: "request_approved",
+      type: NotificationType.REQUEST_APPROVED,
       title: "Request Approved",
       message: `${approver?.name || 'Someone'} approved your request to join "${vision?.title || 'the vision'}"`,
       visionId: args.visionId,
@@ -798,7 +819,7 @@ export const rejectJoinRequest = mutation({
     await ctx.db.insert("notifications", {
       recipientId: args.userId,
       senderId: identity.userId!.toString(),
-      type: "request_rejected",
+      type: NotificationType.REQUEST_REJECTED,
       title: "Request Rejected",
       message: `${rejector?.name || 'Someone'} rejected your request to join "${vision?.title || 'the vision'}"`,
       visionId: args.visionId,

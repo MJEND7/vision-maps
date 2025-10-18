@@ -3,6 +3,7 @@ import { v, Infer } from "convex/values";
 import { requireAuth, requireVisionAccess } from "./utils/auth";
 import { getUserPlan } from "./auth";
 import { requirePermission, Permission } from "./permissions";
+import { NotificationType } from "./tables/notifications";
 
 const createCommentArgs = v.object({
     content: v.string(),
@@ -101,7 +102,7 @@ export const createComment = mutation({
                 return ctx.db.insert("notifications", {
                     recipientId: mentionedUserId,
                     senderId: identity.userId!.toString(),
-                    type: "comment_mention",
+                    type: NotificationType.COMMENT_MENTION,
                     title: "You were mentioned in a comment",
                     message: `${commentAuthor?.name || 'Someone'} mentioned you in a comment on "${node.title}"`,
                     visionId: args.visionId,

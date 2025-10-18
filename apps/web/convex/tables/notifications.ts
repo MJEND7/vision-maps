@@ -1,18 +1,20 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
-import { User } from "./user";
 import { Visions } from "./visions";
-import { Comments } from "./comments";
 
 export enum NotificationType {
     DEFAULT = "default",
-    MENTION = "mention", 
+    MENTION = "mention",
+    COMMENT = "comment",
+    COMMENT_MENTION = "comment_mention",
     COMMENT_REPLY = "comment_reply",
     INVITE = "invite",
+    ORG_INVITE = "org_invite",
     JOIN_REQUEST = "join_request",
     REQUEST_APPROVED = "request_approved",
     REQUEST_REJECTED = "request_rejected",
-    // Add more types as needed
+    PAYMENT = "invoice_paid",
+    SYSTEM = "system",
 }
 
 export class Notifications {

@@ -195,7 +195,10 @@ function DraggableChannel({
                     </div>
 
                     <button
-                        onClick={onCreateFrame}
+                        onClick={() => {
+                            onToggle()
+                            onCreateFrame()
+                        }}
                         className={`text-muted-foreground hover:text-primary transition-colors ${
                             isMobile ? 'p-2 -m-1 hover:bg-accent/50 rounded' : ''
                         }`}

@@ -3,6 +3,7 @@ import { v, Infer } from "convex/values";
 import { requireAuth, requireVisionAccess } from "./utils/auth";
 import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
+import { NotificationType } from "./tables/notifications";
 
 const getUserNotificationsArgs = v.object({
   limit: v.optional(v.number()),
@@ -360,7 +361,7 @@ export const createInviteNotification = mutation({
     const notificationId = await ctx.db.insert("notifications", {
       recipientId: args.recipientId,
       senderId: identity.userId!.toString(),
-      type: "invite",
+      type: NotificationType.INVITE,
       title: "Vision Invitation",
       message: `${sender?.name || 'Someone'} invited you to join "${vision.title}" as ${args.role}`,
       visionId: args.visionId,
@@ -403,7 +404,7 @@ export const createOrgInviteNotification = mutation({
     const notificationId = await ctx.db.insert("notifications", {
       recipientId: recipient.externalId,
       senderId: identity.userId!.toString(),
-      type: "org_invite",
+      type: NotificationType.ORG_INVITE,
       title: "Organization Invitation",
       message: `${sender?.name || 'Someone'} invited you to join "${args.organizationName}" as ${args.role}`,
       inviteStatus: "pending",
@@ -477,6 +478,31 @@ export const acceptOrgInvite = mutation({
         membersCount: org.membersCount + 1,
         updatedAt: Date.now(),
       });
+    }
+
+    // Add user to all visions in this organization
+    const orgVisions = await ctx.db
+      .query("visions")
+      .filter((q) => q.eq(q.field("organization"), orgId as any))
+      .collect();
+
+    for (const vision of orgVisions) {
+      // Check if user is already a member of this vision
+      const existingVisionMember = await ctx.db
+        .query("vision_users")
+        .withIndex("by_visionId", (q) => q.eq("visionId", vision._id))
+        .filter((q) => q.eq(q.field("userId"), identity.userId!.toString()))
+        .first();
+
+      if (!existingVisionMember) {
+        // Add user as editor to the vision
+        await ctx.db.insert("vision_users", {
+          userId: identity.userId!.toString(),
+          role: "editor",
+          status: "approved",
+          visionId: vision._id,
+        });
+      }
     }
 
     // Increment seat count for billing

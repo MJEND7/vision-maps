@@ -173,6 +173,31 @@ export const addMember = mutation({
             });
         }
 
+        // Add user to all visions in this organization
+        const orgVisions = await ctx.db
+            .query("visions")
+            .filter((q) => q.eq(q.field("organization"), organizationId))
+            .collect();
+
+        for (const vision of orgVisions) {
+            // Check if user is already a member of this vision
+            const existingVisionMember = await ctx.db
+                .query("vision_users")
+                .withIndex("by_visionId", (q) => q.eq("visionId", vision._id))
+                .filter((q) => q.eq(q.field("userId"), userId))
+                .first();
+
+            if (!existingVisionMember) {
+                // Add user as editor to the vision
+                await ctx.db.insert("vision_users", {
+                    userId,
+                    role: "editor",
+                    status: "approved",
+                    visionId: vision._id,
+                });
+            }
+        }
+
         // Increment seat count for billing
         await ctx.scheduler.runAfter(0, internal.seatManagement.incrementOrgSeats, {
             organizationId,

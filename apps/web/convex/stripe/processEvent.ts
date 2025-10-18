@@ -2,6 +2,7 @@ import { internalAction, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import Stripe from "stripe";
+import { NotificationType } from "../tables/notifications";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
     apiVersion: "2025-09-30.clover",
@@ -920,7 +921,7 @@ export const handleInvoicePaid = internalMutation({
         await createBillingNotification(
             ctx,
             recipientId,
-            "invoice_paid",
+            NotificationType.PAYMENT,
             `${titlePrefix}${invoiceText} Paid`,
             message
         );

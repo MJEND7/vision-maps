@@ -30,6 +30,13 @@ interface SettingsComponentProps {
     onFramesDeleted?: (frameIds: string[]) => void;
 }
 
+enum SettingsTab {
+  Users = "users",
+  Channels = "channels",
+  Frames = "frames",
+  Danger = "danger",
+}
+
 export default function SettingsComponent({
     id,
     onChannelDeleted,
@@ -43,12 +50,13 @@ export default function SettingsComponent({
     const [isUploading, setIsUploading] = useState(false);
     const [deleteChannelDialog, setDeleteChannelDialog] = useState<{ isOpen: boolean; channel: any | null }>({ isOpen: false, channel: null });
     const [deleteFramesDialog, setDeleteFramesDialog] = useState<{ isOpen: boolean; frames: any[] }>({ isOpen: false, frames: [] });
-    const [activeTab, setActiveTab] = useState<string>("users");
+    const [activeTab, setActiveTab] = useState<SettingsTab>(SettingsTab.Users);
     const [selectedFrames, setSelectedFrames] = useState<Set<string>>(new Set());
     const [selectedChannelFilter, setSelectedChannelFilter] = useState<string | null>(null);
     const [isChannelFilterOpen, setIsChannelFilterOpen] = useState(false);
     const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
     const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
+    const [isDeleteVisionDialogOpen, setIsDeleteVisionDialogOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const { canInviteToVision: checkCanInvite, collaborationLimit } = usePermissions();
@@ -63,6 +71,7 @@ export default function SettingsComponent({
     const updateMemberRole = useMutation(api.visions.updateMemberRole);
     const removeMember = useMutation(api.visions.removeMember);
     const leaveVision = useMutation(api.visions.leaveVision);
+    const deleteVision = useMutation(api.visions.remove);
     const deleteChannel = useMutation(api.channels.remove);
     const deleteFrame = useMutation(api.frames.remove);
 
@@ -320,6 +329,20 @@ export default function SettingsComponent({
         }
     };
 
+    const handleDeleteVision = async () => {
+        if (!visionId) return;
+        try {
+            await deleteVision({ id: visionId });
+            toast.success("Vision deleted successfully!");
+            setIsDeleteVisionDialogOpen(false);
+            // Redirect to visions page
+            window.location.href = "/dashboard/visions";
+        } catch (error: any) {
+            toast.error(error.message || "Failed to delete vision");
+            console.error(error);
+        }
+    };
+
     const isOwner = userRole === "owner";
 
     if (!vision) {
@@ -485,8 +508,8 @@ export default function SettingsComponent({
             <div className=" p-4 space-y-2">
                 <div className="inline-flex gap-1 bg-muted p-1 rounded-lg w-auto">
                     <button
-                        onClick={() => setActiveTab("users")}
-                        className={`flex items-center gap-1 px-3 py-2 rounded-md text-xs font-medium transition-colors ${activeTab === "users"
+                        onClick={() => setActiveTab(SettingsTab.Users)}
+                        className={`flex items-center gap-1 px-3 py-2 rounded-md text-xs font-medium transition-colors ${activeTab === SettingsTab.Users
                             ? "bg-background text-foreground shadow-sm"
                             : "text-muted-foreground hover:text-foreground"
                             }`}
@@ -495,8 +518,8 @@ export default function SettingsComponent({
                         Users
                     </button>
                     <button
-                        onClick={() => setActiveTab("channels")}
-                        className={`flex items-center gap-1 px-3 py-2 rounded-md text-xs font-medium transition-colors ${activeTab === "channels"
+                        onClick={() => setActiveTab(SettingsTab.Channels)}
+                        className={`flex items-center gap-1 px-3 py-2 rounded-md text-xs font-medium transition-colors ${activeTab === SettingsTab.Channels
                             ? "bg-background text-foreground shadow-sm"
                             : "text-muted-foreground hover:text-foreground"
                             }`}
@@ -505,8 +528,8 @@ export default function SettingsComponent({
                         Channels
                     </button>
                     <button
-                        onClick={() => setActiveTab("frames")}
-                        className={`flex items-center gap-1 px-3 py-2 rounded-md text-xs font-medium transition-colors ${activeTab === "frames"
+                        onClick={() => setActiveTab(SettingsTab.Frames)}
+                        className={`flex items-center gap-1 px-3 py-2 rounded-md text-xs font-medium transition-colors ${activeTab === SettingsTab.Frames
                             ? "bg-background text-foreground shadow-sm"
                             : "text-muted-foreground hover:text-foreground"
                             }`}
@@ -514,23 +537,21 @@ export default function SettingsComponent({
                         <Frame className="w-3 h-3" />
                         Frames
                     </button>
-                    {!isOwner && (
-                        <button
-                            onClick={() => setActiveTab("danger")}
-                            className={`flex items-center gap-1 px-3 py-2 rounded-md text-xs font-medium transition-colors ${activeTab === "danger"
-                                ? "bg-background text-foreground shadow-sm"
-                                : "text-muted-foreground hover:text-foreground"
-                                }`}
-                        >
-                            <AlertTriangle className="w-3 h-3" />
-                            Danger Zone
-                        </button>
-                    )}
+                    <button
+                        onClick={() => setActiveTab(SettingsTab.Danger)}
+                        className={`flex items-center gap-1 px-3 py-2 rounded-md text-xs font-medium transition-colors ${activeTab === SettingsTab.Danger
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                            }`}
+                    >
+                        <AlertTriangle className="w-3 h-3" />
+                        Danger Zone
+                    </button>
                 </div>
                 <div className="space-y-3">
                     <div className="flex gap-3 items-center justify-between">
                         {/* Unified Search Bar */}
-                        <div className="w-[300px] relative">
+                        <div className={`${activeTab == "danger" ? "hidden" : ""} w-[300px] relative`}>
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                             <Input
                                 placeholder={`Search ${activeTab}...`}
@@ -620,11 +641,11 @@ export default function SettingsComponent({
                                     <Button
                                         variant="destructive"
                                         size="sm"
-                                        className="hidden sm:inline text-xs"
+                                        className="hidden sm:flex gap-1 text-xs"
                                         onClick={handleBulkDeleteFrames}
                                     >
-                                        <Trash2 className="w-3 h-3 mr-1" />
-                                        Delete {selectedFrames.size}
+                                        <Trash2 className="w-3 h-3" />
+                                        Delete {selectedFrames.size > 9 ? "9+" : selectedFrames.size}
                                     </Button>
                                 )}
                             </div>
@@ -783,7 +804,7 @@ export default function SettingsComponent({
                         </>
                     )}
 
-                    {activeTab === "channels" && (
+                    {activeTab === SettingsTab.Channels && (
                         <>
                             {/* Mobile Card Layout */}
                             <div className="block sm:hidden space-y-3">
@@ -882,7 +903,7 @@ export default function SettingsComponent({
                         </>
                     )}
 
-                    {activeTab === "frames" && (
+                    {activeTab === SettingsTab.Frames && (
                         <>
                             {/* Mobile Card Layout */}
                             <div className="block sm:hidden space-y-3">
@@ -1044,29 +1065,53 @@ export default function SettingsComponent({
                     )}
 
                     {/* Danger Zone Tab */}
-                    {activeTab === "danger" && !isOwner && (
-                        <div className="p-6 space-y-6">
-                            <div className="border-2 border-red-200 rounded-lg p-6 space-y-4">
-                                <div className="flex items-start gap-3">
-                                    <div className="p-2 bg-red-100 rounded-lg">
-                                        <AlertTriangle className="w-5 h-5 text-red-600" />
-                                    </div>
-                                    <div className="flex-1 space-y-2">
-                                        <h3 className="text-lg font-semibold text-red-900">Leave Vision</h3>
-                                        <p className="text-sm text-red-700">
-                                            Once you leave this vision, you will lose access to all content unless invited back by an owner.
-                                        </p>
-                                        <Button
-                                            variant="destructive"
-                                            onClick={() => setIsLeaveDialogOpen(true)}
-                                            className="mt-2"
-                                        >
-                                            <LogOut className="w-4 h-4 mr-2" />
-                                            Leave Vision
-                                        </Button>
+                    {activeTab === SettingsTab.Danger && (
+                        <div className="space-y-6">
+                            {isOwner ? (
+                                <div className="border-2 border-red-200 rounded-lg p-6 space-y-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-2 bg-red-100 rounded-lg">
+                                            <AlertTriangle className="w-5 h-5 text-red-600" />
+                                        </div>
+                                        <div className="flex-1 space-y-2">
+                                            <h3 className="text-lg font-semibold text-red-900">Delete Vision</h3>
+                                            <p className="text-sm text-red-700">
+                                                Permanently delete this vision and all of its data. This action cannot be undone.
+                                            </p>
+                                            <Button
+                                                variant="destructive"
+                                                onClick={() => setIsDeleteVisionDialogOpen(true)}
+                                                className="mt-2"
+                                            >
+                                                <Trash2 className="w-4 h-4 mr-2" />
+                                                Delete Vision
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="border-2 border-red-200 rounded-lg p-6 space-y-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-2 bg-red-100 rounded-lg">
+                                            <AlertTriangle className="w-5 h-5 text-red-600" />
+                                        </div>
+                                        <div className="flex-1 space-y-2">
+                                            <h3 className="text-lg font-semibold text-red-900">Leave Vision</h3>
+                                            <p className="text-sm text-red-700">
+                                                Once you leave this vision, you will lose access to all content unless invited back by an owner.
+                                            </p>
+                                            <Button
+                                                variant="destructive"
+                                                onClick={() => setIsLeaveDialogOpen(true)}
+                                                className="mt-2"
+                                            >
+                                                <LogOut className="w-4 h-4 mr-2" />
+                                                Leave Vision
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -1211,6 +1256,52 @@ export default function SettingsComponent({
                         >
                             <LogOut className="w-4 h-4 mr-2" />
                             Leave Vision
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Vision Confirmation Dialog */}
+            <Dialog open={isDeleteVisionDialogOpen} onOpenChange={setIsDeleteVisionDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="w-5 h-5 text-red-500" />
+                            Delete Vision
+                        </DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to permanently delete <strong>&ldquo;{vision?.title}&rdquo;</strong>? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <Alert className="border-red-200 bg-red-50">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <AlertDescription className="text-red-800">
+                            <strong>Warning:</strong> This action will permanently delete:
+                            <ul className="list-disc list-inside mt-2 space-y-1">
+                                <li>All channels and frames</li>
+                                <li>All nodes, edges, and connections</li>
+                                <li>All comments and discussions</li>
+                                <li>All chats and messages</li>
+                                <li>All member access and permissions</li>
+                                <li>All associated data</li>
+                            </ul>
+                        </AlertDescription>
+                    </Alert>
+
+                    <DialogFooter className="gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsDeleteVisionDialogOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleDeleteVision}
+                        >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete Vision
                         </Button>
                     </DialogFooter>
                 </DialogContent>

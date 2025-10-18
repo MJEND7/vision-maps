@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { SidebarProvider } from '@/contexts/sidebar-context';
 import { VisionTitleSkeleton, DraggableSidebarSkeleton } from '@/components/vision-skeletons';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { ProfileSettingsDialog } from '@/components/ui/profile-settings-dialog';
 
 enum ViewMode {
     CHANNEL = "channel",
@@ -112,6 +113,7 @@ function VisionDetailPageContent() {
     const [editingFrameName, setEditingFrameName] = useState<string>('');
     const [sidebarState, setSidebarState] = useState<SidebarState>(DEFAULT_SIDEBAR_STATE);
     const [isMobile, setIsMobile] = useState(false);
+    const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
     const rightSidebarContentRef = useRef<LeftSidebarContentRef>(null);
     const leftResizeRef = useRef<HTMLDivElement>(null);
     const rightResizeRef = useRef<HTMLDivElement>(null);
@@ -1020,9 +1022,7 @@ function VisionDetailPageContent() {
                                 <div className="px-3 py-5 border-t border-border space-y-2">
                                     <button
                                         className="flex items-center gap-2 p-2  rounded-md hover:bg-accent w-full text-left transition-colors"
-                                        onClick={() => {
-                                            router.push("/dashboard/profile")
-                                        }}
+                                        onClick={() => setProfileSettingsOpen(true)}
                                     >
                                         <Avatar className="w-8 h-8">
                                             <AvatarImage src={user?.imageUrl} />
@@ -1206,6 +1206,12 @@ function VisionDetailPageContent() {
                         <ChevronLeft className="w-3 h-3" />
                     </Button>
                 )}
+
+                {/* Profile Settings Dialog */}
+                <ProfileSettingsDialog
+                    open={profileSettingsOpen}
+                    onOpenChange={setProfileSettingsOpen}
+                />
             </NodeUserCacheProvider >
         </main>
     );
