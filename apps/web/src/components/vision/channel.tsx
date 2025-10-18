@@ -7,7 +7,7 @@ import {
 } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Search, Filter, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -164,7 +164,7 @@ export default function Channel({
         clearChannel(channelId);
     }, [debouncedSearch, selectedVariant, selectedUsers, sortBy, channelId, clearChannel]);
 
-    const storedNodes = nodesByChannel[channelId] || [];
+    const storedNodes = useMemo(() => nodesByChannel[channelId] || [], [nodesByChannel, channelId]);
     const isLoadingNodes = loading[channelId] || false;
     const isDone = !hasMore[channelId];
 

@@ -510,7 +510,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         actions.setImageLoaded(false);
 
         startUpload([file]);
-    }, [actions, updateMedia, startUpload]);
+    }, [actions, startUpload]);
 
     const handleLinkPaste = useCallback(async (url: string) => {
         if (!url || typeof url !== 'string' || url.trim() === '') {

@@ -37,7 +37,7 @@ function YouTubeCardBase({ metadata }: YouTubeCardProps) {
   // Memoize the embed URL so it doesn't change between renders
   const embedUrl = useMemo(
     () => (metadata ? getYouTubeEmbedUrl(metadata.url) : null),
-    [metadata?.url]
+    [metadata]
   );
 
   const formatViews = (views: number) => {

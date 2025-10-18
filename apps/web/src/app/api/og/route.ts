@@ -154,7 +154,7 @@ async function fetchYouTubeAPI(url: string) {
   const c = video.contentDetails
   const durISO = c.duration || ''
   const match = durISO.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
-  const [_, h, m, sec] = match || []
+  const [, h, m, sec] = match || []
   const d = [h ? `${h}h` : '', m ? `${m}m` : '', sec ? `${sec}s` : '']
     .filter(Boolean)
     .join(' ')
