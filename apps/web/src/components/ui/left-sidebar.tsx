@@ -12,11 +12,13 @@ import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Permission } from "@/lib/permissions";
+import { useQuery } from "convex/react";
 
 interface LeftSidebarContentProps {
     visionId: string;
     onChannelNavigate?: (channelId: string, nodeId?: string) => void;
     selectedNodeId?: string; // For showing comments for a specific node
+    currentFrameId?: string; // The currently active frame, if in a frame view
 }
 
 export interface LeftSidebarContentRef {
@@ -26,7 +28,7 @@ export interface LeftSidebarContentRef {
 }
 
 export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarContentProps>(
-    function LeftSidebarContent({ visionId, onChannelNavigate }, ref) {
+    function LeftSidebarContent({ visionId, onChannelNavigate, currentFrameId }, ref) {
         const [selectedTab, setSelectedTab] = useState("ai");
         const [selectedChatId, setSelectedChatId] = useState<string>();
         const [selectedNodeForComments, setSelectedNodeForComments] = useState<string>();
@@ -42,6 +44,9 @@ export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarC
         // Mutations for chat operations
         const createChatWithNode = useConvexMutation(api.chats.createChatWithNode);
         const sendMessage = useConvexMutation(api.messages.sendMessage);
+        const branchChatMutation = useConvexMutation(api.chats.branchChat);
+        const deleteMessagesAfter = useConvexMutation(api.messages.deleteMessagesAfter);
+        const createTextNodeFromMessage = useConvexMutation(api.nodes.createTextNodeFromMessage);
 
         const handleNewChat = async () => {
             try {
@@ -76,6 +81,86 @@ export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarC
             }
         };
 
+
+        const handleRetryMessage = async (messageId: string) => {
+            if (!selectedChatId) return;
+
+            try {
+                console.log('[Retry] Starting retry for message:', messageId);
+
+                // Delete all messages after this AI response and get the user prompt
+                const result = await deleteMessagesAfter({
+                    chatId: selectedChatId as Id<"chats">,
+                    afterMessageId: messageId as Id<"messages">,
+                });
+
+                console.log('[Retry] Deleted messages, got user prompt:', result?.userPromptContent);
+                console.log('[Retry] Deleted count:', result?.deletedCount);
+
+                // Resend the user's prompt
+                if (result?.userPromptContent) {
+                    console.log('[Retry] Resending message:', result.userPromptContent);
+
+                    // Small delay to ensure Convex has processed the deletions
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                    await handleSendMessage(result.userPromptContent);
+                    console.log('[Retry] Message sent successfully');
+                } else {
+                    console.error('[Retry] No user prompt found!');
+                }
+            } catch (e) {
+                console.error('[Retry] Error during retry:', e);
+                // Error already shown as toast by useConvexMutation
+            }
+        };
+
+        const handleBranchChat = async (messageId: string) => {
+            if (!selectedChatId) return;
+
+            try {
+                // If we're in a frame, calculate position for the new node
+                let frameId = currentFrameId;
+                let position = undefined;
+
+                if (frameId) {
+                    // Position the new node 200 pixels below the source
+                    // The backend will use this position directly
+                    position = {
+                        x: 100, // Default x position
+                        y: 100, // Will be adjusted based on source node position by backend if possible
+                    };
+                }
+
+                const result = await branchChatMutation({
+                    sourceChatId: selectedChatId as Id<"chats">,
+                    upToMessageId: messageId as Id<"messages">,
+                    frameId: frameId as Id<"frames"> | undefined,
+                    position: position,
+                });
+
+                if (result?.chatId) {
+                    setSelectedChatId(result.chatId);
+                }
+            } catch (e) {
+                // Error already shown as toast by useConvexMutation
+                console.error(e);
+            }
+        };
+
+        const handleCreateTextNode = async (messageId: string) => {
+            if (!selectedChatId) return;
+
+            try {
+                await createTextNodeFromMessage({
+                    chatId: selectedChatId as Id<"chats">,
+                    messageId: messageId as Id<"messages">,
+                });
+            } catch (e) {
+                // Error already shown as toast by useConvexMutation
+                console.error(e);
+            }
+        };
 
         const handleFocusInput = () => {
             // Focus the chat input when streaming stops or user wants to interact
@@ -193,6 +278,9 @@ export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarC
                                             chatId={selectedChatId}
                                             drivenIds={drivenMessageIds}
                                             onFocusInput={handleFocusInput}
+                                            onRetryMessage={handleRetryMessage}
+                                            onBranchChat={handleBranchChat}
+                                            onCreateTextNode={handleCreateTextNode}
                                         />
                                     </div>
 

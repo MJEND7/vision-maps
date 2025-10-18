@@ -47,6 +47,11 @@ const getConnectedNodeContextArgs = v.object({
     chatId: v.id("chats"),
 });
 
+const deleteMessagesAfterArgs = v.object({
+    chatId: v.id("chats"),
+    afterMessageId: v.id("messages"),
+});
+
 export const persistentTextStreaming = new PersistentTextStreaming(
     components.persistentTextStreaming
 );
@@ -485,6 +490,74 @@ export const generateChatNameAction = internalAction({
 });
 
 
+export const deleteMessagesAfter = mutation({
+    args: deleteMessagesAfterArgs,
+    handler: async (ctx, args) => {
+        const identity = await requireAuth(ctx);
+
+        if (!identity?.userId) {
+            throw new Error("Failed to get the user Id");
+        }
+
+        // Get all messages in the chat - order by desc to get newest first
+        const allMessages = await ctx.db
+            .query("messages")
+            .withIndex("by_chatId", (q) => q.eq("chatId", args.chatId))
+            .order("desc")
+            .collect();
+
+        console.log('[deleteMessagesAfter] ===== ALL MESSAGES =====');
+        allMessages.forEach((m, i) => {
+            console.log(`[${i}]`, m.role, '|', m._id, '|', m.content?.substring(0, 30));
+        });
+        console.log('[deleteMessagesAfter] ========================');
+
+        // Find the target message - this is the USER message that we want to retry
+        // The AI response is streamed content associated with this message, not a separate message
+        const targetIndex = allMessages.findIndex(m => m._id === args.afterMessageId);
+        if (targetIndex === -1) {
+            throw new Error("Message not found");
+        }
+
+        const targetMessage = allMessages[targetIndex];
+
+        console.log('[deleteMessagesAfter] Target index:', targetIndex);
+        console.log('[deleteMessagesAfter] Target message role:', targetMessage?.role);
+        console.log('[deleteMessagesAfter] Target message content:', targetMessage?.content?.substring(0, 50));
+
+        // IMPORTANT: Each message record is a USER prompt with an associated AI response (via streamId)
+        // When clicking retry on an AI response, we're passing the message ID of the USER prompt
+        //
+        // In allMessages array (reverse chronological - newest first):
+        // [0] User: "latest question" (newest)
+        // [1] User: "previous question"
+        // [2] User: "question to retry" (TARGET - delete this and resend with same content)
+        // [3] User: "older question" (keep)
+        //
+        // We need to:
+        // 1. Delete the target message AND all messages newer than it (indices 0 to targetIndex inclusive)
+        // 2. Return the target's content so it can be resent as a NEW message
+
+        // Delete the target message AND all messages newer than it
+        const messagesToDelete = allMessages.slice(0, targetIndex + 1);
+
+        console.log('[deleteMessagesAfter] Messages to delete:', messagesToDelete.length);
+        console.log('[deleteMessagesAfter] Deleting indices 0 to', targetIndex, '(inclusive)');
+        console.log('[deleteMessagesAfter] Target message will be deleted and resent:', targetMessage._id);
+
+        // Delete the newer messages
+        for (const message of messagesToDelete) {
+            console.log('[deleteMessagesAfter] Deleting message:', message._id, 'role:', message.role, 'content:', message.content?.substring(0, 30));
+            await ctx.db.delete(message._id);
+        }
+
+        return {
+            deletedCount: messagesToDelete.length,
+            userPromptContent: targetMessage.content || null,
+        };
+    },
+});
+
 export type ListMessagesByChatArgs = Infer<typeof listMessagesByChatArgs>;
 export type ClearMessagesArgs = Infer<typeof clearMessagesArgs>;
 export type SendMessageArgs = Infer<typeof sendMessageArgs>;
@@ -492,3 +565,4 @@ export type GetChatHistoryArgs = Infer<typeof getChatHistoryArgs>;
 export type GetStreamBodyArgs = Infer<typeof getStreamBodyArgs>;
 export type GenerateChatNameActionArgs = Infer<typeof generateChatNameActionArgs>;
 export type GetConnectedNodeContextArgs = Infer<typeof getConnectedNodeContextArgs>;
+export type DeleteMessagesAfterArgs = Infer<typeof deleteMessagesAfterArgs>;

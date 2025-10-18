@@ -40,6 +40,16 @@ const updateChatNodeIdArgs = v.object({
     nodeId: v.id("nodes"),
 });
 
+const branchChatArgs = v.object({
+    sourceChatId: v.id("chats"),
+    upToMessageId: v.id("messages"), // Branch from this message (last AI response)
+    frameId: v.optional(v.id("frames")), // If provided, create a node in this frame
+    position: v.optional(v.object({
+        x: v.number(),
+        y: v.number(),
+    })),
+});
+
 const createChatWithNodeArgs = v.object({
     title: v.string(),
     visionId: v.id("visions"),
@@ -462,6 +472,175 @@ export const deleteChat = mutation({
     },
 });
 
+export const branchChat = mutation({
+    args: branchChatArgs,
+    handler: async (ctx, args) => {
+        const identity = await requireAuth(ctx);
+
+        if (!identity?.userId) {
+            throw new Error("Failed to get the user Id");
+        }
+
+        const plan = await getUserPlan(ctx.auth, ctx.db);
+        requirePermission(plan, Permission.AI_NODES);
+
+        const userId = (await getUserByIdenityId(ctx, identity.userId as string))?._id;
+        if (!userId) {
+            throw new Error("Failed to get userId from identity");
+        }
+
+        // Get the source chat
+        const sourceChat = await ctx.db.get(args.sourceChatId);
+        if (!sourceChat) {
+            throw new Error("Source chat not found");
+        }
+
+        // Get the specific message to branch from
+        const branchMessage = await ctx.db.get(args.upToMessageId);
+        if (!branchMessage) {
+            throw new Error("Branch message not found");
+        }
+
+        // Create title based on the user's prompt
+        const title = `Branch: ${branchMessage.content.slice(0, 30)}${branchMessage.content.length > 30 ? '...' : ''}`;
+
+        // Determine channel and frame for the new node
+        let channelId = sourceChat.channelId;
+        let frameId = args.frameId;
+
+        if (!channelId) {
+            const firstChannel = await ctx.db
+                .query("channels")
+                .withIndex("by_vision", (q) => q.eq("vision", sourceChat.visionId))
+                .order("asc")
+                .first();
+
+            if (!firstChannel) {
+                throw new Error("No channels found in this vision");
+            }
+            channelId = firstChannel._id;
+        }
+
+        // If frameId is provided, verify it exists and get its channel
+        if (frameId) {
+            const frame = await ctx.db.get(frameId);
+            if (!frame) {
+                throw new Error("Frame not found");
+            }
+            channelId = frame.channel;
+        }
+
+        // Create the new chat first (without nodeId)
+        const newChatId = await ctx.db.insert("chats", {
+            title: title,
+            userId: identity.userId.toString(),
+            visionId: sourceChat.visionId,
+            channelId: channelId,
+        });
+
+        // Always create a new AI node for the branched chat
+        const now = new Date().toISOString();
+        const newNodeId = await ctx.db.insert("nodes", {
+            title: title,
+            variant: "AI",
+            value: newChatId,
+            thought: "Branched conversation",
+            channel: channelId,
+            vision: sourceChat.visionId,
+            userId,
+            updatedAt: now,
+            frame: frameId,
+        });
+
+        // Update the chat with the nodeId
+        await ctx.db.patch(newChatId, {
+            nodeId: newNodeId,
+        });
+
+        // If we're in a frame, add the node to the frame and create an edge
+        if (frameId && args.position) {
+            // Get the source node's framed_node (if it exists) for position and edge creation
+            let newPosition = args.position;
+            let sourceFramedNode = null;
+            const sourceNodeId = sourceChat.nodeId;
+
+            if (sourceNodeId) {
+                sourceFramedNode = await ctx.db
+                    .query("framed_node")
+                    .withIndex("nodeId", (q) => q.eq("node.data", sourceNodeId))
+                    .filter((q) => q.eq(q.field("frameId"), frameId))
+                    .first();
+
+                if (sourceFramedNode) {
+                    // Position new node directly below the source
+                    // Using 150px vertical spacing (typical node height + small gap)
+                    newPosition = {
+                        x: sourceFramedNode.node.position.x,
+                        y: sourceFramedNode.node.position.y + 150,
+                    };
+                }
+            }
+
+            // Create the new framed node
+            const newReactFlowNodeId = crypto.randomUUID();
+            const newReactFlowNode = {
+                id: newReactFlowNodeId,
+                position: newPosition,
+                type: "AI",
+                data: newNodeId,
+            };
+
+            const newFramedNodeId = await ctx.db.insert("framed_node", {
+                frameId: frameId,
+                node: newReactFlowNode,
+            });
+
+            await ctx.db.insert("frame_positions", {
+                frameId: frameId,
+                nodeId: newNodeId,
+                batch: [newReactFlowNode],
+                batchTimestamp: Date.now(),
+            });
+
+            // Create edge from source to new node if source exists
+            if (sourceFramedNode) {
+                const edgeId = crypto.randomUUID();
+                const edge = {
+                    id: edgeId,
+                    source: sourceFramedNode.node.id,
+                    target: newReactFlowNodeId,
+                    sourceHandle: "bottom",
+                    targetHandle: "top",
+                    type: "default",
+                    data: {},
+                };
+
+                await ctx.db.insert("edges", {
+                    frameId: frameId,
+                    edge: edge,
+                    source: sourceFramedNode._id,
+                    target: newFramedNodeId,
+                });
+            }
+        }
+
+        // Copy ONLY the single message we're branching from
+        // This includes the user prompt and its associated AI response (via streamId)
+        await ctx.db.insert("messages", {
+            chatId: newChatId,
+            content: branchMessage.content,
+            role: branchMessage.role,
+            userId: branchMessage.userId,
+            streamId: branchMessage.streamId,
+        });
+
+        return {
+            chatId: newChatId,
+            nodeId: newNodeId,
+        };
+    },
+});
+
 export type CreateChatArgs = Infer<typeof createChatArgs>;
 export type CreateChatWithNodeArgs = Infer<typeof createChatWithNodeArgs>;
 export type ListUserChatsArgs = Infer<typeof listUserChatsArgs>;
@@ -470,4 +649,5 @@ export type DeleteChatArgs = Infer<typeof deleteChatArgs>;
 export type ListVisionChatsPaginatedArgs = Infer<typeof listVisionChatsPaginatedArgs>;
 export type UpdateChatTitleArgs = Infer<typeof updateChatTitleArgs>;
 export type UpdateChatNodeIdArgs = Infer<typeof updateChatNodeIdArgs>;
+export type BranchChatArgs = Infer<typeof branchChatArgs>;
 

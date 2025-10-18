@@ -52,7 +52,7 @@ const disconnectNodesArgs = v.object({
 });
 
 const createTextNodeFromMessageArgs = v.object({
-    messageText: v.string(),
+    messageId: v.id("messages"),
     chatId: v.id("chats"),
 });
 
@@ -422,6 +422,27 @@ export type AddToFrameArgs = Infer<typeof addToFrameArgs>;
 export const createTextNodeFromMessage = mutation({
     args: createTextNodeFromMessageArgs,
     handler: async (ctx, args) => {
+        // Get the message to access its streamId
+        const message = await ctx.db.get(args.messageId);
+        if (!message) {
+            throw new Error(`Message with ID ${args.messageId} not found`);
+        }
+
+        if (!message.streamId) {
+            throw new Error(`Message ${args.messageId} has no stream ID`);
+        }
+
+        // Get the AI response text from the stream
+        const { persistentTextStreaming } = await import("./messages");
+        const streamBody = await persistentTextStreaming.getStreamBody(
+            ctx,
+            message.streamId as any
+        );
+
+        if (!streamBody?.text) {
+            throw new Error("No AI response text found in stream");
+        }
+
         // Get the chat to find the linked AI node
         const chat = await ctx.db.get(args.chatId);
         if (!chat) {
@@ -463,11 +484,11 @@ export const createTextNodeFromMessage = mutation({
             throw new Error("Failed to get userId from identity");
         }
 
-        // Create the text node
+        // Create the text node with the AI response
         const textNodeId = await ctx.db.insert("nodes", {
             title: `Text from AI`,
             variant: "Text",
-            value: args.messageText,
+            value: streamBody.text,
             frame: frameId,
             channel: aiNode.channel,
             vision: aiNode.vision,

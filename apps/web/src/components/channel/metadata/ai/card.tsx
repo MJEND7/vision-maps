@@ -69,9 +69,12 @@ interface AiCardProps {
     chatId: string,
     drivenIds: Set<string>
     onFocusInput: () => void;
+    onRetryMessage?: (messageId: string) => void;
+    onBranchChat?: (messageId: string) => void;
+    onCreateTextNode?: (messageId: string) => void;
 }
 
-export function ChatCard({ chatId, drivenIds, onFocusInput }: AiCardProps) {
+export function ChatCard({ chatId, drivenIds, onFocusInput, onRetryMessage, onBranchChat, onCreateTextNode }: AiCardProps) {
     const {
         results: messagesPage,
         status,
@@ -199,7 +202,13 @@ export function ChatCard({ chatId, drivenIds, onFocusInput }: AiCardProps) {
                                     transition={{ delay: index * 0.02 }}
                                     className="mb-3"
                                 >
-                                    <MessageItem message={message} isUser={false}>
+                                    <MessageItem
+                                        message={message}
+                                        isUser={false}
+                                        onRetry={() => onRetryMessage?.(message._id)}
+                                        onBranch={() => onBranchChat?.(message._id)}
+                                        onCreateTextNode={() => onCreateTextNode?.(message._id)}
+                                    >
                                         <ServerMessage
                                             message={message}
                                             isDriven={drivenIds.has(message._id)}
@@ -217,7 +226,10 @@ export function ChatCard({ chatId, drivenIds, onFocusInput }: AiCardProps) {
                                     transition={{ delay: index * 0.02 + 0.05 }}
                                     className="mb-3"
                                 >
-                                    <MessageItem message={message} isUser={true}>
+                                    <MessageItem
+                                        message={message}
+                                        isUser={true}
+                                    >
                                         {message.content}
                                     </MessageItem>
                                 </motion.div>

@@ -26,6 +26,7 @@ import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { oneLight } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { motion } from "motion/react";
 import { Textarea } from '@/components/ui/textarea';
+import { truncate } from '@/utils/string';
 
 // Code component with copy functionality for text nodes
 const CodeComponent = ({ className, children, ...props }: any) => {
@@ -358,7 +359,7 @@ export function renderNodeContent(
                     </div>
                     <div className="bg-accent flex items-center justify-between border-t border-accent p-3">
                         <div className="max-w-[180px] lg:max-w-[200px] xl:max-w-full overflow-hidden">
-                            <p className="text-sm font-semibold truncate">{node.title}</p>
+                            <p className="text-sm font-semibold truncate">{truncate(node.title, 35)}</p>
                         </div>
                         <button
                             onClick={() => onOpenChat?.(node.value)}

@@ -121,11 +121,11 @@ export function ServerMessage({
 
     const handleCreateTextNode = async () => {
         if (!text || isCreatingNode) return;
-        
+
         setIsCreatingNode(true);
         try {
             await createTextNodeFromMessage({
-                messageText: text,
+                messageId: message._id,
                 chatId: message.chatId,
             });
         } catch (error) {

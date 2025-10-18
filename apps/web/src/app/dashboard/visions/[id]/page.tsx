@@ -1156,6 +1156,7 @@ function VisionDetailPageContent() {
                                         ref={rightSidebarContentRef}
                                         visionId={visionId}
                                         onChannelNavigate={handleChannelNavigate}
+                                        currentFrameId={selectedTab?.type === ViewMode.FRAME ? selectedTab.id : undefined}
                                     />
                                 </div>
                             </motion.div>
@@ -1188,6 +1189,7 @@ function VisionDetailPageContent() {
                                     ref={rightSidebarContentRef}
                                     visionId={visionId}
                                     onChannelNavigate={handleChannelNavigate}
+                                    currentFrameId={selectedTab?.type === ViewMode.FRAME ? selectedTab.id : undefined}
                                 />
                             </div>
 

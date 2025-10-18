@@ -337,6 +337,7 @@ export const getFrameNodes = query({
                         _id: nodeData._id,
                         variant: nodeData.variant,
                         value: nodeData.value,
+                        title: nodeData.title,
                         audioUrl: nodeData.audioUrl,
                         thought: nodeData.thought,
                         type: nodeData.variant || "Text"
