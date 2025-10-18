@@ -32,6 +32,7 @@ import usePresence from "@convex-dev/presence/react";
 import { useSidebar } from "../../contexts/sidebar-context";
 import { useViewportCenter } from "../../hooks/useViewportCenter";
 import { ReactFlowErrorBoundary } from "./ReactFlowErrorBoundary";
+import { UpgradeDialog } from "../ui/upgrade-dialog";
 
 // Component that has access to ReactFlow context for viewport positioning
 function ViewportAwareNodeManager({
@@ -108,6 +109,7 @@ export default function FrameComponent({
     const { cacheMetadataForUrl } = useMetadataCache();
     const [convertScreenToFlowPosition, setConvertScreenToFlowPosition] = useState<((x: number, y: number) => { x: number; y: number }) | null>(null);
     const [rightClickPosition, setRightClickPosition] = useState<{ x: number; y: number } | null>(null);
+    const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
     // Dynamic edge styling - memoized to prevent unnecessary re-renders
     const defaultEdgeOptions: DefaultEdgeOptions = useMemo(() => ({
@@ -621,8 +623,14 @@ export default function FrameComponent({
             </div>
             <PasteBin
                 onCreateNode={handleNodeCreation}
+                onShowUpgradeDialog={setShowUpgradeDialog}
                 channelId={frame?.channel as string}
                 visionId={frame?.vision as string}
+            />
+            <UpgradeDialog
+                open={showUpgradeDialog}
+                onOpenChange={setShowUpgradeDialog}
+                reason="ai"
             />
         </div>
     );

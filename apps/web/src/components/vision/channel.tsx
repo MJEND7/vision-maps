@@ -56,6 +56,7 @@ import {
 import { Alert, AlertDescription } from "../ui/alert";
 import { AlertTriangle, Edit2, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
+import { UpgradeDialog } from "../ui/upgrade-dialog";
 
 export default function Channel({
     channelId,
@@ -105,6 +106,7 @@ export default function Channel({
     const updateChannel = useMutation(api.channels.update);
     const deleteNode = useMutation(api.nodes.remove);
     const updateChatNodeId = useMutation(api.chats.updateChatNodeId);
+    const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
     // Memoize callback functions to prevent unnecessary re-renders
     const showDeleteConfirmation = useCallback((node: any) => {
@@ -690,6 +692,7 @@ export default function Channel({
             {/* Fixed Paste Bin at Bottom */}
             <PasteBin
                 onCreateNode={handleNodeCreation}
+                onShowUpgradeDialog={setShowUpgradeDialog}
                 channelId={channelId}
                 visionId={channel?.vision || ""}
             />
@@ -785,6 +788,13 @@ export default function Channel({
                     </DrawerFooter>
                 </DrawerContent>
             </Drawer>
+
+            {/* Upgrade Dialog */}
+            <UpgradeDialog
+                open={showUpgradeDialog}
+                onOpenChange={setShowUpgradeDialog}
+                reason="ai"
+            />
         </div>
     );
 }

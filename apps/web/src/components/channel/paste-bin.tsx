@@ -21,7 +21,6 @@ import { NodeVariants } from "@convex/tables/nodes";
 import { useOGMetadataWithCache } from "@/utils/ogMetadata";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Permission } from "@/lib/permissions";
-import { UpgradeDialog } from "../ui/upgrade-dialog";
 import { useRealtimeTranscription, getAvailableAudioDevices } from "@/hooks/useRealtimeTranscription";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
@@ -120,8 +119,9 @@ interface Media {
     chatId?: string;
 }
 
-function PasteBin({ onCreateNode, channelId, visionId }: {
+function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
     onCreateNode: (data: Omit<CreateNodeArgs, "channel">) => void,
+    onShowUpgradeDialog: (show: boolean) => void,
     channelId: string,
     visionId: string
 }) {
@@ -135,15 +135,14 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     const [drivenMessageIds, setDrivenMessageIds] = useState<Set<string>>(new Set())
     const [chatId, setChatId] = useState<string | null>(null);
     const [transcriptChunks, setTranscriptChunks] = useState<{ text: string; timestamp: number }[]>([]);
+    const transcriptDebounce = useRef<NodeJS.Timeout | null>(null)
 
     // Unified media state
     const [media, setMedia] = useState<Media | null>(null);
     const [isTextMode, setIsTextMode] = useState(false);
     const [isAiMode, setIsAiMode] = useState(false);
-    const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const emptyResetTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const { hasPermission } = usePermissions();
     const canUseAI = hasPermission(Permission.AI_NODES);
@@ -160,7 +159,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     const pasteBinLoadedRef = useRef(false);
 
     // Debounced save to database
-    const saveDebounceRef = useRef<NodeJS.Timeout | null>(null);
+    const saveDebounce = useRef<NodeJS.Timeout | null>(null);
     const savePasteBinToDb = useCallback((data: {
         mode: string;
         type?: string;
@@ -169,10 +168,10 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         textContent?: string;
         chatId?: Id<"chats">;
     }) => {
-        if (saveDebounceRef.current) {
-            clearTimeout(saveDebounceRef.current);
+        if (saveDebounce.current) {
+            clearTimeout(saveDebounce.current);
         }
-        saveDebounceRef.current = setTimeout(() => {
+        saveDebounce.current = setTimeout(() => {
             upsertPasteBin({
                 visionId: visionId as Id<"visions">,
                 ...data,
@@ -190,7 +189,21 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     } = useRealtimeTranscription({
         onTranscript: (text, timestamp) => {
             const newChunk = { text, timestamp };
-            setTranscriptChunks(prev => [...prev, newChunk]);
+            setTranscriptChunks((prev) => [...prev, newChunk]);
+            if (transcriptDebounce.current) {
+                clearTimeout(transcriptDebounce.current)
+            }
+
+            if (transcriptContainerRef.current) {
+                transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
+            }
+
+            transcriptDebounce.current = setTimeout(() => {
+                updateTranscriptArrayMutation({
+                    visionId: visionId as Id<"visions">,
+                    valueArray: transcriptChunks,
+                });
+            }, 2000)
         },
         onError: (error) => {
             console.error('Transcription error:', error);
@@ -308,31 +321,21 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         pasteBinLoadedRef.current = true;
     }, [pasteBinData, actions]);
 
-    // Save transcription updates to database in real-time
-    useEffect(() => {
-        if (mode === PasteBinMode.TRANSCRIPTION && transcriptChunks.length > 0) {
-            updateTranscriptArrayMutation({
-                visionId: visionId as Id<"visions">,
-                valueArray: transcriptChunks,
-            });
-        }
-    }, [transcriptChunks, mode, visionId, updateTranscriptArrayMutation]);
-
     // Cleanup timers on unmount
     useEffect(() => {
         return () => {
-            if (emptyResetTimerRef.current) {
-                clearTimeout(emptyResetTimerRef.current);
+            if (saveDebounce.current) {
+                clearTimeout(saveDebounce.current);
             }
-            if (saveDebounceRef.current) {
-                clearTimeout(saveDebounceRef.current);
+            if (transcriptDebounce.current) {
+                clearTimeout(transcriptDebounce.current);
             }
         };
     }, []);
 
     const setIdle = async () => {
-        if (saveDebounceRef.current) {
-            clearTimeout(saveDebounceRef.current);
+        if (saveDebounce.current) {
+            clearTimeout(saveDebounce.current);
         }
 
         setMode(PasteBinMode.IDLE);
@@ -618,7 +621,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
 
     const handleToggleAiMode = useCallback(async () => {
         if (!canUseAI) {
-            setShowUpgradeDialog(true);
+            onShowUpgradeDialog(true);
             return;
         }
 
@@ -669,12 +672,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             setIsLoadingDevices(false);
         }
     }, []);
-
-    useEffect(() => {
-        if (transcriptContainerRef.current && isRecording && transcriptChunks.length > 0) {
-            transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
-        }
-    }, [transcriptChunks, isRecording]);
 
     const handleStopRecording = useCallback(async () => {
         setIsStopping(true);
@@ -737,13 +734,14 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         updateChatId(null);
 
         // Clear timers
-        if (emptyResetTimerRef.current) {
-            clearTimeout(emptyResetTimerRef.current);
-            emptyResetTimerRef.current = null;
+        if (saveDebounce.current) {
+            clearTimeout(saveDebounce.current);
+            saveDebounce.current = null;
         }
-        if (saveDebounceRef.current) {
-            clearTimeout(saveDebounceRef.current);
-            saveDebounceRef.current = null;
+
+        if (transcriptDebounce.current) {
+            clearTimeout(transcriptDebounce.current);
+            transcriptDebounce.current = null;
         }
 
         actions.resetState();
@@ -754,6 +752,9 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     }, [actions, updateMedia, updateChatId, updateIsAiMode, chatId, isAiMode, deleteChat, media, isRecording, stopRecording, clearTranscript, clearPasteBin, visionId]);
 
     const handleCreate = useCallback(async () => {
+        if (saveDebounce.current) {
+            clearTimeout(saveDebounce.current);
+        }
         const node = async () => {
             if (media) {
                 if (media.file || media.uploadedUrl) {
@@ -1503,13 +1504,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                     </motion.div>
                 </motion.div>
             </div>
-
-            {/* Upgrade Dialog */}
-            <UpgradeDialog
-                open={showUpgradeDialog}
-                onOpenChange={setShowUpgradeDialog}
-                reason="ai"
-            />
         </div>
     );
 }
