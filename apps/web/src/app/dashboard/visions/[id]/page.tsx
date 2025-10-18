@@ -100,7 +100,6 @@ function TitleCard({ isLoading, vision, OpenSettings, className }: {
 
 function VisionDetailPageContent() {
     const { user } = useUser();
-    const router = useRouter();
     const params = useParams();
     const visionId = params.id as Id<"visions">;
     const [tabs, setTabs] = useState<Map<string, { title: string, id: string, type: ViewMode }>>(new Map());

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { Bell, Check, Trash2, Users, MessageSquare, Settings, UserCheck, UserX, Mail, Gift, AlertCircle, ExternalLink, CreditCard } from "lucide-react";
+import { Bell, Check, Trash2, Users, MessageSquare, Settings, UserCheck, UserX, Mail, ExternalLink, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@clerk/nextjs";
