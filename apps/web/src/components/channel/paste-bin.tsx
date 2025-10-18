@@ -404,11 +404,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                             url: res[0].ufsUrl, // Update the url to the uploaded version
                             isUploading: false
                         };
-                        savePasteBinToDb({
-                            mode: mode,
-                            type: updatedMedia.type,
-                            value: updatedMedia.uploadedUrl,
-                        });
                         return updatedMedia;
                     }
                     return currentMedia;
@@ -420,11 +415,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
             setMedia(currentMedia => {
                 if (currentMedia) {
                     const updatedMedia = { ...currentMedia, isUploading: false };
-                    savePasteBinToDb({
-                        mode: mode,
-                        type: updatedMedia.type,
-                        value: updatedMedia.url,
-                    });
                     return updatedMedia;
                 }
                 return currentMedia;
@@ -516,7 +506,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         };
 
         setMode(PasteBinMode.MEDIA);
-        updateMedia(newMedia);
+        setMedia(newMedia);
         actions.setImageLoaded(false);
 
         startUpload([file]);

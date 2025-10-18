@@ -176,81 +176,104 @@ function ExpandableTextContent({ textExpand, content }: { textExpand: boolean, c
 }
 
 // Component for nodes that need metadata fetching
-function NodeWithMetadata({ node, variant }: { node: any, variant: NodeVariants }) {
-    const { fetchWithCache } = useOGMetadataWithCache();
-    const [metadata, setMetadata] = React.useState<any>(null);
-    const [isLoading, setIsLoading] = React.useState(true);
+function NodeWithMetadata({
+  node,
+  variant,
+}: {
+  node: any;
+  variant: NodeVariants;
+}) {
+  const { fetchWithCache } = useOGMetadataWithCache();
+  const [metadata, setMetadata] = React.useState<any>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
 
-    // Fetch metadata when component mounts
-    React.useEffect(() => {
-        const fetchMetadata = async () => {
-            try {
-                // Validate URL before fetching
-                if (!node.value || typeof node.value !== 'string') {
-                    console.error('Invalid node value:', node.value);
-                    setMetadata({
-                        title: 'Invalid URL',
-                        description: '',
-                        url: '',
-                        type: variant
-                    });
-                    return;
-                }
+  // Memoize stable URL based on node value
+  const stableUrl = React.useMemo(() => node?.value || "", [node?.value]);
 
-                // If no rich metadata, fetch from cache/API
-                const result = await fetchWithCache(node.value);
-                setMetadata({
-                    ...result.metadata,
-                    type: variant
-                });
-            } catch (error) {
-                console.error('Error fetching metadata:', error);
-                // Set fallback metadata on error
-                setMetadata({
-                    title: 'Unable to load content',
-                    description: 'There was an error loading this content',
-                    url: node.value || '',
-                    type: variant
-                });
-            } finally {
-                setIsLoading(false);
-            }
-        };
+  // This effect only runs when stableUrl or variant changes
+  React.useEffect(() => {
+    let cancelled = false;
 
-        fetchMetadata();
-    }, [node.value, variant, fetchWithCache, node]);
+    const fetchMetadata = async () => {
+      try {
+        if (!stableUrl || typeof stableUrl !== "string") {
+          console.error("Invalid node value:", stableUrl);
+          if (!cancelled) {
+            setMetadata({
+              title: "Invalid URL",
+              description: "",
+              url: "",
+              type: variant,
+            });
+          }
+          return;
+        }
 
-    // Show loading state while fetching
-    if (isLoading) {
-        return (
-            <div className="animate-pulse">
-                <div className="bg-muted h-32 w-full rounded-lg"></div>
-            </div>
-        );
-    }
+        const result = await fetchWithCache(stableUrl);
 
-    // Render appropriate card based on variant
+        if (!cancelled) {
+          setMetadata({
+            ...result.metadata,
+            type: variant,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching metadata:", error);
+        if (!cancelled) {
+          setMetadata({
+            title: "Unable to load content",
+            description: "There was an error loading this content",
+            url: stableUrl,
+            type: variant,
+          });
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    fetchMetadata();
+    return () => {
+      cancelled = true;
+    };
+  }, [stableUrl, variant, fetchWithCache]);
+
+  // ✅ Declare all hooks at the top level, unconditionally
+  const card = React.useMemo(() => {
+    if (!metadata) return null;
+
     switch (variant) {
-        case NodeVariants.GitHub:
-            return <GitHubCard metadata={metadata} />;
-        case NodeVariants.Figma:
-            return <FigmaCard metadata={metadata} />;
-        case NodeVariants.YouTube:
-            return <YouTubeCard metadata={metadata} />;
-        case NodeVariants.Twitter:
-            return <TwitterCard metadata={metadata} />;
-        case NodeVariants.Notion:
-            return <NotionCard metadata={metadata} />;
-        case NodeVariants.Loom:
-            return <LoomCard metadata={metadata} />;
-        case NodeVariants.Spotify:
-            return <SpotifyCard metadata={metadata} />;
-        case NodeVariants.AppleMusic:
-            return <AppleMusicCard metadata={metadata} />;
-        case NodeVariants.Link:
-        default:
-            return <WebsiteCard metadata={metadata} />;
+      case NodeVariants.GitHub:
+        return <GitHubCard metadata={metadata} />;
+      case NodeVariants.Figma:
+        return <FigmaCard metadata={metadata} />;
+      case NodeVariants.YouTube:
+        return <YouTubeCard metadata={metadata} />;
+      case NodeVariants.Twitter:
+        return <TwitterCard metadata={metadata} />;
+      case NodeVariants.Notion:
+        return <NotionCard metadata={metadata} />;
+      case NodeVariants.Loom:
+        return <LoomCard metadata={metadata} />;
+      case NodeVariants.Spotify:
+        return <SpotifyCard metadata={metadata} />;
+      case NodeVariants.AppleMusic:
+        return <AppleMusicCard metadata={metadata} />;
+      default:
+        return <WebsiteCard metadata={metadata} />;
     }
+  }, [variant, metadata]);
+
+  // ✅ Conditional return happens *after* hooks, no missing calls
+  if (isLoading || !metadata) {
+    return (
+      <div className="animate-pulse">
+        <div className="bg-muted h-32 w-full rounded-lg" />
+      </div>
+    );
+  }
+
+  return card;
 }
 
 // Component for rendering image nodes with dialog

@@ -1,88 +1,83 @@
-import { NextRequest, NextResponse } from 'next/server';
-import ogs from 'open-graph-scraper';
-import { getTweet } from 'react-tweet/api';
+import { NextRequest, NextResponse } from 'next/server'
+import ogs from 'open-graph-scraper'
 
-// Define types for the metadata extraction
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY
+
 interface BaseMetadata {
-  title: string;
-  description: string;
-  image: string;
-  siteName: string;
-  favicon: string;
-  url: string;
-  type: string;
-  author: string;
-  publishedTime: string;
-  modifiedTime: string;
-  jsonLD: any[];
+  title: string
+  description: string
+  image: string
+  siteName: string
+  favicon: string
+  url: string
+  type: string
+  author: string
+  publishedTime: string
+  modifiedTime: string
+  jsonLD: any[]
 }
 
 interface GitHubMetadata extends BaseMetadata {
-  stars?: number;
-  forks?: number;
-  language?: string;
-  topics?: string[];
+  stars?: number
+  forks?: number
+  language?: string
+  topics?: string[]
 }
 
 interface YouTubeMetadata extends BaseMetadata {
-  thumbnail?: string; 
-  channelName?: string;
-  duration?: string;
-  views?: number;
-  likes?: number;
-  publishedAt?: string;
-  videoUrl?: string;
-  videoDuration?: string;
-  videoWidth?: string;
-  videoHeight?: string;
-}
-
-interface TwitterMetadata extends BaseMetadata {
-  twitterCreator?: string;
-  twitterSite?: string;
-  username?: string;
-  avatar?: string;
-  likes?: number;
-  retweets?: number;
-  replies?: number;
-  twitterType?: "tweet" | "profile" | "media";
-  tweetId?: string;
-  tweetText?: string;
+  thumbnail?: string
+  channelName?: string
+  duration?: string
+  views?: number
+  likes?: number
+  publishedAt?: string
+  videoUrl?: string
+  videoDuration?: string
+  videoWidth?: string
+  videoHeight?: string
 }
 
 interface FigmaMetadata extends BaseMetadata {
-  team?: string;
-  fileType?: string;
+  team?: string
+  fileType?: string
 }
 
 interface NotionMetadata extends BaseMetadata {
-  workspace?: string;
-  icon?: string;
-  lastEdited?: string;
-  pageType?: string;
+  workspace?: string
+  icon?: string
+  lastEdited?: string
+  pageType?: string
 }
 
-type PlatformMetadata = BaseMetadata | GitHubMetadata | YouTubeMetadata | TwitterMetadata | FigmaMetadata | NotionMetadata;
+type PlatformMetadata =
+  | BaseMetadata
+  | GitHubMetadata
+  | YouTubeMetadata
+  | FigmaMetadata
+  | NotionMetadata
 
 function detectPlatformType(url: string): string {
-  const hostname = new URL(url).hostname.toLowerCase();
-  
-  if (hostname.includes('github.com')) return 'github';
-  if (hostname.includes('figma.com')) return 'figma';
-  if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) return 'youtube';
-  if (hostname.includes('notion.so') || hostname.includes('notion.com')) return 'notion';
-  if (hostname.includes('twitter.com') || hostname.includes('x.com')) return 'twitter';
-  if (hostname.includes('instagram.com')) return 'instagram';
-  if (hostname.includes('tiktok.com')) return 'tiktok';
-  if (hostname.includes('spotify.com')) return 'spotify';
-  
-  return 'website';
+  const hostname = new URL(url).hostname.toLowerCase()
+  if (hostname.includes('github.com')) return 'github'
+  if (hostname.includes('figma.com')) return 'figma'
+  if (hostname.includes('youtube.com') || hostname.includes('youtu.be'))
+    return 'youtube'
+  if (hostname.includes('notion.so') || hostname.includes('notion.com'))
+    return 'notion'
+  if (hostname.includes('instagram.com')) return 'instagram'
+  if (hostname.includes('tiktok.com')) return 'tiktok'
+  if (hostname.includes('spotify.com')) return 'spotify'
+  return 'website'
 }
 
 function extractBaseMetadata(result: any, url: string): BaseMetadata {
   return {
     title: result.ogTitle || result.twitterTitle || result.dcTitle || '',
-    description: result.ogDescription || result.twitterDescription || result.dcDescription || '',
+    description:
+      result.ogDescription ||
+      result.twitterDescription ||
+      result.dcDescription ||
+      '',
     image: result.ogImage?.[0]?.url || result.twitterImage?.[0]?.url || '',
     siteName: result.ogSiteName || '',
     favicon: result.favicon || `${new URL(url).origin}/favicon.ico`,
@@ -92,227 +87,179 @@ function extractBaseMetadata(result: any, url: string): BaseMetadata {
     publishedTime: result.articlePublishedTime || '',
     modifiedTime: result.articleModifiedTime || '',
     jsonLD: result.jsonLD || [],
-  };
+  }
 }
 
-function extractGitHubMetadata(result: any, baseMetadata: BaseMetadata): GitHubMetadata {
-  const jsonLD = result.jsonLD?.[0] || {};
-  
+function extractGitHubMetadata(result: any, base: BaseMetadata): GitHubMetadata {
+  const json = result.jsonLD?.[0] || {}
   return {
-    ...baseMetadata,
-    stars: jsonLD.stargazerCount || undefined,
-    forks: jsonLD.forkCount || undefined,
-    language: jsonLD.programmingLanguage?.name || undefined,
-    topics: jsonLD.keywords || undefined,
-  };
+    ...base,
+    stars: json.stargazerCount,
+    forks: json.forkCount,
+    language: json.programmingLanguage?.name,
+    topics: json.keywords,
+  }
 }
 
-function extractYouTubeMetadata(result: any, baseMetadata: BaseMetadata): YouTubeMetadata {
-  const jsonLD = result.jsonLD?.[0] || {};
-  
+function extractYouTubeMetadataOG(result: any, base: BaseMetadata): YouTubeMetadata {
+  const json = result.jsonLD?.[0] || {}
   return {
-    ...baseMetadata,
-    thumbnail: jsonLD?.thumbnailUrl || result.ogImage?.[0]?.url || '',
-    channelName: jsonLD.author?.name || result.twitterCreator || '',
-    duration: jsonLD.duration || '',
-    views: jsonLD.interactionStatistic?.find((stat: any) => 
-      stat.interactionType?.includes('WatchAction'))?.userInteractionCount || undefined,
-    likes: jsonLD.interactionStatistic?.find((stat: any) => 
-      stat.interactionType?.includes('LikeAction'))?.userInteractionCount || undefined,
-    publishedAt: jsonLD.uploadDate || jsonLD.datePublished || '',
+    ...base,
+    thumbnail: json?.thumbnailUrl || result.ogImage?.[0]?.url || '',
+    channelName: json.author?.name || result.twitterCreator || '',
+    duration: json.duration || '',
+    views: json.interactionStatistic?.find((s: any) =>
+      s.interactionType?.includes('WatchAction')
+    )?.userInteractionCount,
+    likes: json.interactionStatistic?.find((s: any) =>
+      s.interactionType?.includes('LikeAction')
+    )?.userInteractionCount,
+    publishedAt: json.uploadDate || json.datePublished || '',
     videoUrl: result.ogVideo?.[0]?.url || '',
     videoDuration: result.ogVideo?.[0]?.duration || '',
     videoWidth: result.ogVideo?.[0]?.width || '',
     videoHeight: result.ogVideo?.[0]?.height || '',
-  };
-}
-
-async function extractTwitterMetadata(result: any, baseMetadata: BaseMetadata, url: string): Promise<TwitterMetadata> {
-  const jsonLD = result.jsonLD?.[0] || {};
-  const usernameMatch = url.match(/(?:twitter\.com|x\.com)\/([^\/\?]+)/);
-  const tweetIdMatch = url.match(/\/status\/(\d+)/);
-  
-  // Determine tweet type
-  let twitterType: "tweet" | "profile" | "media" = 'profile';
-  if (url.includes('/status/')) twitterType = 'tweet';
-  if (url.includes('/media') || url.includes('photo/')) twitterType = 'media';
-  
-  // Extract tweet text if we have a tweet ID
-  let tweetText: string | undefined;
-  if (tweetIdMatch?.[1]) {
-    console.log('Found tweet ID:', tweetIdMatch[1], 'attempting to fetch tweet text');
-    try {
-      const tweet = await getTweet(tweetIdMatch[1]);
-      console.log('Tweet fetched:', tweet ? 'success' : 'null');
-      if (tweet?.text) {
-        tweetText = tweet.text;
-        console.log('Tweet text extracted:', tweetText.substring(0, 100) + '...');
-      } else {
-        console.log('No tweet text found in response');
-      }
-    } catch (error) {
-      console.error('Failed to fetch tweet text:', error);
-      // Try to extract from OG description as fallback
-      tweetText = baseMetadata.description || undefined;
-      console.log('Using fallback description as tweet text:', tweetText);
-    }
-  } else {
-    console.log('No tweet ID found in URL:', url);
   }
-  
-  return {
-    ...baseMetadata,
-    twitterCreator: result.twitterCreator || '',
-    twitterSite: result.twitterSite || '',
-    username: usernameMatch?.[1] || '',
-    avatar: jsonLD.author?.image || '',
-    //publishedAt: jsonLD.datePublished || result.articlePublishedTime || '',
-    likes: jsonLD.interactionStatistic?.find((stat: any) => 
-      stat.interactionType?.includes('LikeAction'))?.userInteractionCount || undefined,
-    retweets: jsonLD.interactionStatistic?.find((stat: any) => 
-      stat.interactionType?.includes('ShareAction'))?.userInteractionCount || undefined,
-    replies: jsonLD.interactionStatistic?.find((stat: any) => 
-      stat.interactionType?.includes('CommentAction'))?.userInteractionCount || undefined,
-    twitterType,
-    tweetId: tweetIdMatch?.[1] || undefined,
-    tweetText,
-  };
 }
 
-function extractFigmaMetadata(result: any, baseMetadata: BaseMetadata): FigmaMetadata {
-  const jsonLD = result.jsonLD?.[0] || {};
-  
-  return {
-    ...baseMetadata,
-    team: jsonLD.creator?.name || '',
-    fileType: jsonLD.fileFormat || 'design',
-  };
+function extractFigmaMetadata(result: any, base: BaseMetadata): FigmaMetadata {
+  const json = result.jsonLD?.[0] || {}
+  return { ...base, team: json.creator?.name || '', fileType: json.fileFormat || 'design' }
 }
 
-function extractNotionMetadata(result: any, baseMetadata: BaseMetadata): NotionMetadata {
-  const jsonLD = result.jsonLD?.[0] || {};
-  
+function extractNotionMetadata(result: any, base: BaseMetadata): NotionMetadata {
+  const json = result.jsonLD?.[0] || {}
   return {
-    ...baseMetadata,
-    workspace: jsonLD.isPartOf?.name || '',
-    icon: jsonLD.image || '',
-    lastEdited: jsonLD.dateModified || '',
-    pageType: jsonLD['@type'] || 'page',
-  };
+    ...base,
+    workspace: json.isPartOf?.name || '',
+    icon: json.image || '',
+    lastEdited: json.dateModified || '',
+    pageType: json['@type'] || 'page',
+  }
 }
 
-async function extractPlatformSpecificMetadata(result: any, url: string, platformType: string): Promise<PlatformMetadata> {
-  const baseMetadata = extractBaseMetadata(result, url);
-  
-  switch (platformType) {
+async function fetchYouTubeAPI(url: string) {
+  const idMatch = url.match(/[?&]v=([^&]+)/) || url.match(/youtu\.be\/([^?]+)/)
+  const videoId = idMatch?.[1]
+  if (!videoId || !YOUTUBE_API_KEY)
+    throw new Error('Missing video ID or YouTube API key')
+  const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoId}&key=${YOUTUBE_API_KEY}`
+  const res = await fetch(apiUrl)
+  if (!res.ok) throw new Error(`YouTube API error: ${res.status}`)
+  const data = await res.json()
+  const video = data.items?.[0]
+  if (!video) throw new Error('No video found')
+  const s = video.snippet
+  const st = video.statistics
+  const c = video.contentDetails
+  const durISO = c.duration || ''
+  const match = durISO.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+  const [_, h, m, sec] = match || []
+  const d = [h ? `${h}h` : '', m ? `${m}m` : '', sec ? `${sec}s` : '']
+    .filter(Boolean)
+    .join(' ')
+  return {
+    success: true,
+    metadata: {
+      title: s.title,
+      description: s.description,
+      image: s.thumbnails?.maxres?.url || s.thumbnails?.high?.url || '',
+      siteName: 'YouTube',
+      favicon: 'https://www.youtube.com/s/desktop/a192c735/img/favicon.ico',
+      url: `https://www.youtube.com/watch?v=${videoId}`,
+      type: 'video.other',
+      author: s.channelTitle,
+      publishedTime: s.publishedAt,
+      modifiedTime: '',
+      jsonLD: [],
+      thumbnail: s.thumbnails?.high?.url || '',
+      channelName: s.channelTitle,
+      duration: d,
+      views: Number(st.viewCount) || 0,
+      likes: Number(st.likeCount) || 0,
+      publishedAt: s.publishedAt,
+      videoUrl: `https://www.youtube.com/embed/${videoId}`,
+      videoDuration: c.duration,
+      videoWidth: '',
+      videoHeight: '',
+    },
+    platformType: 'youtube',
+  }
+}
+
+async function extractPlatformMetadata(
+  result: any,
+  url: string,
+  platform: string
+): Promise<PlatformMetadata> {
+  const base = extractBaseMetadata(result, url)
+  switch (platform) {
     case 'github':
-      return extractGitHubMetadata(result, baseMetadata);
-      
+      return extractGitHubMetadata(result, base)
     case 'youtube':
-      return extractYouTubeMetadata(result, baseMetadata);
-      
-    case 'twitter':
-      return await extractTwitterMetadata(result, baseMetadata, url);
-      
+      return extractYouTubeMetadataOG(result, base)
     case 'figma':
-      return extractFigmaMetadata(result, baseMetadata);
-      
+      return extractFigmaMetadata(result, base)
     case 'notion':
-      return extractNotionMetadata(result, baseMetadata);
-      
-    case 'instagram':
-    case 'tiktok':
-    case 'spotify':
-      // For platforms we detect but don't have specific extraction logic yet
-      return baseMetadata;
-      
-    case 'website':
+      return extractNotionMetadata(result, base)
     default:
-      return baseMetadata;
+      return base
   }
 }
+
+export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
-    let body;
+    const body = await request.json()
+    const { url } = body
+    if (!url) return NextResponse.json({ error: 'URL is required' }, { status: 400 })
     try {
-      body = await request.json();
+      new URL(url)
     } catch {
-      return NextResponse.json(
-        { error: 'Invalid JSON in request body' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid URL' }, { status: 400 })
     }
 
-    const { url } = body;
+    const platformType = detectPlatformType(url)
 
-    if (!url) {
-      return NextResponse.json(
-        { error: 'URL is required' },
-        { status: 400 }
-      );
+    if (platformType === 'youtube') {
+      try {
+        const yt = await fetchYouTubeAPI(url)
+        return NextResponse.json(yt)
+      } catch (err: any) {
+        console.error('YouTube API failed:', err)
+      }
     }
-
-    // Validate URL
-    try {
-      new URL(url);
-    } catch {
-      return NextResponse.json(
-        { error: 'Invalid URL' },
-        { status: 400 }
-      );
-    }
-
-    const platformType = detectPlatformType(url);
-    console.log('OG API processing URL:', url, 'detected platform:', platformType);
 
     const options = {
       url,
-      timeout: 1000,
+      timeout: 5000,
       retry: 2,
       headers: {
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com) Mozilla/5.0 (compatible; Baiduspider/2.0; +http://www.baidu.com/search/spider.html)'
-      }
-    };
+        'user-agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
+      },
+    }
 
-    const { error, result } = await ogs(options);
+    const { error, result } = await ogs(options)
 
     if (error) {
-      console.error('Open Graph scraper error:', error);
-      
-      // Return fallback metadata instead of error for soft failure
-      const fallbackMetadata = extractBaseMetadata({}, url);
-      fallbackMetadata.title = new URL(url).hostname;
-      fallbackMetadata.description = 'Unable to fetch metadata for this URL';
-      
-      return NextResponse.json({ 
-        success: true, 
-        metadata: fallbackMetadata,
+      const fallback = extractBaseMetadata({}, url)
+      fallback.title = new URL(url).hostname
+      fallback.description = 'Unable to fetch metadata for this URL'
+      return NextResponse.json({
+        success: true,
+        metadata: fallback,
         platformType,
-        fallback: true 
-      });
+        fallback: true,
+      })
     }
 
-    // Extract platform-specific metadata using switch statement
-    const metadata = await extractPlatformSpecificMetadata(result, url, platformType);
-    
-    if (!metadata.url || metadata.url === "undefined") {
-        console.log("Metadata: ", result, metadata)
-        throw new Error("Failed to get the medata correctly")
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      metadata,
-      platformType 
-    });
-
-  } catch (error) {
-    console.error('API route error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    const metadata = await extractPlatformMetadata(result, url, platformType)
+    return NextResponse.json({ success: true, metadata, platformType })
+  } catch (err: any) {
+    console.error('API route error:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
@@ -320,5 +267,5 @@ export async function GET() {
   return NextResponse.json(
     { error: 'Method not allowed. Use POST.' },
     { status: 405 }
-  );
+  )
 }

@@ -164,7 +164,7 @@ export default function Channel({
         clearChannel(channelId);
     }, [debouncedSearch, selectedVariant, selectedUsers, sortBy, channelId, clearChannel]);
 
-    const storedNodes = useMemo(() => nodesByChannel[channelId] || [], [nodesByChannel, channelId]);
+    const storedNodes = nodesByChannel[channelId] || [];
     const isLoadingNodes = loading[channelId] || false;
     const isDone = !hasMore[channelId];
 
