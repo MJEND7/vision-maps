@@ -296,6 +296,11 @@ export async function POST(request: NextRequest) {
     // Extract platform-specific metadata using switch statement
     const metadata = await extractPlatformSpecificMetadata(result, url, platformType);
     
+    if (!metadata.url || metadata.url === "undefined") {
+        console.log("Metadata: ", result, metadata)
+        throw new Error("Failed to get the medata correctly")
+    }
+
     return NextResponse.json({ 
       success: true, 
       metadata,

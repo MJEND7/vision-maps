@@ -143,7 +143,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const emptyResetTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const { hasPermission } = usePermissions();
@@ -178,7 +177,7 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
                 visionId: visionId as Id<"visions">,
                 ...data,
             });
-        }, 500);
+        }, 2000);
     }, [upsertPasteBin, visionId]);
 
     // Real-time transcription hook
@@ -322,9 +321,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     // Cleanup timers on unmount
     useEffect(() => {
         return () => {
-            if (debounceTimerRef.current) {
-                clearTimeout(debounceTimerRef.current);
-            }
             if (emptyResetTimerRef.current) {
                 clearTimeout(emptyResetTimerRef.current);
             }
@@ -335,8 +331,8 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     }, []);
 
     const setIdle = async () => {
-        if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current);
+        if (saveDebounceRef.current) {
+            clearTimeout(saveDebounceRef.current);
         }
 
         setMode(PasteBinMode.IDLE);
@@ -359,18 +355,11 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
     }, [mode, savePasteBinToDb]);
 
     const updateTextContent = useCallback((content: string) => {
-        if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current);
-        }
-
         setTextContent(content);
-
-        debounceTimerRef.current = setTimeout(() => {
-            savePasteBinToDb({
-                mode: mode,
-                textContent: content,
-            });
-        }, 2000);
+        savePasteBinToDb({
+            mode: mode,
+            textContent: content,
+        });
     }, [mode, savePasteBinToDb]);
 
     const updateChatId = useCallback((chatIdValue: string | null) => {
@@ -594,19 +583,11 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         }
 
         if (value && !value.startsWith("http://") && !value.startsWith("https://")) {
-            if (debounceTimerRef.current) {
-                clearTimeout(debounceTimerRef.current);
-            }
-
             if (mode === PasteBinMode.IDLE) {
                 setMode(PasteBinMode.TEXT);
                 setIsTextMode(true);
+                savePasteBinToDb({ mode: PasteBinMode.TEXT });
             }
-            debounceTimerRef.current = setTimeout(() => {
-                if (mode === PasteBinMode.IDLE) {
-                    savePasteBinToDb({ mode: PasteBinMode.TEXT });
-                }
-            }, 2000);
         }
     }, [handleLinkPaste, updateTextContent, mode, savePasteBinToDb]);
 
@@ -766,10 +747,6 @@ function PasteBin({ onCreateNode, channelId, visionId }: {
         updateChatId(null);
 
         // Clear timers
-        if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current);
-            debounceTimerRef.current = null;
-        }
         if (emptyResetTimerRef.current) {
             clearTimeout(emptyResetTimerRef.current);
             emptyResetTimerRef.current = null;

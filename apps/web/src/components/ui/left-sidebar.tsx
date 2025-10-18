@@ -12,7 +12,6 @@ import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Permission } from "@/lib/permissions";
-import { useQuery } from "convex/react";
 
 interface LeftSidebarContentProps {
     visionId: string;
@@ -120,7 +119,7 @@ export const LeftSidebarContent = forwardRef<LeftSidebarContentRef, LeftSidebarC
 
             try {
                 // If we're in a frame, calculate position for the new node
-                let frameId = currentFrameId;
+                const frameId = currentFrameId;
                 let position = undefined;
 
                 if (frameId) {
