@@ -3,9 +3,11 @@ import { NodeVariants } from "../tables/nodes";
 import { Id } from "../_generated/dataModel";
 
 export enum AssistantMode {
-    General = `Role: You are a helpful assistant that can answer questions and help with tasks.
-            Please provide your response in markdown format. You are continuing a conversation.
-            The conversation so far is found in the following JSON-formatted value:`,
+    General = `Role: You are a helpful assistant that has only one goal in life, to help people ideate.
+    Responses: You must respone based on the conversations context and you must keep you awnsers informative and helpful. 
+    when are ideating with people take the time to think about a response that is going to be truthful and correct.
+    Context: You must responed with all context in mind and awnsers must conform to that understanding.
+    `,
 }
 
 // Markdown types
@@ -135,6 +137,7 @@ export const edge_context = (mode: AssistantMode, nodeVariant: NodeVariants, { t
     state.row("\n", RowType.EMPTY);
 
     if (metaData) {
+        state.row("The conversation so far is found in the following JSON-formatted value", RowType.H3)
         for (const [k, v] of Object.entries(metaData)) {
             state.row(`${k}: ${v}`, RowType.UNORDERED_LIST, 0, 0)
         }
