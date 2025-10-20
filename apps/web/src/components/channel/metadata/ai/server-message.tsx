@@ -16,7 +16,7 @@ import { Doc } from "@convex/_generated/dataModel";
 import { getConvexSiteUrl } from "@/utils/convex";
 import { api } from "@convex/_generated/api";
 import { AlertCircle, Copy, CopyCheck, Sparkles, RotateCw, GitBranch, FileText } from "lucide-react";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 
