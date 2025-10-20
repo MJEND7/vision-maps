@@ -50,7 +50,7 @@ import {
 import { toast } from "sonner";
 import { RoleUtils } from "@/lib/roles";
 import { InviteUsersPopup } from "@/components/ui/custom-org-popup";
-import { OwnerType, useSubscription } from "@/hooks/useSubscription";
+import { OwnerType, useSubscription } from "@/hooks/users/useSubscription";
 import { Organization } from "@convex/tables/organization";
 import { BillingTab as SharedBillingTab } from "@/components/billing/BillingTab";
 

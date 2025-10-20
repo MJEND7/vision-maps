@@ -22,7 +22,7 @@ import { Users, Plus, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { OwnerType, useSubscription } from "@/hooks/useSubscription";
+import { OwnerType, useSubscription } from "@/hooks/users/useSubscription";
 
 // Pricing configuration
 const plans = [

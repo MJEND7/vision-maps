@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useUser, useAuth } from "@clerk/nextjs";
-import { OwnerType, useSubscription } from "@/hooks/useSubscription";
+import { OwnerType, useSubscription } from "@/hooks/users/useSubscription";
 import { toast } from "sonner";
 import { BillingTab as SharedBillingTab } from "@/components/billing/BillingTab";
 import {

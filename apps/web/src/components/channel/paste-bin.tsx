@@ -13,7 +13,7 @@ import Image from "next/image";
 import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard, SkeletonCard, ChatCard, LinkMetadata, GitHubMetadata, FigmaMetadata, YouTubeMetadata, TwitterMetadata, NotionMetadata, LoomMetadata, SpotifyMetadata, AppleMusicMetadata, WebsiteMetadata } from "./metadata";
 import { Textarea } from "../ui/textarea";
 import { usePasteBinState } from "@/lib/paste-bin-state";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { CreateNodeArgs } from "@convex/nodes";
@@ -21,103 +21,13 @@ import { NodeVariants } from "@convex/tables/nodes";
 import { useOGMetadataWithCache } from "@/utils/ogMetadata";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Permission } from "@/lib/permissions";
-import { useRealtimeTranscription, getAvailableAudioDevices } from "@/hooks/useRealtimeTranscription";
+import { useRealtimeTranscription, getAvailableAudioDevices } from "@/hooks/pastebin/useRealtimeTranscription";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { convertToWav, stitchAudioBlobs } from "@/utils/audio";
 import { ApiRoutes } from "@/constants/apiRoutes";
-
-export enum PasteBinMode {
-    IDLE = 'idle',
-    TEXT = 'text',
-    AI = 'ai',
-    MEDIA = 'media',
-    EMBED = 'embed',
-    TRANSCRIPTION = 'transcription'
-}
-
-// Data interfaces
-export interface MediaData {
-    file: File;
-    url: string;
-    fileName: string;
-    fileSize: number;
-    fileType: string;
-    uploadedUrl?: string;
-    isUploading?: boolean;
-    customName?: string;
-}
-
-export interface EmbedData {
-    url: string;
-    title?: string;
-    description?: string;
-    image?: string;
-    siteName?: string;
-    type: string;
-}
-
-interface Media {
-    type: NodeVariants;
-    // File properties (for uploaded media)
-    file?: File;
-    fileName?: string;
-    fileSize?: number;
-    fileType?: string;
-    uploadedUrl?: string;
-    customName?: string;
-
-    // Link/Embed properties (for external content) - matching LinkMetadata structure
-    url?: string;
-    title?: string;
-    description?: string;
-    image?: string;
-    siteName?: string;
-    favicon?: string;
-    ogType?: string;
-    author?: string;
-    publishedTime?: string;
-    modifiedTime?: string;
-
-    // Platform-specific fields from LinkMetadata
-    stars?: number; // GitHub
-    forks?: number; // GitHub
-    language?: string; // GitHub
-    topics?: string[]; // GitHub
-    team?: string; // Figma
-    figmaFileType?: string; // Figma
-    thumbnail?: string; // YouTube
-    channelName?: string; // YouTube
-    duration?: string; // YouTube, Spotify, etc.
-    views?: number; // YouTube, Loom
-    likes?: number; // YouTube, Twitter
-    publishedAt?: string; // YouTube, Twitter
-    videoUrl?: string; // YouTube
-    videoDuration?: string; // YouTube
-    videoWidth?: string; // YouTube
-    videoHeight?: string; // YouTube
-    twitterCreator?: string; // Twitter
-    twitterSite?: string; // Twitter
-    username?: string; // Twitter
-    avatar?: string; // Twitter
-    retweets?: number; // Twitter
-    replies?: number; // Twitter
-    twitterType?: "tweet" | "profile" | "media"; // Twitter
-    tweetId?: string; // Twitter
-    workspace?: string; // Notion
-    icon?: string; // Notion
-    lastEdited?: string; // Notion
-    pageType?: string; // Notion
-    artist?: string; // Spotify, AppleMusic
-    album?: string; // Spotify, AppleMusic
-    spotifyType?: "track" | "album" | "playlist" | "artist"; // Spotify
-    appleMusicType?: "song" | "album" | "playlist" | "artist"; // AppleMusic
-    createdAt?: string; // Loom
-    creator?: string; // Loom
-
-    // Chat properties (for AI nodes)
-    chatId?: string;
-}
+import useSavePasteBin from "@/hooks/pastebin/useSavePasteBin";
+import { PasteBinMode, Media } from "@/types/pastebin-component";
 
 function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
     onCreateNode: (data: CreateNodeArgs) => void,
@@ -130,17 +40,12 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
     const { isDragOver, isLoadingLinkMeta, imageLoaded } = state;
 
     // Component state
-    const [mode, setMode] = useState<PasteBinMode>(PasteBinMode.IDLE);
-    const [textContent, setTextContent] = useState("");
     const [drivenMessageIds, setDrivenMessageIds] = useState<Set<string>>(new Set())
-    const [chatId, setChatId] = useState<string | null>(null);
     const [transcriptChunks, setTranscriptChunks] = useState<{ text: string; timestamp: number }[]>([]);
     const transcriptDebounce = useRef<NodeJS.Timeout | null>(null)
 
     // Unified media state
     const [media, setMedia] = useState<Media | null>(null);
-    const [isTextMode, setIsTextMode] = useState(false);
-    const [isAiMode, setIsAiMode] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -152,32 +57,11 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
     const deleteChat = useMutation(api.chats.deleteChat);
 
     // Convex mutations for paste bin persistence
-    const upsertPasteBin = useMutation(api.userPasteBin.upsert);
-    const clearPasteBin = useMutation(api.userPasteBin.clear);
+    const { save: savePasteBinToDb, clear: clearPasteBin, saveDebounce, mode, setMode, pasteBin: pasteBinData } = useSavePasteBin(visionId);
     const updateTranscriptArrayMutation = useMutation(api.userPasteBin.updateTranscriptArray);
-    const pasteBinData = useQuery(api.userPasteBin.get, { visionId: visionId as Id<"visions"> });
-    const pasteBinLoadedRef = useRef(false);
 
-    // Debounced save to database
-    const saveDebounce = useRef<NodeJS.Timeout | null>(null);
-    const savePasteBinToDb = useCallback((data: {
-        mode: string;
-        type?: string;
-        value?: string;
-        valueArray?: { text: string; timestamp: number }[];
-        textContent?: string;
-        chatId?: Id<"chats">;
-    }) => {
-        if (saveDebounce.current) {
-            clearTimeout(saveDebounce.current);
-        }
-        saveDebounce.current = setTimeout(() => {
-            upsertPasteBin({
-                visionId: visionId as Id<"visions">,
-                ...data,
-            });
-        }, 2000);
-    }, [upsertPasteBin, visionId]);
+    // Use the reusable OG metadata hook
+    const { fetchWithCache } = useOGMetadataWithCache();
 
     // Real-time transcription hook
     const {
@@ -209,9 +93,6 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             console.error('Transcription error:', error);
         },
     });
-
-    // Use the reusable OG metadata hook
-    const { fetchWithCache } = useOGMetadataWithCache();
 
     // Memoize animation values to prevent unnecessary re-renders
     const animationValues = useMemo(() => ({
@@ -275,101 +156,35 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
         } as LinkMetadata;
     }, []);
 
-    // Load saved data from database on mount or when data changes
-    useEffect(() => {
-        if (!pasteBinData) {
-            pasteBinLoadedRef.current = false;
-            return;
-        }
-
-        // Restore text content
-        if (pasteBinData.textContent) {
-            setTextContent(pasteBinData.textContent);
-        }
-
-        // Restore mode
-        if (pasteBinData.mode && pasteBinData.mode !== 'idle') {
-            setMode(pasteBinData.mode as PasteBinMode);
-        }
-
-        // Restore chat state
-        if (pasteBinData.chatId) {
-            setChatId(pasteBinData.chatId);
-        }
-
-        // Restore media if valid
-        if (pasteBinData.type && pasteBinData.value) {
-            const restoredMedia: Media = {
-                type: pasteBinData.type as NodeVariants,
-                url: pasteBinData.value,
-                chatId: pasteBinData.chatId,
-            };
-            setMedia(restoredMedia);
-            // Set image as loaded during initial load without causing re-renders
-            if (restoredMedia.type === NodeVariants.Image) {
-                setTimeout(() => actions.setImageLoaded(true), 0);
-            }
-        }
-
-        // Set mode flags based on mode
-        if (pasteBinData.mode === 'text') {
-            setIsTextMode(true);
-        } else if (pasteBinData.mode === 'ai') {
-            setIsAiMode(true);
-        }
-
-        pasteBinLoadedRef.current = true;
-    }, [pasteBinData, actions]);
-
     // Cleanup timers on unmount
     useEffect(() => {
         return () => {
-            if (saveDebounce.current) {
-                clearTimeout(saveDebounce.current);
-            }
             if (transcriptDebounce.current) {
                 clearTimeout(transcriptDebounce.current);
             }
         };
     }, []);
 
-    const setIdle = async () => {
-        if (saveDebounce.current) {
-            clearTimeout(saveDebounce.current);
-        }
-
-        setMode(PasteBinMode.IDLE);
-        setIsTextMode(false);
-        setTextContent("");
-        await clearPasteBin({ visionId: visionId as Id<"visions"> });
-    }
-
     const updateMedia = useCallback((mediaItem: Media | null) => {
-        setMedia(mediaItem);
-        // Save to database
-        if (mediaItem) {
-            savePasteBinToDb({
-                mode: mode,
-                type: mediaItem.type,
-                value: mediaItem.uploadedUrl || mediaItem.url,
-                chatId: mediaItem.chatId ? (mediaItem.chatId as Id<"chats">) : undefined,
-            });
+        if (!mediaItem) {
+            return
         }
+
+        setMedia(mediaItem);
+        savePasteBinToDb(mediaItem.type, {
+            value: mediaItem.uploadedUrl || mediaItem.url,
+        });
     }, [mode, savePasteBinToDb]);
 
     const updateTextContent = useCallback((content: string) => {
-        setTextContent(content);
-        savePasteBinToDb({
-            mode: mode,
-            textContent: content,
+        savePasteBinToDb(NodeVariants.Text, {
+            value: content,
         });
     }, [mode, savePasteBinToDb]);
 
     const updateChatId = useCallback((chatIdValue: string | null) => {
-        setChatId(chatIdValue);
-        savePasteBinToDb({
-            mode: mode,
-            chatId: chatIdValue ? (chatIdValue as Id<"chats">) : undefined,
+        savePasteBinToDb(NodeVariants.AI, {
+            value: chatIdValue ? (chatIdValue as Id<"chats">) : undefined,
         });
     }, [mode, savePasteBinToDb]);
 
@@ -387,9 +202,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
 
     const updateIsAiMode = useCallback((aiModeValue: boolean) => {
         setIsAiMode(aiModeValue);
-        savePasteBinToDb({
-            mode: aiModeValue ? 'ai' : mode,
-        });
+        setMode(aiModeValue ? PasteBinMode.AI : mode)
     }, [mode, savePasteBinToDb]);
 
     const { startUpload, isUploading } = useUploadThing("mediaUploader", {
@@ -579,7 +392,6 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             if (mode === PasteBinMode.IDLE) {
                 setMode(PasteBinMode.TEXT);
                 setIsTextMode(true);
-                savePasteBinToDb({ mode: PasteBinMode.TEXT });
             }
         }
     }, [handleLinkPaste, updateTextContent, mode, savePasteBinToDb]);
@@ -718,8 +530,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             }
         }
 
-        await clearPasteBin({ visionId: visionId as Id<"visions"> });
-
+        clearPasteBin();
         clearTranscript();
         setTranscriptChunks([]);
         setRecordedAudioBlob(null);
@@ -749,7 +560,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
-    }, [actions, updateMedia, updateChatId, updateIsAiMode, chatId, isAiMode, deleteChat, media, isRecording, stopRecording, clearTranscript, clearPasteBin, visionId]);
+    }, [actions, updateMedia, updateChatId, updateIsAiMode, deleteChat, media, isRecording, stopRecording, clearTranscript, clearPasteBin, visionId]);
 
     const handleCreate = useCallback(async () => {
         if (saveDebounce.current) {
@@ -1307,10 +1118,10 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                                     ? mode === PasteBinMode.AI ? "Type you message here..." : `Type your thought here...`
                                     : "Enter media..."
                             }
-                            value={textContent}
+                            value={pasteBinData.values.text}
                             onChange={(e) => {
                                 if (e.target.value == "") {
-                                    setIdle()
+                                    clearPasteBin()
                                 } else if (mode === PasteBinMode.TEXT || mode === PasteBinMode.AI) {
                                     updateTextContent(e.target.value);
                                 } else {
@@ -1319,10 +1130,10 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
 
                             }}
                             onKeyDown={async (e) => {
-                                if (e.key === "Enter" && !e.shiftKey && textContent) {
+                                if (e.key === "Enter" && !e.shiftKey && pasteBinData.value) {
                                     e.preventDefault();
-                                    if (mode === PasteBinMode.AI && chatId) {
-                                        handleSendMessage(chatId);
+                                    if (mode === PasteBinMode.AI) {
+                                        handleSendMessage(pasteBinData.value);
                                     } else if (mode === PasteBinMode.TEXT) {
                                         handleCreate();
                                     } else {
@@ -1362,7 +1173,6 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                                                     setSelectedDeviceId(undefined);
                                                     await startRecording('microphone');
                                                     setMode(PasteBinMode.TRANSCRIPTION);
-                                                    savePasteBinToDb({ mode: PasteBinMode.TRANSCRIPTION });
                                                 } catch (error) {
                                                     console.error('Failed to start recording:', error);
                                                     const errorMessage = error instanceof Error ? error.message : 'Failed to start microphone recording';
@@ -1390,7 +1200,6 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                                                                     setSelectedDeviceId(device.deviceId);
                                                                     await startRecording('device', device.deviceId);
                                                                     setMode(PasteBinMode.TRANSCRIPTION);
-                                                                    savePasteBinToDb({ mode: PasteBinMode.TRANSCRIPTION });
                                                                 } catch (error) {
                                                                     console.error('Failed to start recording:', error);
                                                                     const errorMessage = error instanceof Error ? error.message : 'Failed to start recording';

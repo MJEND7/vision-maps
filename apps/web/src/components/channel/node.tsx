@@ -1,5 +1,5 @@
 import React, { useState, useRef, memo, useMemo } from "react";
-import { NodeUser } from "@/hooks/useUserCache";
+import { NodeUser } from "@/hooks/users/useUserCache";
 import { NodeWithFrame } from "@convex/channels";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { timeSinceFromDateString } from "@/utils/date";

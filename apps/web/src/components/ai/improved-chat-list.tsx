@@ -6,7 +6,7 @@ import { Plus, Hash, Trash2, Edit2, Check, X, MoreVertical, Calendar, MessageSqu
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 import { usePaginatedQuery } from "convex/react";
-import { useConvexMutation } from "@/hooks/useConvexWithToast";
+import { useConvexMutation } from "@/hooks/convex/useConvexWithToast";
 import { api } from "@/../convex/_generated/api";
 import { Id } from "@/../convex/_generated/dataModel";
 import InfiniteScroll from "react-infinite-scroll-component";

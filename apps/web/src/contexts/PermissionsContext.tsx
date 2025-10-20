@@ -13,7 +13,7 @@ import {
     VISION_LIMITS,
     COLLABORATION_LIMITS,
 } from "@/lib/permissions";
-import { OwnerType, useSubscription } from "@/hooks/useSubscription";
+import { OwnerType, useSubscription } from "@/hooks/users/useSubscription";
 
 interface PermissionsContextType {
     plan: Plan;

@@ -22,15 +22,15 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import PasteBin from "../channel/paste-bin";
-import { useMovementQueue } from "../../hooks/useMovementQueue";
+import { useMovementQueue } from "../../hooks/frames/useMovementQueue";
 import nodeTypes from "./nodes";
 import { CanvasContextMenu } from "./canvas-context-menu";
 import { AddExistingNodeDialog } from "./add-existing-node-dialog";
 import usePresence from "@convex-dev/presence/react";
 import { useSidebar } from "../../contexts/sidebar-context";
-import { useViewportCenter } from "../../hooks/useViewportCenter";
+import { useViewportCenter } from "../../hooks/frames/useViewportCenter";
 import { ReactFlowErrorBoundary } from "./ReactFlowErrorBoundary";
-import useCreateNode from "@/hooks/useCreateNode";
+import useCreateNode from "@/hooks/nodes/useCreateNode";
 
 // Component that has access to ReactFlow context for viewport positioning
 function ViewportAwareNodeManager({

@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { NodeUser } from "@/hooks/useUserCache";
+import { NodeUser } from "@/hooks/users/useUserCache";
 
 export interface BaseNodeData {
   node: any; // The actual node data from the database

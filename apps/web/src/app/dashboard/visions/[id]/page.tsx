@@ -16,7 +16,7 @@ import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { Vision } from "@convex/tables/visions";
 import SettingsComponent from '@/components/vision/settings';
-import { NodeUserCacheProvider } from '@/hooks/useUserCache';
+import { NodeUserCacheProvider } from '@/hooks/users/useUserCache';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';

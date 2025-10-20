@@ -24,8 +24,8 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import { MultiUserSelector } from "@/components/ui/multi-user-selector";
-import { useNodeUserCache } from "@/hooks/useUserCache";
-import { useNodeStore } from "@/hooks/useNodeStore";
+import { useNodeUserCache } from "@/hooks/users/useUserCache";
+import { useNodeStore } from "@/hooks/nodes/useNodeStore";
 import { NODE_VARIANTS } from "@/lib/constants";
 import ChannelNode from "../channel/node";
 import {
@@ -54,7 +54,7 @@ import { Alert, AlertDescription } from "../ui/alert";
 import { AlertTriangle, Edit2, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
 import PasteBin from "../channel/paste-bin";
-import useCreateNode from "@/hooks/useCreateNode";
+import useCreateNode from "@/hooks/nodes/useCreateNode";
 
 export default function Channel({
     channelId,
