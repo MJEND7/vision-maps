@@ -3,6 +3,7 @@
 import { motion, Reorder, useDragControls, AnimatePresence } from "motion/react";
 import { ChevronRight, Frame, GripVertical, Plus } from "lucide-react";
 import { useRef, useCallback, useState, useEffect } from "react";
+import { TabStore, ViewMode } from "@/types/vision_page";
 
 interface Channel {
     _id: string;
@@ -31,7 +32,7 @@ interface DraggableSidebarProps {
     onFrameReorder: (channelId: string, frameIds: string[]) => void;
     onFrameReorderEnd?: (channelId: string, frameIds: string[]) => void;
     onToggleChannel: (channelId: string, open?: boolean) => void;
-    onOpenTab: (type: "channel" | "frame", id: string, title: string) => void;
+    onOpenTab: (data: TabStore) => void;
     onCreateFrame: (channelId: string) => void;
     onEditChannel: (channelId: string, title: string) => void;
     onEditFrame: (frameId: string, title: string) => void;
@@ -77,7 +78,7 @@ function DraggableChannel({
     editingFrame: string | null;
     editingFrameName: string;
     onToggle: (open?: boolean) => void;
-    onOpenTab: (type: "channel" | "frame", id: string, title: string) => void;
+    onOpenTab: (data: TabStore) => void;
     onCreateFrame: () => void;
     onEdit: () => void;
     onSave: () => void;
@@ -148,11 +149,10 @@ function DraggableChannel({
                                 e.preventDefault();
                                 dragControls.start(e);
                             }}
-                            className={`cursor-grab active:cursor-grabbing transition-all text-muted-foreground/80 ${
-                                isMobile 
-                                    ? 'opacity-100 p-2 -m-1 mr-1 hover:bg-accent/50 rounded' 
-                                    : 'opacity-0 group-hover:opacity-100 transition-opacity'
-                            }`}
+                            className={`cursor-grab active:cursor-grabbing transition-all text-muted-foreground/80 ${isMobile
+                                ? 'opacity-100 p-2 -m-1 mr-1 hover:bg-accent/50 rounded'
+                                : 'opacity-0 group-hover:opacity-100 transition-opacity'
+                                }`}
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.95 }}
                         >
@@ -186,7 +186,7 @@ function DraggableChannel({
                         ) : (
                             <button
                                 className="text-left max-w-[190px] truncate py-1.5 flex-1"
-                                onClick={() => onOpenTab("channel", channel._id, channel.title)}
+                                onClick={() => onOpenTab({ type: ViewMode.CHANNEL, id: channel._id, title: channel.title })}
                                 onDoubleClick={onEdit}
                             >
                                 {channel.title}
@@ -199,9 +199,8 @@ function DraggableChannel({
                             onToggle(true)
                             onCreateFrame()
                         }}
-                        className={`text-muted-foreground hover:text-primary transition-colors ${
-                            isMobile ? 'p-2 -m-1 hover:bg-accent/50 rounded' : ''
-                        }`}
+                        className={`text-muted-foreground hover:text-primary transition-colors ${isMobile ? 'p-2 -m-1 hover:bg-accent/50 rounded' : ''
+                            }`}
                     >
                         <Plus size={isMobile ? 16 : 15} />
                     </button>
@@ -229,6 +228,7 @@ function DraggableChannel({
                                         frame={frame}
                                         isSelected={selectedTabId === frame._id}
                                         isEditing={editingFrame === frame._id}
+                                        channelId={channel._id}
                                         editingName={editingFrameName}
                                         onOpenTab={onOpenTab}
                                         onEdit={() => onEditFrame(frame._id, frame.title)}
@@ -251,6 +251,7 @@ function DraggableFrame({
     isSelected,
     isEditing,
     editingName,
+    channelId,
     onOpenTab,
     onEdit,
     onSave,
@@ -261,7 +262,8 @@ function DraggableFrame({
     isSelected: boolean;
     isEditing: boolean;
     editingName: string;
-    onOpenTab: (type: "channel" | "frame", id: string, title: string) => void;
+    channelId: string,
+    onOpenTab: (data: TabStore) => void;
     onEdit: () => void;
     onSave: () => void;
     onCancel: () => void;
@@ -301,48 +303,47 @@ function DraggableFrame({
                         e.preventDefault();
                         dragControls.start(e);
                     }}
-                    className={`cursor-grab active:cursor-grabbing mr-1 transition-all ${
-                        isMobile 
-                            ? 'opacity-100 p-1.5 -m-0.5 hover:bg-accent/50 rounded' 
-                            : 'opacity-0 group-hover:opacity-100 transition-opacity p-0.5'
-                    }`}
+                    className={`cursor-grab active:cursor-grabbing mr-1 transition-all ${isMobile
+                        ? 'opacity-100 p-1.5 -m-0.5 hover:bg-accent/50 rounded'
+                        : 'opacity-0 group-hover:opacity-100 transition-opacity p-0.5'
+                        }`}
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
                 >
                     <GripVertical size={isMobile ? 14 : 15} />
                 </motion.div>
 
-            {isEditing ? (
-                <div
-                    className="flex items-center text-xs transition-colors w-full text-left truncate"
-                >
-                    <Frame size={12} className="mr-1" />
-                    <input
-                        type="text"
-                        value={editingName}
-                        onChange={(e) => onNameChange(e.target.value)}
-                        onBlur={onSave}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                onSave();
-                            } else if (e.key === 'Escape') {
-                                onCancel();
-                            }
-                        }}
-                        className="text-xs bg-background border border-border rounded px-1 py-0.5 w-full"
-                        autoFocus
-                    />
-                </div>
-            ) : (
-                <button
-                    className="text-xs transition-colors flex items-center w-full text-left truncate"
-                    onClick={() => onOpenTab("frame", frame._id, frame.title)}
-                    onDoubleClick={onEdit}
-                >
-                    <Frame size={12} className="inline mr-1" />
-                    {frame.title}
-                </button>
-            )}
+                {isEditing ? (
+                    <div
+                        className="flex items-center text-xs transition-colors w-full text-left truncate"
+                    >
+                        <Frame size={12} className="mr-1" />
+                        <input
+                            type="text"
+                            value={editingName}
+                            onChange={(e) => onNameChange(e.target.value)}
+                            onBlur={onSave}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    onSave();
+                                } else if (e.key === 'Escape') {
+                                    onCancel();
+                                }
+                            }}
+                            className="text-xs bg-background border border-border rounded px-1 py-0.5 w-full"
+                            autoFocus
+                        />
+                    </div>
+                ) : (
+                    <button
+                        className="text-xs transition-colors flex items-center w-full text-left truncate"
+                        onClick={() => onOpenTab({ type: ViewMode.FRAME, id: frame._id, title: frame.title, parent: channelId })}
+                        onDoubleClick={onEdit}
+                    >
+                        <Frame size={12} className="inline mr-1" />
+                        {frame.title}
+                    </button>
+                )}
             </motion.div>
         </Reorder.Item>
     );

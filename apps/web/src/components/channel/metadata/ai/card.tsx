@@ -93,7 +93,7 @@ export function ChatCard({ chatId, drivenIds, onFocusInput, onRetryMessage, onBr
     const allMessages = useMemo(() => {
         return messagesPage?.flatMap(page => page) || [];
     }, [messagesPage]);
-    
+
     const scrollToBottom = useCallback(() => {
         if (messagesEndRef.current && scrollContainerRef.current) {
             scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
@@ -205,9 +205,6 @@ export function ChatCard({ chatId, drivenIds, onFocusInput, onRetryMessage, onBr
                                     <MessageItem
                                         message={message}
                                         isUser={false}
-                                        onRetry={() => onRetryMessage?.(message._id)}
-                                        onBranch={() => onBranchChat?.(message._id)}
-                                        onCreateTextNode={() => onCreateTextNode?.(message._id)}
                                     >
                                         <ServerMessage
                                             message={message}
@@ -217,6 +214,9 @@ export function ChatCard({ chatId, drivenIds, onFocusInput, onRetryMessage, onBr
                                             }}
                                             scrollToBottom={scrollToBottom}
                                             isAssistant={true}
+                                            onRetry={() => onRetryMessage?.(message._id)}
+                                            onBranch={() => onBranchChat?.(message._id)}
+                                            onCreateTextNode={() => onCreateTextNode?.(message._id)}
                                         />
                                     </MessageItem>
                                 </motion.div>

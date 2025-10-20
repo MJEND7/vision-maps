@@ -120,7 +120,7 @@ interface Media {
 }
 
 function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
-    onCreateNode: (data: Omit<CreateNodeArgs, "channel">) => void,
+    onCreateNode: (data: CreateNodeArgs) => void,
     onShowUpgradeDialog: (show: boolean) => void,
     channelId: string,
     visionId: string
@@ -774,6 +774,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                         variant: media.type,
                         value: url || media.url || '',
                         thought: textContent,
+                        channel: channelId as Id<"channels">,
                     })
                     return;
                 }
@@ -784,6 +785,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                         variant: media.type,
                         value: media.url,
                         thought: textContent,
+                        channel: channelId as Id<"channels">,
                     })
                     return;
                 }
@@ -793,6 +795,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                         title: media.title || "AI Chat",
                         variant: NodeVariants.AI,
                         value: media.chatId,
+                        channel: channelId as Id<"channels">,
                     })
                     return;
                 }
@@ -862,6 +865,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                         value: JSON.stringify(chunks),
                         thought: "",
                         audioUrl,
+                        channel: channelId as Id<"channels">,
                     });
                     return;
                 }
@@ -879,6 +883,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                     title: "Node",
                     variant: isAiMode ? NodeVariants.AI : NodeVariants.Text,
                     value: value,
+                    channel: channelId as Id<"channels">,
                 })
             }
         }

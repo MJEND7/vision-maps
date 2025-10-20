@@ -15,7 +15,7 @@ import { oneLight } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { Doc } from "@convex/_generated/dataModel";
 import { getConvexSiteUrl } from "@/utils/convex";
 import { api } from "@convex/_generated/api";
-import { AlertCircle, Copy, CopyCheck, Sparkles, FileText } from "lucide-react";
+import { AlertCircle, Copy, CopyCheck, Sparkles, RotateCw, GitBranch, FileText } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
@@ -25,7 +25,7 @@ const CodeComponent = ({ className, children, ...props }: any) => {
     const [copied, setCopied] = useState(false);
     const { theme: currentTheme } = useTheme();
     const match = /language-(\w+)/.exec(className || "");
-    
+
     // Memoize theme to prevent recalculation on every render
     const theme = useMemo(() => {
         return currentTheme === "dark" ? oneDark : oneLight;
@@ -49,7 +49,7 @@ const CodeComponent = ({ className, children, ...props }: any) => {
                 onClick={handleCopy}
                 className="absolute top-2 right-2 p-2 text-xs rounded-md bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
             >
-                {copied ? <CopyCheck size={15} /> : <Copy size={15} /> }
+                {copied ? <CopyCheck size={15} /> : <Copy size={15} />}
             </button>
             <SyntaxHighlighter
                 style={theme as SyntaxHighlighterProps["style"]}
@@ -106,34 +106,21 @@ export function ServerMessage({
     stopStreaming,
     scrollToBottom,
     isAssistant = false,
+    onRetry,
+    onBranch,
+    onCreateTextNode
 }: {
     message: Doc<"messages">;
     isDriven: boolean;
     stopStreaming: () => void;
     scrollToBottom: () => void;
     isAssistant?: boolean;
+    onRetry?: () => void;
+    onBranch?: () => void;
+    onCreateTextNode?: () => void;
 }) {
-    const createTextNodeFromMessage = useMutation(api.nodes.createTextNodeFromMessage);
-    const [isCreatingNode, setIsCreatingNode] = useState(false);
-    
     // Check if the chat's AI node is on a frame
     const isNodeOnFrame = useQuery(api.nodes.checkChatNodeOnFrame, { chatId: message.chatId });
-
-    const handleCreateTextNode = async () => {
-        if (!text || isCreatingNode) return;
-
-        setIsCreatingNode(true);
-        try {
-            await createTextNodeFromMessage({
-                messageId: message._id,
-                chatId: message.chatId,
-            });
-        } catch (error) {
-            console.error("Failed to create text node:", error);
-        } finally {
-            setIsCreatingNode(false);
-        }
-    };
 
     const { text, status } = useStream(
         api.messages.getStreamBody,
@@ -207,25 +194,51 @@ export function ServerMessage({
                             />
                         )}
 
-                        {/* Create Text Node Button - only show for completed AI messages when node is on a frame */}
-                        {text && !isCurrentlyStreaming && isAssistant && isNodeOnFrame && (
-                            <motion.div
-                                className="mt-3 pt-3 border-t border-border"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.2 }}
-                            >
-                                <Button
-                                    onClick={handleCreateTextNode}
-                                    disabled={isCreatingNode}
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-xs"
-                                >
-                                    <FileText className="w-3 h-3 mr-1" />
-                                    {isCreatingNode ? "Creating..." : "Create Text Node"}
-                                </Button>
-                            </motion.div>
+                        {/* Action buttons - only for AI messages */}
+                        {(onRetry || onBranch || onCreateTextNode) && (
+                            <div className="flex gap-1 self-start">
+                                {/* Retry button for AI messages */}
+                                {onRetry && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={onRetry}
+                                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                        title="Retry from this response"
+                                    >
+                                        <RotateCw className="w-3 h-3 mr-1" />
+                                        Retry
+                                    </Button>
+                                )}
+
+                                {/* Branch button for AI messages */}
+                                {onBranch && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={onBranch}
+                                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                        title="Branch from this response"
+                                    >
+                                        <GitBranch className="w-3 h-3 mr-1" />
+                                        Branch
+                                    </Button>
+                                )}
+
+                                {/* Create text node button for AI messages */}
+                                {text && !isCurrentlyStreaming && isAssistant && isNodeOnFrame && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={onCreateTextNode}
+                                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                        title="Create text node from this response"
+                                    >
+                                        <FileText className="w-3 h-3 mr-1" />
+                                        Text Node
+                                    </Button>
+                                )}
+                            </div>
                         )}
                     </motion.div>
                 )}

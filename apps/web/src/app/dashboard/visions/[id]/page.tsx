@@ -24,21 +24,8 @@ import { SidebarProvider } from '@/contexts/sidebar-context';
 import { VisionTitleSkeleton, DraggableSidebarSkeleton } from '@/components/vision-skeletons';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ProfileSettingsDialog } from '@/components/ui/profile-settings-dialog';
-
-enum ViewMode {
-    CHANNEL = "channel",
-    FRAME = "frame",
-    SETTINGS = "Settings"
-}
-
-type SidebarState = {
-    leftWidth: number;
-    rightWidth: number;
-    leftCollapsed: boolean;
-    rightCollapsed: boolean;
-    leftOpen: boolean;
-    rightOpen: boolean;
-};
+import { UpgradeDialog } from '@/components/ui/upgrade-dialog';
+import { SidebarState, ViewMode, TabStore } from '@/types/vision_page';
 
 const DEFAULT_SIDEBAR_STATE: SidebarState = {
     leftWidth: 280,
@@ -102,9 +89,9 @@ function VisionDetailPageContent() {
     const { user } = useUser();
     const params = useParams();
     const visionId = params.id as Id<"visions">;
-    const [tabs, setTabs] = useState<Map<string, { title: string, id: string, type: ViewMode }>>(new Map());
-    const [selectedTab, setSelectedTab] = useState<{ title: string, id: string, type: ViewMode } | null>(null)
-    const [tabOrder, setTabOrder] = useState<{ title: string, id: string, type: ViewMode }[]>([])
+    const [tabs, setTabs] = useState<Map<string, TabStore>>(new Map());
+    const [selectedTab, setSelectedTab] = useState<TabStore | null>(null)
+    const [tabOrder, setTabOrder] = useState<TabStore[]>([])
     const [openChannels, setOpenChannels] = useState<Set<string>>(new Set());
     const [editingChannel, setEditingChannel] = useState<string | null>(null);
     const [editingChannelName, setEditingChannelName] = useState<string>('');
@@ -121,6 +108,7 @@ function VisionDetailPageContent() {
     const mobileHeaderRef = useRef<HTMLDivElement>(null);
     const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null);
     const sidebarSaveTimeout = useRef<NodeJS.Timeout | null>(null);
+    const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
     const vision = useQuery(
         api.visions.get,
@@ -195,13 +183,23 @@ function VisionDetailPageContent() {
         }
     }, [openChannels, storageKey]);
 
+    const setTab = (data: TabStore | null) => {
+        setSelectedTab(data);
+        //if (!data) return
+        //if (data.type == ViewMode.FRAME && data.parent) {
+        //    channelIdRef.current = data.parent
+        //    return
+        //}
+        //channelIdRef.current = data.id
+    }
+
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const savedTabs = localStorage.getItem(tabsStorageKey);
             if (savedTabs) {
                 try {
                     const tabsData = JSON.parse(savedTabs);
-                    const tabsMap = new Map(tabsData.map((tab: { title: string, id: string, type: ViewMode }) => [tab.id, tab])) as Map<string, { title: string, id: string, type: ViewMode }>;
+                    const tabsMap = new Map(tabsData.map((tab: TabStore) => [tab.id, tab])) as Map<string, TabStore>;
                     setTabs(tabsMap);
                     setTabOrder(tabsData);
                 } catch (error) {
@@ -213,7 +211,7 @@ function VisionDetailPageContent() {
             if (savedSelectedTab) {
                 try {
                     const selectedTabData = JSON.parse(savedSelectedTab);
-                    setSelectedTab(selectedTabData);
+                    setTab(selectedTabData)
                 } catch (error) {
                     console.error('Failed to parse saved selected tab:', error);
                 }
@@ -480,7 +478,15 @@ function VisionDetailPageContent() {
                     >
                         {tab.type === ViewMode.CHANNEL && user && (
                             <SidebarProvider onOpenChat={handleOpenChat} rightSidebarContentRef={rightSidebarContentRef}>
-                                <Channel key={tab.id} channelId={tab.id} onOpenChat={handleOpenChat} onChannelNavigate={handleChannelNavigate} onOpenCommentChat={handleOpenCommentChat} />
+                                <Channel
+                                    key={tab.id}
+                                    channelId={tab.id}
+                                    onOpenChat={handleOpenChat}
+                                    onChannelNavigate={handleChannelNavigate}
+                                    onOpenCommentChat={handleOpenCommentChat}
+                                    visionId={visionId}
+                                    onShowUpgradeDialog={setShowUpgradeDialog}
+                                />
                             </SidebarProvider>
                         )}
                         {tab.type === ViewMode.FRAME && user?.id && (
@@ -488,6 +494,8 @@ function VisionDetailPageContent() {
                                 <FrameComponent
                                     userId={user.id}
                                     id={tab.id as Id<"frames">}
+                                    visionId={visionId}
+                                    onShowUpgradeDialog={setShowUpgradeDialog}
                                 />
                             </SidebarProvider>
                         )}
@@ -524,25 +532,24 @@ function VisionDetailPageContent() {
         }
     }
 
-    const openTab = (tab: ViewMode, id: string, title: string) => {
-        if (tabs.has(id)) {
-            const existingTab = tabs.get(id)!;
-            setSelectedTab(existingTab);
+    const openTab = (tab: TabStore) => {
+        if (tabs.has(tab.id)) {
+            const existingTab = tabs.get(tab.id)!;
+            setTab(existingTab);
             return;
         }
 
-        newTab(tab, id, title);
+        newTab(tab);
     }
 
-    const newTab = (tab: ViewMode, id: string, title: string) => {
-        const newTabData = { title, id: id, type: tab };
+    const newTab = (tab: TabStore) => {
         setTabs((t) => {
             const newMap = new Map(t);
-            newMap.set(id, newTabData);
+            newMap.set(tab.id, tab);
             return newMap;
         });
         setTabOrder(prev => {
-            const newOrder = [...prev, newTabData];
+            const newOrder = [...prev, tab];
             if (newOrder.length > 10) {
                 const tabToRemove = newOrder[0];
                 setTabs((currentTabs) => {
@@ -554,7 +561,7 @@ function VisionDetailPageContent() {
             }
             return newOrder;
         });
-        setSelectedTab(newTabData);
+        setTab(tab);
     }
 
     const toggleChannel = (channelId: string, open?: boolean) => {
@@ -594,7 +601,7 @@ function VisionDetailPageContent() {
             });
 
             if (channelId) {
-                openTab(ViewMode.CHANNEL, channelId, "Untitled");
+                openTab({ type: ViewMode.CHANNEL, id: channelId, title: "Untitled" });
             }
         } catch (error) {
             console.error('Failed to create channel:', error);
@@ -667,7 +674,7 @@ function VisionDetailPageContent() {
                 setEditingFrame(frameId);
                 setEditingFrameName(defaultTitle);
 
-                openTab(ViewMode.FRAME, frameId, defaultTitle);
+                openTab({ type: ViewMode.FRAME, id: frameId, title: defaultTitle, parent: channelId });
             }
         } catch (error) {
             console.error('Failed to create frame:', error);
@@ -761,7 +768,7 @@ function VisionDetailPageContent() {
             }
             return newOrder;
         });
-        setSelectedTab(tabData);
+        setTab(tabData);
 
         // If we have a nodeId, we could implement scrolling to that specific node
         if (nodeId) {
@@ -782,16 +789,16 @@ function VisionDetailPageContent() {
             const newOrder = prev.filter(tab => tab.id !== id);
 
             if (newOrder.length === 0) {
-                setSelectedTab(null);
+                setTab(null);
             } else if (selectedTab?.id === id) {
-                setSelectedTab(newOrder[newOrder.length - 1]);
+                setTab(newOrder[newOrder.length - 1]);
             }
 
             return newOrder;
         });
     }
 
-    const handleTabReorder = (newOrder: { title: string, id: string, type: string }[]) => {
+    const handleTabReorder = (newOrder: TabStore[]) => {
         const convertedOrder = newOrder.map(tab => ({
             ...tab,
             type: tab.type as ViewMode
@@ -799,91 +806,163 @@ function VisionDetailPageContent() {
         setTabOrder(convertedOrder);
     }
 
-    const handleTabSelect = (tab: { title: string, id: string, type: string }) => {
-        const convertedTab = {
-            ...tab,
-            type: tab.type as ViewMode
-        };
-        setSelectedTab(convertedTab);
-    }
-
-    const tabsForDraggable = tabOrder.map(tab => ({
-        ...tab,
-        type: tab.type as string
-    }));
-
-    const selectedTabForDraggable = selectedTab ? {
-        ...selectedTab,
-        type: selectedTab.type as string
-    } : null;
-
     const renderTabIconForDraggable = (type: string) => {
         return renderTabIcon(type as ViewMode);
     };
 
     return (
-        <main className="w-screen h-screen flex relative bg-accent">
-            <NodeUserCacheProvider visionId={visionId}>
-                {isMobile && (
-                    <motion.div
-                        ref={mobileHeaderRef}
-                        className="absolute top-0 left-0 right-0 z-40 px-3 py-3 bg-accent"
-                        initial={{ y: -50, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        transition={{ duration: 0.3 }}
-                    >
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={toggleLeftSidebar}
-                                    className={cn("p-2 bg-background")}
-                                >
-                                    <ListTree className="w-4 h-4" />
-                                </Button>
-                            </div>
+        <>
+            {/* Upgrade Dialog */}
+            <UpgradeDialog
+                open={showUpgradeDialog}
+                onOpenChange={setShowUpgradeDialog}
+                reason="ai"
+            />
+            <main className="w-screen h-screen flex relative bg-accent">
+                <NodeUserCacheProvider visionId={visionId}>
+                    {isMobile && (
+                        <motion.div
+                            ref={mobileHeaderRef}
+                            className="absolute top-0 left-0 right-0 z-40 px-3 py-3 bg-accent"
+                            initial={{ y: -50, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={toggleLeftSidebar}
+                                        className={cn("p-2 bg-background")}
+                                    >
+                                        <ListTree className="w-4 h-4" />
+                                    </Button>
+                                </div>
 
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={toggleRightSidebar}
-                                    className={cn("p-2 bg-background")}
-                                >
-                                    <PanelRight className="w-4 h-4" />
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={toggleRightSidebar}
+                                        className={cn("p-2 bg-background")}
+                                    >
+                                        <PanelRight className="w-4 h-4" />
+                                    </Button>
+                                </div>
                             </div>
-                        </div>
-                    </motion.div>
-                )}
+                        </motion.div>
+                    )}
 
-                {isMobile ? (
-                    <AnimatePresence mode="wait">
-                        {sidebarState.leftOpen && (
-                            <motion.div
-                                ref={leftSidebarRef}
-                                initial={{ x: -280 }}
-                                animate={{ x: 0 }}
-                                exit={{ x: -280 }}
-                                transition={{ duration: 0.3, ease: "easeInOut" }}
-                                className="w-[250px] h-full bg-card border-r border-border flex z-50 absolute top-0 left-0 shadow-lg"
+                    {isMobile ? (
+                        <AnimatePresence mode="wait">
+                            {sidebarState.leftOpen && (
+                                <motion.div
+                                    ref={leftSidebarRef}
+                                    initial={{ x: -280 }}
+                                    animate={{ x: 0 }}
+                                    exit={{ x: -280 }}
+                                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                                    className="w-[250px] h-full bg-card border-r border-border flex z-50 absolute top-0 left-0 shadow-lg"
+                                >
+                                    <div className="flex-1 space-y-2 overflow-hidden">
+                                        {isVisionLoading ? (
+                                            <VisionTitleSkeleton />
+                                        ) : (
+                                            <TitleCard
+                                                OpenSettings={(id) => {
+                                                    openTab({ type: ViewMode.SETTINGS, id, title: ViewMode.SETTINGS });
+                                                    setSidebarState(prev => ({ ...prev, leftOpen: false }));
+                                                }}
+                                                isLoading={isVisionLoading}
+                                                vision={vision}
+                                            />
+                                        )}
+
+                                        <>
+                                            <hr />
+                                            <div className="px-3 w-full space-y-4">
+                                                <div className="w-full flex items-center justify-between">
+                                                    <Button
+                                                        variant={"outline"}
+                                                        className="text-xs text-muted-foreground flex items-center gap-1"
+                                                        onClick={handleCreateChannel}
+                                                        disabled={isChannelsLoading}
+                                                    >
+                                                        <TableProperties size={15} /> New channel
+                                                    </Button>
+                                                    <Button
+                                                        variant={"outline"}
+                                                        className="text-xs text-muted-foreground flex items-center gap-1"
+                                                        onClick={() => setOpenChannels(new Set())}
+                                                    >
+                                                        <ChevronsDownUp />
+                                                    </Button>
+                                                </div>
+                                                {isChannelsLoading ? (
+                                                    <DraggableSidebarSkeleton />
+                                                ) : channels && channels.length > 0 ? (
+                                                    <DraggableSidebar
+                                                        channels={channels}
+                                                        framesByChannel={framesByChannel}
+                                                        openChannels={openChannels}
+                                                        selectedTabId={selectedTab?.id}
+                                                        editingChannel={editingChannel}
+                                                        editingChannelName={editingChannelName}
+                                                        editingFrame={editingFrame}
+                                                        editingFrameName={editingFrameName}
+                                                        onChannelReorder={handleChannelReorder}
+                                                        onChannelReorderEnd={handleChannelReorder}
+                                                        onFrameReorder={handleFrameReorder}
+                                                        onFrameReorderEnd={handleFrameReorder}
+                                                        onToggleChannel={toggleChannel}
+                                                        onOpenTab={(tab) => {
+                                                            openTab(tab);
+                                                            setSidebarState(prev => ({ ...prev, leftOpen: false }));
+                                                        }}
+                                                        onCreateFrame={handleCreateFrame}
+                                                        onEditChannel={startEditingChannel}
+                                                        onEditFrame={startEditingFrame}
+                                                        onSaveChannel={saveChannelName}
+                                                        onSaveFrame={saveFrameName}
+                                                        onCancelEditChannel={cancelEditingChannel}
+                                                        onCancelEditFrame={cancelEditingFrame}
+                                                        onEditChannelNameChange={setEditingChannelName}
+                                                        onEditFrameNameChange={setEditingFrameName}
+                                                    />
+                                                ) : (
+                                                    <div className="text-xs text-muted-foreground/60 px-3">
+                                                        No channels yet
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    ) : (
+                        !sidebarState.leftCollapsed && (
+                            <div
+                                className="h-full bg-card border-r border-border flex flex-col relative z-40"
+                                style={{
+                                    width: sidebarState.leftWidth,
+                                    height: '100vh'
+                                }}
                             >
-                                <div className="flex-1 space-y-2 overflow-hidden">
-                                    {isVisionLoading ? (
-                                        <VisionTitleSkeleton />
-                                    ) : (
-                                        <TitleCard
-                                            OpenSettings={(id) => {
-                                                openTab(ViewMode.SETTINGS, id, ViewMode.SETTINGS);
-                                                setSidebarState(prev => ({ ...prev, leftOpen: false }));
-                                            }}
-                                            isLoading={isVisionLoading}
-                                            vision={vision}
-                                        />
-                                    )}
-
-                                    <>
+                                <div className="flex flex-col justify-between flex-1 overflow-hidden">
+                                    <div className="space-y-2">
+                                        {isVisionLoading ? (
+                                            <VisionTitleSkeleton />
+                                        ) : (
+                                            <TitleCard
+                                                OpenSettings={(id) => {
+                                                    openTab({ type: ViewMode.SETTINGS, id, title: ViewMode.SETTINGS });
+                                                }}
+                                                isLoading={isVisionLoading}
+                                                vision={vision}
+                                            />
+                                        )}
                                         <hr />
                                         <div className="px-3 w-full space-y-4">
                                             <div className="w-full flex items-center justify-between">
@@ -920,14 +999,7 @@ function VisionDetailPageContent() {
                                                     onFrameReorder={handleFrameReorder}
                                                     onFrameReorderEnd={handleFrameReorder}
                                                     onToggleChannel={toggleChannel}
-                                                    onOpenTab={(type, id, title) => {
-                                                        if (type === "channel") {
-                                                            openTab(ViewMode.CHANNEL, id, title);
-                                                        } else {
-                                                            openTab(ViewMode.FRAME, id, title);
-                                                        }
-                                                        setSidebarState(prev => ({ ...prev, leftOpen: false }));
-                                                    }}
+                                                    onOpenTab={openTab}
                                                     onCreateFrame={handleCreateFrame}
                                                     onEditChannel={startEditingChannel}
                                                     onEditFrame={startEditingFrame}
@@ -944,188 +1016,146 @@ function VisionDetailPageContent() {
                                                 </div>
                                             )}
                                         </div>
-                                    </>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                ) : (
-                    !sidebarState.leftCollapsed && (
-                        <div
-                            className="h-full bg-card border-r border-border flex flex-col relative z-40"
-                            style={{
-                                width: sidebarState.leftWidth,
-                                height: '100vh'
-                            }}
-                        >
-                            <div className="flex flex-col justify-between flex-1 overflow-hidden">
-                                <div className="space-y-2">
-                                    {isVisionLoading ? (
-                                        <VisionTitleSkeleton />
-                                    ) : (
-                                        <TitleCard
-                                            OpenSettings={(id) => {
-                                                openTab(ViewMode.SETTINGS, id, ViewMode.SETTINGS);
-                                            }}
-                                            isLoading={isVisionLoading}
-                                            vision={vision}
-                                        />
-                                    )}
-                                    <hr />
-                                    <div className="px-3 w-full space-y-4">
-                                        <div className="w-full flex items-center justify-between">
-                                            <Button
-                                                variant={"outline"}
-                                                className="text-xs text-muted-foreground flex items-center gap-1"
-                                                onClick={handleCreateChannel}
-                                                disabled={isChannelsLoading}
-                                            >
-                                                <TableProperties size={15} /> New channel
-                                            </Button>
-                                            <Button
-                                                variant={"outline"}
-                                                className="text-xs text-muted-foreground flex items-center gap-1"
-                                                onClick={() => setOpenChannels(new Set())}
-                                            >
-                                                <ChevronsDownUp />
-                                            </Button>
-                                        </div>
-                                        {isChannelsLoading ? (
-                                            <DraggableSidebarSkeleton />
-                                        ) : channels && channels.length > 0 ? (
-                                            <DraggableSidebar
-                                                channels={channels}
-                                                framesByChannel={framesByChannel}
-                                                openChannels={openChannels}
-                                                selectedTabId={selectedTab?.id}
-                                                editingChannel={editingChannel}
-                                                editingChannelName={editingChannelName}
-                                                editingFrame={editingFrame}
-                                                editingFrameName={editingFrameName}
-                                                onChannelReorder={handleChannelReorder}
-                                                onChannelReorderEnd={handleChannelReorder}
-                                                onFrameReorder={handleFrameReorder}
-                                                onFrameReorderEnd={handleFrameReorder}
-                                                onToggleChannel={toggleChannel}
-                                                onOpenTab={(type, id, title) => {
-                                                    if (type === "channel") {
-                                                        openTab(ViewMode.CHANNEL, id, title);
-                                                    } else {
-                                                        openTab(ViewMode.FRAME, id, title);
-                                                    }
-                                                }}
-                                                onCreateFrame={handleCreateFrame}
-                                                onEditChannel={startEditingChannel}
-                                                onEditFrame={startEditingFrame}
-                                                onSaveChannel={saveChannelName}
-                                                onSaveFrame={saveFrameName}
-                                                onCancelEditChannel={cancelEditingChannel}
-                                                onCancelEditFrame={cancelEditingFrame}
-                                                onEditChannelNameChange={setEditingChannelName}
-                                                onEditFrameNameChange={setEditingFrameName}
-                                            />
-                                        ) : (
-                                            <div className="text-xs text-muted-foreground/60 px-3">
-                                                No channels yet
+                                    </div>
+                                    {/* Bottom Section */}
+                                    <div className="px-3 py-5 border-t border-border space-y-2">
+                                        <button
+                                            className="flex items-center gap-2 p-2  rounded-md hover:bg-accent w-full text-left transition-colors"
+                                            onClick={() => setProfileSettingsOpen(true)}
+                                        >
+                                            <Avatar className="w-8 h-8">
+                                                <AvatarImage src={user?.imageUrl} />
+                                                <AvatarFallback>
+                                                    {user?.firstName?.[0]}{user?.lastName?.[0]}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-sm font-medium truncate">
+                                                    {user?.firstName} {user?.lastName}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground truncate">
+                                                    {user?.emailAddresses?.[0]?.emailAddress}
+                                                </div>
                                             </div>
-                                        )}
+                                        </button>
                                     </div>
                                 </div>
-                                {/* Bottom Section */}
-                                <div className="px-3 py-5 border-t border-border space-y-2">
-                                    <button
-                                        className="flex items-center gap-2 p-2  rounded-md hover:bg-accent w-full text-left transition-colors"
-                                        onClick={() => setProfileSettingsOpen(true)}
-                                    >
-                                        <Avatar className="w-8 h-8">
-                                            <AvatarImage src={user?.imageUrl} />
-                                            <AvatarFallback>
-                                                {user?.firstName?.[0]}{user?.lastName?.[0]}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-sm font-medium truncate">
-                                                {user?.firstName} {user?.lastName}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground truncate">
-                                                {user?.emailAddresses?.[0]?.emailAddress}
+
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="absolute -right-3 top-4 w-6 h-6 rounded-full border bg-background z-50"
+                                    onClick={toggleLeftCollapse}
+                                >
+                                    <ChevronLeft className="w-3 h-3" />
+                                </Button>
+
+                                <div
+                                    ref={leftResizeRef}
+                                    className="absolute right-0 top-0 w-1 h-full cursor-col-resize hover:bg-accent hover:w-2 transition-all z-50"
+                                    onMouseDown={() => setIsResizing('left')}
+                                />
+                            </div>
+                        )
+                    )}
+
+                    {!isMobile && sidebarState.leftCollapsed && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-6 h-6 rounded-full border bg-background z-50 absolute left-2 top-4"
+                            onClick={toggleLeftCollapse}
+                        >
+                            <ChevronRight className="w-3 h-3" />
+                        </Button>
+                    )}
+
+                    <div className={cn(
+                        "flex flex-col flex-1 overflow-hidden bg-background relative",
+                        isMobile && "pt-[53px]"
+                    )}>
+                        <motion.div
+                            className="shrink-0"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.2 }}
+                        >
+                            <DraggableTabs
+                                tabs={tabs.values().toArray()}
+                                selectedTab={selectedTab}
+                                TabSelectAction={setTab}
+                                TabRemoveAction={removeTab}
+                                TabReorderAction={handleTabReorder}
+                                renderTabIconAction={renderTabIconForDraggable}
+                            />
+                        </motion.div>
+
+                        <div className="no-scrollbar flex-1 overflow-auto">
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.3 }}
+                                className="h-full"
+                            >
+                                {renderContent()}
+                            </motion.div>
+                        </div>
+                    </div>
+
+                    {isMobile ? (
+                        <AnimatePresence mode="wait">
+                            {sidebarState.rightOpen && (
+                                <motion.div
+                                    ref={rightSidebarRef}
+                                    initial={{ x: 400 }}
+                                    animate={{ x: 0 }}
+                                    exit={{ x: 400 }}
+                                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                                    className="w-full h-screen bg-card border-l border-border z-40 absolute top-0 right-0 shadow-lg flex flex-col"
+                                >
+                                    <div className="flex justify-between p-4 border-b shrink-0">
+                                        <div className="">
+                                            <PresenceFacePile visionId={visionId} />
+                                        </div>
+
+                                        <div className="flex items-center gap-1">
+                                            <ThemeSwitcher size="sm" />
+                                            <Button className="text-xs" size={"sm"} variant={"outline"}>
+                                                Share
+                                            </Button>
+
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={toggleRightSidebar}
+                                                    className={cn("p-2 bg-background")}
+                                                >
+                                                    <PanelRightClose className="w-4 h-4" />
+                                                </Button>
                                             </div>
                                         </div>
-                                    </button>
-                                </div>
-                            </div>
+                                    </div>
 
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="absolute -right-3 top-4 w-6 h-6 rounded-full border bg-background z-50"
-                                onClick={toggleLeftCollapse}
-                            >
-                                <ChevronLeft className="w-3 h-3" />
-                            </Button>
-
+                                    <div className="flex-1 min-h-0">
+                                        <LeftSidebarContent
+                                            ref={rightSidebarContentRef}
+                                            visionId={visionId}
+                                            onChannelNavigate={handleChannelNavigate}
+                                            currentFrameId={selectedTab?.type === ViewMode.FRAME ? selectedTab.id : undefined}
+                                        />
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    ) : (
+                        !sidebarState.rightCollapsed && (
                             <div
-                                ref={leftResizeRef}
-                                className="absolute right-0 top-0 w-1 h-full cursor-col-resize hover:bg-accent hover:w-2 transition-all z-50"
-                                onMouseDown={() => setIsResizing('left')}
-                            />
-                        </div>
-                    )
-                )}
-
-                {!isMobile && sidebarState.leftCollapsed && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-6 h-6 rounded-full border bg-background z-50 absolute left-2 top-4"
-                        onClick={toggleLeftCollapse}
-                    >
-                        <ChevronRight className="w-3 h-3" />
-                    </Button>
-                )}
-
-                <div className={cn(
-                    "flex flex-col flex-1 overflow-hidden bg-background relative",
-                    isMobile && "pt-[53px]"
-                )}>
-                    <motion.div
-                        className="shrink-0"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
-                    >
-                        <DraggableTabs
-                            tabs={tabsForDraggable}
-                            selectedTab={selectedTabForDraggable}
-                            TabSelectAction={handleTabSelect}
-                            TabRemoveAction={removeTab}
-                            TabReorderAction={handleTabReorder}
-                            renderTabIconAction={renderTabIconForDraggable}
-                        />
-                    </motion.div>
-
-                    <div className="no-scrollbar flex-1 overflow-auto">
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.3 }}
-                            className="h-full"
-                        >
-                            {renderContent()}
-                        </motion.div>
-                    </div>
-                </div>
-
-                {isMobile ? (
-                    <AnimatePresence mode="wait">
-                        {sidebarState.rightOpen && (
-                            <motion.div
-                                ref={rightSidebarRef}
-                                initial={{ x: 400 }}
-                                animate={{ x: 0 }}
-                                exit={{ x: 400 }}
-                                transition={{ duration: 0.3, ease: "easeInOut" }}
-                                className="w-full h-screen bg-card border-l border-border z-40 absolute top-0 right-0 shadow-lg flex flex-col"
+                                className="h-full bg-card border-l border-border relative z-40 flex flex-col"
+                                style={{
+                                    width: sidebarState.rightWidth,
+                                    height: '100vh'
+                                }}
                             >
                                 <div className="flex justify-between p-4 border-b shrink-0">
                                     <div className="">
@@ -1137,17 +1167,6 @@ function VisionDetailPageContent() {
                                         <Button className="text-xs" size={"sm"} variant={"outline"}>
                                             Share
                                         </Button>
-
-                                        <div className="flex items-center gap-2">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={toggleRightSidebar}
-                                                className={cn("p-2 bg-background")}
-                                            >
-                                                <PanelRightClose className="w-4 h-4" />
-                                            </Button>
-                                        </div>
                                     </div>
                                 </div>
 
@@ -1159,76 +1178,44 @@ function VisionDetailPageContent() {
                                         currentFrameId={selectedTab?.type === ViewMode.FRAME ? selectedTab.id : undefined}
                                     />
                                 </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                ) : (
-                    !sidebarState.rightCollapsed && (
-                        <div
-                            className="h-full bg-card border-l border-border relative z-40 flex flex-col"
-                            style={{
-                                width: sidebarState.rightWidth,
-                                height: '100vh'
-                            }}
-                        >
-                            <div className="flex justify-between p-4 border-b shrink-0">
-                                <div className="">
-                                    <PresenceFacePile visionId={visionId} />
-                                </div>
 
-                                <div className="flex items-center gap-1">
-                                    <ThemeSwitcher size="sm" />
-                                    <Button className="text-xs" size={"sm"} variant={"outline"}>
-                                        Share
-                                    </Button>
-                                </div>
-                            </div>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="absolute -left-3 top-4 w-6 h-6 rounded-full border bg-background z-50"
+                                    onClick={toggleRightCollapse}
+                                >
+                                    <ChevronRight className="w-3 h-3" />
+                                </Button>
 
-                            <div className="flex-1 min-h-0">
-                                <LeftSidebarContent
-                                    ref={rightSidebarContentRef}
-                                    visionId={visionId}
-                                    onChannelNavigate={handleChannelNavigate}
-                                    currentFrameId={selectedTab?.type === ViewMode.FRAME ? selectedTab.id : undefined}
+                                <div
+                                    ref={rightResizeRef}
+                                    className="absolute left-0 top-0 w-1 h-full cursor-col-resize hover:bg-accent hover:w-2 transition-all z-50"
+                                    onMouseDown={() => setIsResizing('right')}
                                 />
                             </div>
+                        )
+                    )}
 
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="absolute -left-3 top-4 w-6 h-6 rounded-full border bg-background z-50"
-                                onClick={toggleRightCollapse}
-                            >
-                                <ChevronRight className="w-3 h-3" />
-                            </Button>
+                    {!isMobile && sidebarState.rightCollapsed && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-6 h-6 rounded-full border bg-background z-50 absolute right-2 top-4"
+                            onClick={toggleRightCollapse}
+                        >
+                            <ChevronLeft className="w-3 h-3" />
+                        </Button>
+                    )}
 
-                            <div
-                                ref={rightResizeRef}
-                                className="absolute left-0 top-0 w-1 h-full cursor-col-resize hover:bg-accent hover:w-2 transition-all z-50"
-                                onMouseDown={() => setIsResizing('right')}
-                            />
-                        </div>
-                    )
-                )}
-
-                {!isMobile && sidebarState.rightCollapsed && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-6 h-6 rounded-full border bg-background z-50 absolute right-2 top-4"
-                        onClick={toggleRightCollapse}
-                    >
-                        <ChevronLeft className="w-3 h-3" />
-                    </Button>
-                )}
-
-                {/* Profile Settings Dialog */}
-                <ProfileSettingsDialog
-                    open={profileSettingsOpen}
-                    onOpenChange={setProfileSettingsOpen}
-                />
-            </NodeUserCacheProvider >
-        </main>
+                    {/* Profile Settings Dialog */}
+                    <ProfileSettingsDialog
+                        open={profileSettingsOpen}
+                        onOpenChange={setProfileSettingsOpen}
+                    />
+                </NodeUserCacheProvider >
+            </main>
+        </>
     );
 }
 

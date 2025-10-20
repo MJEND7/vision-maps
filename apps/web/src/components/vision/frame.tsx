@@ -22,8 +22,6 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import PasteBin from "../channel/paste-bin";
-import { CreateNodeArgs } from "@convex/nodes";
-import { useMetadataCache } from "../../utils/ogMetadata";
 import { useMovementQueue } from "../../hooks/useMovementQueue";
 import nodeTypes from "./nodes";
 import { CanvasContextMenu } from "./canvas-context-menu";
@@ -32,7 +30,7 @@ import usePresence from "@convex-dev/presence/react";
 import { useSidebar } from "../../contexts/sidebar-context";
 import { useViewportCenter } from "../../hooks/useViewportCenter";
 import { ReactFlowErrorBoundary } from "./ReactFlowErrorBoundary";
-import { UpgradeDialog } from "../ui/upgrade-dialog";
+import useCreateNode from "@/hooks/useCreateNode";
 
 // Component that has access to ReactFlow context for viewport positioning
 function ViewportAwareNodeManager({
@@ -72,8 +70,8 @@ function ViewportAwareNodeManager({
             // Fallback to viewport center with randomness
             const center = getViewportCenter();
             position = {
-                x: center.x + (Math.random() - 0.5) * 200,
-                y: center.y + (Math.random() - 0.5) * 200,
+                x: center.x,
+                y: center.y,
             };
         }
 
@@ -99,17 +97,19 @@ function ViewportAwareNodeManager({
 export default function FrameComponent({
     id,
     userId,
+    visionId,
+    onShowUpgradeDialog,
 }: {
     id: Id<"frames">;
     userId: string;
+    visionId: string,
+    onShowUpgradeDialog: (show: boolean) => void;
 }) {
     const { openChat, rightSidebarContentRef } = useSidebar();
     const [isDark, setIsDark] = useState(false);
-    const [getViewportCenter, setGetViewportCenter] = useState<(() => { x: number; y: number }) | null>(null);
-    const { cacheMetadataForUrl } = useMetadataCache();
+    const [getViewportCenter, setViewportCenter] = useState<(() => { x: number; y: number })>(() => ({ x: 0, y: 0 }));
     const [convertScreenToFlowPosition, setConvertScreenToFlowPosition] = useState<((x: number, y: number) => { x: number; y: number }) | null>(null);
     const [rightClickPosition, setRightClickPosition] = useState<{ x: number; y: number } | null>(null);
-    const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
     // Dynamic edge styling - memoized to prevent unnecessary re-renders
     const defaultEdgeOptions: DefaultEdgeOptions = useMemo(() => ({
@@ -158,14 +158,13 @@ export default function FrameComponent({
     });
     const isAlone = !(users?.find((u) => u.online));
 
-    const createNode = useMutation(api.nodes.create);
+    const createNode = useCreateNode({ visionId })
     const updateEdges = useMutation(api.edges.update);
     const addExistingNodeToFrame = useMutation(api.nodes.addToFrame);
-    const updateChatNodeId = useMutation(api.chats.updateChatNodeId);
 
     const framedNodes = useQuery(api.frames.getFrameNodes, { frameId: id });
     const edges = useQuery(api.edges.get, { frameId: id });
-    
+
 
     // Movement queue
     const { setNodesMap, handleNodesChange } = useMovementQueue(
@@ -208,25 +207,6 @@ export default function FrameComponent({
         });
     }, []);
 
-    // Function to create node from selected text
-    const handleCreateNodeFromSelection = useCallback(async (text: string, position: { x: number; y: number }) => {
-        if (!frame) throw new Error("Failed to get a frame");
-
-        await createNode({
-            title: "Extracted Text",
-            variant: "Text",
-            value: text,
-            channel: frame.channel,
-            frameId: frame._id,
-            position: {
-                id: crypto.randomUUID(),
-                position: position,
-                type: "Text",
-                data: "",
-            },
-        });
-    }, [frame, createNode]);
-
     // === Node data transformation ===
     useEffect(() => {
         if (!framedNodes) return;
@@ -244,7 +224,6 @@ export default function FrameComponent({
                     newMap.delete(nodeId);
                 }
             });
-
 
             // Add/update nodes from framedNodes
             framedNodes.forEach((framedNode) => {
@@ -269,7 +248,6 @@ export default function FrameComponent({
                         onEditComplete: () => updateEditingNodeId(null),
                         onUpdateNodeContent: updateNodeContent,
                         onOpenChat: openChat,
-                        onCreateNodeFromSelection: handleCreateNodeFromSelection,
                         onComment: () => {
                             // Handler for creating a new comment (from context menu)
                             // Need to pass the actual database node ID, not the ReactFlow ID
@@ -297,7 +275,7 @@ export default function FrameComponent({
             setNodesMap(newMap);
             return nextNodes;
         });
-    }, [framedNodes, setNodesMap, id, openChat, updateEditingNodeId, updateNodeContent, handleCreateNodeFromSelection, rightSidebarContentRef, frame?.vision]);
+    }, [framedNodes, setNodesMap, id, openChat, updateEditingNodeId, updateNodeContent, rightSidebarContentRef, frame?.vision]);
 
     const onNodesChange = useCallback(
         (changes: NodeChange[]) => {
@@ -461,54 +439,6 @@ export default function FrameComponent({
         };
     }, [selectedNodes.length]);
 
-
-    const handleNodeCreation = useCallback(async (data: Omit<CreateNodeArgs, "channel">) => {
-        if (!frame) throw new Error("Failed to get a frame");
-
-        // Cache OG metadata for URLs
-        if (data.value) {
-            await cacheMetadataForUrl(data.value);
-        }
-
-        // Use viewport center if available, otherwise fallback to reasonable center
-        let centerX, centerY;
-        if (getViewportCenter) {
-            const center = getViewportCenter();
-            centerX = center.x + (Math.random() - 0.5) * 200;
-            centerY = center.y + (Math.random() - 0.5) * 200;
-        } else {
-            centerX = 300 + (Math.random() - 0.5) * 400;
-            centerY = 300 + (Math.random() - 0.5) * 400;
-        }
-
-        const nodeId = await createNode({
-            ...data,
-            channel: frame.channel,
-            frameId: frame._id,
-            position: {
-                id: crypto.randomUUID(),
-                position: {
-                    x: centerX,
-                    y: centerY
-                },
-                type: data.variant || "Text",
-                data: "",
-            },
-        });
-
-        // If this is an AI node and the value looks like a chatId, update the chat to link to this node
-        if (data.variant === "AI" && data.value) {
-            try {
-                await updateChatNodeId({
-                    chatId: data.value as Id<"chats">,
-                    nodeId: nodeId,
-                });
-            } catch (error) {
-                console.error("Failed to link chat to node:", error);
-            }
-        }
-    }, [frame, cacheMetadataForUrl, getViewportCenter, createNode, updateChatNodeId]);
-
     if (!framedNodes || !edges || !frame) {
         return (
             <div className="w-full h-[93%] px-4 pt-4 flex items-center justify-center">
@@ -522,50 +452,50 @@ export default function FrameComponent({
             <div className="relative h-[calc(100%-4rem)]">
                 <ReactFlowErrorBoundary>
                     <ReactFlow
-                    nodes={nodes}
-                    edges={edges}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    onConnect={onConnect}
-                    onSelectionChange={onSelectionChange}
-                    onPaneContextMenu={onPaneContextMenu}
-                    onEdgeContextMenu={onEdgeContextMenu}
-                    onMove={closeContextMenu}
-                    onMoveStart={closeContextMenu}
-                    nodeTypes={nodeTypes as any}
-                    defaultEdgeOptions={defaultEdgeOptions}
-                    fitView
-                    colorMode={isDark ? "dark" : "light"}
-                    className="rounded-xl w-full h-full"
-                    multiSelectionKeyCode="Meta"
-                    panOnDrag={true}
-                    selectionOnDrag={true}
-                    selectNodesOnDrag={false}
-                    panOnScroll={true}
-                    zoomOnScroll={false}
-                    zoomOnPinch={true}
-                    zoomOnDoubleClick={false}
-                    zoomActivationKeyCode="Shift"
-                >
-                    <Controls />
-                    <Background
-                        key={id}
-                        variant={BackgroundVariant.Dots}
-                        id={`background-${id}`}
-                        gap={40}
-                        size={2}
-                    />
+                        nodes={nodes}
+                        edges={edges}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        onConnect={onConnect}
+                        onSelectionChange={onSelectionChange}
+                        onPaneContextMenu={onPaneContextMenu}
+                        onEdgeContextMenu={onEdgeContextMenu}
+                        onMove={closeContextMenu}
+                        onMoveStart={closeContextMenu}
+                        nodeTypes={nodeTypes as any}
+                        defaultEdgeOptions={defaultEdgeOptions}
+                        fitView
+                        colorMode={isDark ? "dark" : "light"}
+                        className="rounded-xl w-full h-full"
+                        multiSelectionKeyCode="Meta"
+                        panOnDrag={true}
+                        selectionOnDrag={true}
+                        selectNodesOnDrag={false}
+                        panOnScroll={true}
+                        zoomOnScroll={false}
+                        zoomOnPinch={true}
+                        zoomOnDoubleClick={false}
+                        zoomActivationKeyCode="Shift"
+                    >
+                        <Controls />
+                        <Background
+                            key={id}
+                            variant={BackgroundVariant.Dots}
+                            id={`background-${id}`}
+                            gap={40}
+                            size={2}
+                        />
 
-                    <ViewportAwareNodeManager
-                        showAddNodeDialog={showAddNodeDialog}
-                        setShowAddNodeDialog={setShowAddNodeDialog}
-                        id={id}
-                        frame={frame}
-                        addExistingNodeToFrame={addExistingNodeToFrame}
-                        onViewportCenterChange={(getCenter) => setGetViewportCenter(() => getCenter)}
-                        onScreenToFlowPositionChange={(convert) => setConvertScreenToFlowPosition(() => convert)}
-                        rightClickPosition={rightClickPosition}
-                    />
+                        <ViewportAwareNodeManager
+                            showAddNodeDialog={showAddNodeDialog}
+                            setShowAddNodeDialog={setShowAddNodeDialog}
+                            id={id}
+                            frame={frame}
+                            addExistingNodeToFrame={addExistingNodeToFrame}
+                            onViewportCenterChange={(getCenter) => setViewportCenter(() => getCenter)}
+                            onScreenToFlowPositionChange={(convert) => setConvertScreenToFlowPosition(() => convert)}
+                            rightClickPosition={rightClickPosition}
+                        />
                     </ReactFlow>
                 </ReactFlowErrorBoundary>
 
@@ -621,16 +551,12 @@ export default function FrameComponent({
                     position={{ x: contextMenu.x, y: contextMenu.y }}
                 />
             </div>
+
             <PasteBin
-                onCreateNode={handleNodeCreation}
-                onShowUpgradeDialog={setShowUpgradeDialog}
-                channelId={frame?.channel as string}
-                visionId={frame?.vision as string}
-            />
-            <UpgradeDialog
-                open={showUpgradeDialog}
-                onOpenChange={setShowUpgradeDialog}
-                reason="ai"
+                onCreateNode={(n) => createNode(n, { id, center: getViewportCenter() })}
+                onShowUpgradeDialog={onShowUpgradeDialog}
+                channelId={frame.channel}
+                visionId={visionId}
             />
         </div>
     );

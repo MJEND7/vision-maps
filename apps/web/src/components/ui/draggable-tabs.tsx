@@ -15,19 +15,14 @@ import {
   useLayoutEffect,
 } from "react";
 import { cn } from "@/lib/utils";
-
-interface Tab {
-  id: string;
-  title: string;
-  type: string;
-}
+import { TabStore } from "@/types/vision_page";
 
 interface DraggableTabsProps {
-  tabs: Tab[];
-  selectedTab: Tab | null;
-  TabSelectAction: (tab: Tab) => void;
+  tabs: TabStore[];
+  selectedTab: TabStore | null;
+  TabSelectAction: (tab: TabStore | null) => void;
   TabRemoveAction: (id: string) => void;
-  TabReorderAction: (tabs: Tab[]) => void;
+  TabReorderAction: (tabs: TabStore[]) => void;
   renderTabIconAction: (type: string) => React.ReactNode;
 }
 
@@ -39,7 +34,7 @@ function DraggableTab({
   renderTabIcon,
   isMobile,
 }: {
-  tab: Tab;
+  tab: TabStore;
   isSelected: boolean;
   onSelect: () => void;
   onRemove: () => void;

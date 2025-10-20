@@ -4,6 +4,8 @@ import { Id } from "./_generated/dataModel";
 import { getUserByIdenityId, requireAuth, requireVisionAccess } from "./utils/auth";
 import { paginationOptsValidator } from "convex/server";
 import { nodeValidator } from "./reactflow/types";
+import { persistentTextStreaming } from "./messages";
+import { Position } from "@xyflow/react";
 
 const createArgs = v.object({
     frameId: v.optional(v.id("frames")),
@@ -433,7 +435,6 @@ export const createTextNodeFromMessage = mutation({
         }
 
         // Get the AI response text from the stream
-        const { persistentTextStreaming } = await import("./messages");
         const streamBody = await persistentTextStreaming.getStreamBody(
             ctx,
             message.streamId as any
@@ -498,8 +499,8 @@ export const createTextNodeFromMessage = mutation({
 
         // Calculate position for the new text node (150px below the AI node)
         const newPosition = {
-            x: framedAiNode.node.position.x,
-            y: framedAiNode.node.position.y + 150,
+            x: framedAiNode.node.position.x * 1.1,
+            y: framedAiNode.node.position.y * 1.5,
         };
 
         const reactFlowNode = {
@@ -528,8 +529,8 @@ export const createTextNodeFromMessage = mutation({
             id: edgeId,
             source: framedAiNode.node.id,
             target: reactFlowNode.id,
-            sourceHandle: null,
-            targetHandle: null,
+            sourceHandle: Position.Bottom,
+            targetHandle: Position.Top,
             data: { name: undefined },
         };
 
