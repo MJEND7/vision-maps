@@ -491,7 +491,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             }
         }
 
-        if (pasteBinData.chatId && mode === PasteBinMode.AI && deleteUnusedChat) {
+        if (pasteBinData.chatId && deleteUnusedChat) {
             try {
                 await deleteChat({ chatId: pasteBinData.chatId as Id<"chats"> });
             } catch (error) {
