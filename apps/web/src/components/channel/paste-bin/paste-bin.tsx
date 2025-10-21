@@ -179,7 +179,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
         };
     }, []);
 
-    const updateMedia = (mediaItem: Media | null) => {
+    const updateMedia = useCallback((mediaItem: Media | null) => {
         if (!mediaItem) {
             toast.error("Failed to get any media")
             return
@@ -189,20 +189,20 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             media: mediaItem,
             thought: pasteBinData.thought,
         });
-    };
+    }, [savePasteBinToDb, pasteBinData.thought]);
 
-    const updateTextContent = (content: string) => {
+    const updateTextContent = useCallback((content: string) => {
         savePasteBinToDb(NodeVariants.Text, {
             text: content,
         });
-    };
+    }, [savePasteBinToDb]);
 
-    const updateChatId = (chatIdValue: string) => {
+    const updateChatId = useCallback((chatIdValue: string) => {
         savePasteBinToDb(NodeVariants.AI, {
             chatId: chatIdValue,
             thought: pasteBinData.thought,
         });
-    };
+    }, [savePasteBinToDb, pasteBinData.thought]);
 
     const newChat = useCallback(async (title: string) => {
         const chatId = await createChat({
@@ -370,7 +370,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
         } finally {
             actions.setLoadingLinkMeta(false);
         }
-    }, [actions, updateMedia, fetchLinkMetadata]);
+    }, [actions, updateMedia, fetchLinkMetadata, setMode]);
 
     const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const clipboardData = e.clipboardData;
@@ -387,7 +387,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             console.log('Processing URL:', cleanUrl);
             handleLinkPaste(cleanUrl);
         }
-    }, [handleFileSelect, handleLinkPaste, updateTextContent]);
+    }, [handleFileSelect, handleLinkPaste]);
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const value = e.target.value;
@@ -440,7 +440,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
 
         await newChat("New Chat");
         setMode(PasteBinMode.AI);
-    }, [mode, pasteBinData.text, newChat, handleSendMessage, updateTextContent, setMode, updateChatId, canUseAI, onShowUpgradeDialog]);
+    }, [mode, newChat, setMode, canUseAI, onShowUpgradeDialog]);
 
     const [isUploadingAudio, setIsUploadingAudio] = useState(false);
     const [isStopping, setIsStopping] = useState(false);
@@ -685,7 +685,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             }
         }
         return (mode === PasteBinMode.TEXT || mode === PasteBinMode.AI);
-    }, [pasteBinData.media, isLoadingLinkMeta, pasteBinData.text, isUploading, mode, isRecording, transcriptChunks, pasteBinData]);
+    }, [pasteBinData, isLoadingLinkMeta, isUploading, mode, isRecording, transcriptChunks]);
 
     return (
         <div

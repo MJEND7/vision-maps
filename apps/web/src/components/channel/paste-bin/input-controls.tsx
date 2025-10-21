@@ -22,7 +22,6 @@ interface InputControlsProps {
 
 export function InputControls({
     ref,
-    fileInputRef,
     mode,
     value,
     placeholder,

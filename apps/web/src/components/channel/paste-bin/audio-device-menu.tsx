@@ -3,7 +3,6 @@ import { Button } from "../../ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "../../ui/dropdown-menu";
 import { Mic } from "lucide-react";
 import { getAvailableAudioDevices } from "@/hooks/pastebin/useRealtimeTranscription";
-import { PasteBinMode } from "@/types/pastebin-component";
 import { toast } from "sonner";
 
 interface AudioDeviceMenuProps {
