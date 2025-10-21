@@ -34,7 +34,7 @@ function CoreFacePile({ visionId, users, maxVisible = 3, currentUser, isLoading 
         return (
             <div className="flex -space-x-2">
                 {Array.from({ length: maxVisible }, (_, i) => (
-                    <Skeleton key={i} className="sm:w-7 sm:h-7 h-5 w-5 rounded-full border border-accent" />
+                    <Skeleton key={i} className="w-7 h-7 rounded-full border border-accent" />
                 ))}
             </div>
         );
@@ -56,7 +56,7 @@ function CoreFacePile({ visionId, users, maxVisible = 3, currentUser, isLoading 
                     {visibleUsers.map((user, index) => (
                         <Tooltip key={user.userId || index}>
                             <TooltipTrigger asChild>
-                                <Avatar className={cn(`sm:w-7 sm:h-7 h-5 w-5 border border-accent bg-accent`)}>
+                                <Avatar className={cn(`w-7 h-7 border border-accent bg-accent`)}>
                                     <AvatarImage className={`${user.online ? "opacity-100" : "opacity-50 blur-[0.5px]"}  `} src={user.image || ""} alt={user.name} />
                                     <AvatarFallback>{getUserAvatarFallbackInitials(user.name.split(" ")[0], user.name.split(" ")[1])}</AvatarFallback>
                                 </Avatar>

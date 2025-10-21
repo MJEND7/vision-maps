@@ -47,7 +47,7 @@ export default function WithSidebarLayout({
             {/* Mobile Sidebar */}
             <div
                 id="mobile-sidebar"
-                className={`lg:hidden fixed top-0 right-0 h-full bg-background border-l border-border z-50 transform transition-transform duration-300 ease-in-out ${
+                className={`rounded-l-lg lg:hidden fixed top-0 right-0 h-full bg-background border-l border-border z-50 transform transition-transform duration-300 ease-in-out ${
                     isSidebarOpen ? 'translate-x-0' : 'translate-x-full'
                 }`}
             >

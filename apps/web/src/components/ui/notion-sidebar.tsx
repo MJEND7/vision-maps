@@ -211,8 +211,8 @@ export function NotionSidebar() {
     };
 
     return (
-        <div className="w-64 h-full bg-card border-r border-border flex flex-col">
-            <div className="flex justify-between items-center gap-2 px-3 py-3  border-b">
+        <div className="w-64 h-full bg-transparent border-r border-border flex flex-col">
+            <div className="flex justify-between items-center gap-2 px-3 py-3 border-b">
                 <Link
                     href={"/"}
                     className="flex gap-2 items-center"

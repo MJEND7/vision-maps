@@ -3,10 +3,9 @@
 import { useParams, useRouter } from 'next/navigation';
 import { DraggableTabs } from '@/components/ui/draggable-tabs';
 import { DraggableSidebar } from '@/components/ui/draggable-sidebar';
-import { PresenceFacePile } from '@/components/ui/face-pile';
-import { LeftSidebarContent, LeftSidebarContentRef } from '@/components/ui/left-sidebar';
+import { RightSidebarContent, RightSidebarContentRef } from '@/components/ui/right-sidebar';
 import { Button } from '@/components/ui/button';
-import { ChevronsDownUp, Frame, Settings, TableProperties, ChevronLeft, ChevronRight, ListTree, PanelRight, PanelRightClose, ArrowLeft } from 'lucide-react';
+import { ChevronsDownUp, Frame, Settings, TableProperties, ChevronLeft, ChevronRight, ListTree, PanelRight, ArrowLeft } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import FrameComponent from '@/components/vision/frame';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -17,7 +16,6 @@ import { Id } from "@convex/_generated/dataModel";
 import { Vision } from "@convex/tables/visions";
 import SettingsComponent from '@/components/vision/settings';
 import { NodeUserCacheProvider } from '@/hooks/users/useUserCache';
-import ThemeSwitcher from '@/components/ThemeSwitcher';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { SidebarProvider } from '@/contexts/sidebar-context';
@@ -100,7 +98,7 @@ function VisionDetailPageContent() {
     const [sidebarState, setSidebarState] = useState<SidebarState>(DEFAULT_SIDEBAR_STATE);
     const [isMobile, setIsMobile] = useState(false);
     const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
-    const rightSidebarContentRef = useRef<LeftSidebarContentRef>(null);
+    const rightSidebarContentRef = useRef<RightSidebarContentRef>(null);
     const leftResizeRef = useRef<HTMLDivElement>(null);
     const rightResizeRef = useRef<HTMLDivElement>(null);
     const leftSidebarRef = useRef<HTMLDivElement>(null);
@@ -1113,34 +1111,11 @@ function VisionDetailPageContent() {
                                     transition={{ duration: 0.3, ease: "easeInOut" }}
                                     className="w-full h-screen bg-card border-l border-border z-40 absolute top-0 right-0 shadow-lg flex flex-col"
                                 >
-                                    <div className="flex justify-between p-4 border-b shrink-0">
-                                        <div className="">
-                                            <PresenceFacePile visionId={visionId} />
-                                        </div>
-
-                                        <div className="flex items-center gap-1">
-                                            <ThemeSwitcher size="sm" />
-                                            <Button className="text-xs" size={"sm"} variant={"outline"}>
-                                                Share
-                                            </Button>
-
-                                            <div className="flex items-center gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={toggleRightSidebar}
-                                                    className={cn("p-2 bg-background")}
-                                                >
-                                                    <PanelRightClose className="w-4 h-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </div>
-
                                     <div className="flex-1 min-h-0">
-                                        <LeftSidebarContent
+                                        <RightSidebarContent
                                             ref={rightSidebarContentRef}
                                             visionId={visionId}
+                                            onToggleRightSidebar={toggleRightSidebar}
                                             onChannelNavigate={handleChannelNavigate}
                                             currentFrameId={selectedTab?.type === ViewMode.FRAME ? selectedTab.id : undefined}
                                         />
@@ -1157,21 +1132,8 @@ function VisionDetailPageContent() {
                                     height: '100vh'
                                 }}
                             >
-                                <div className="flex justify-between p-4 border-b shrink-0">
-                                    <div className="">
-                                        <PresenceFacePile visionId={visionId} />
-                                    </div>
-
-                                    <div className="flex items-center gap-1">
-                                        <ThemeSwitcher size="sm" />
-                                        <Button className="text-xs" size={"sm"} variant={"outline"}>
-                                            Share
-                                        </Button>
-                                    </div>
-                                </div>
-
                                 <div className="flex-1 min-h-0">
-                                    <LeftSidebarContent
+                                    <RightSidebarContent
                                         ref={rightSidebarContentRef}
                                         visionId={visionId}
                                         onChannelNavigate={handleChannelNavigate}
