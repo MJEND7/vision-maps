@@ -84,36 +84,15 @@ export default function usePasteBin(visionId: string) {
       }
 
       setPasteBin((prev) => {
-        const updated = { ...prev };
-        switch (mode) {
-          case PasteBinMode.TRANSCRIPTION:
-            updated.type = type;
-            updated.thought = data.thought;
-            updated.transcription = data.transcription;
-            break;
-          case PasteBinMode.MEDIA:
-            updated.type = type;
-            updated.thought = data.thought;
-            updated.media = data.media;
-            break;
-          case PasteBinMode.TEXT:
-            updated.type = type;
-            updated.text = data.text;
-            break;
-          case PasteBinMode.AI:
-            updated.type = type;
-            updated.thought = data.thought;
-            updated.chatId = data.chatId;
-            break;
-          case PasteBinMode.EMBED:
-            updated.type = type;
-            updated.thought = data.thought;
-            updated.url = data.url;
-            updated.media = data.media;
-            break;
-          default:
-            updated.type = type;
-        }
+        const updated = { ...prev, type };
+        // Always merge in the provided data fields, don't rely on mode
+        if (data.text !== undefined) updated.text = data.text;
+        if (data.thought !== undefined) updated.thought = data.thought;
+        if (data.media !== undefined) updated.media = data.media;
+        if (data.transcription !== undefined)
+          updated.transcription = data.transcription;
+        if (data.chatId !== undefined) updated.chatId = data.chatId;
+        if (data.url !== undefined) updated.url = data.url;
         return updated;
       });
 
@@ -126,7 +105,7 @@ export default function usePasteBin(visionId: string) {
         });
       }, 1000);
     },
-    [mode, KEY]
+    [KEY]
   );
 
   const clear = useCallback(() => {

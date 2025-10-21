@@ -357,7 +357,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                 type: meta.type as NodeVariants,
                 title: meta.title,
                 description: meta.description,
-                url: meta.url,
+                url: url,  // Use the original URL, not meta.url
                 image: meta.image,
                 siteName: meta.siteName,
             });
@@ -389,7 +389,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
         if (mode === PasteBinMode.IDLE) {
             setMode(PasteBinMode.TEXT)
         }
-    }, [updateTextContent]);
+    }, [updateTextContent, mode, setMode]);
 
     const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && pasteBinData.text) {
