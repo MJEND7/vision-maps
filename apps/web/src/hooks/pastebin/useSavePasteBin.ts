@@ -16,7 +16,7 @@ const PASTEBIN_SAVE = "pastebin_save"
  * @property {React.MutableRefObject} saveDebounce - Debounce timer ref
  * @property {PasteBin} pasteBin - Current paste bin data
  */
-export default function useSavePasteBin(visionId: string) {
+export default function usePasteBin(visionId: string) {
     const saveDebounce = useRef<NodeJS.Timeout | null>(null);
     const modeDebounce = useRef<NodeJS.Timeout | null>(null);
     const KEY = `${PASTEBIN_SAVE}_${visionId}`
@@ -74,27 +74,33 @@ export default function useSavePasteBin(visionId: string) {
         }
 
         setPasteBin((prev) => {
-            const updated = prev;
+            const updated = { ...prev };
             switch (mode) {
                 case PasteBinMode.TRANSCRIPTION:
                     updated.type = type;
                     updated.thought = data.thought;
                     updated.transcription = data.transcription;
+                    break;
                 case PasteBinMode.MEDIA:
                     updated.type = type;
                     updated.thought = data.thought;
                     updated.media = data.media;
+                    break;
                 case PasteBinMode.TEXT:
                     updated.type = type;
                     updated.text = data.text;
+                    break;
                 case PasteBinMode.AI:
                     updated.type = type;
                     updated.thought = data.thought;
                     updated.chatId = data.chatId;
+                    break;
                 case PasteBinMode.EMBED:
                     updated.type = type;
                     updated.thought = data.thought;
                     updated.url = data.url;
+                    updated.media = data.media;
+                    break;
                 default:
                     updated.type = type;
             }
@@ -109,14 +115,14 @@ export default function useSavePasteBin(visionId: string) {
                 return current;
             });
         }, 500);
-    }, [KEY]);
+    }, [KEY, mode]);
 
     const clear = useCallback(() => {
         setMode(PasteBinMode.IDLE);
         setPasteBin({
             type: undefined,
             url: undefined,
-            text: undefined,
+            text: "",
             chatId: undefined,
             thought: undefined,
             media: undefined,
