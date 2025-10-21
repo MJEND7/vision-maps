@@ -375,8 +375,10 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
         const text = clipboardData.getData("text/plain") || clipboardData.getData("text") || clipboardData.getData("text/uri-list");
 
         if (files.length > 0) {
+            e.preventDefault();
             handleFileSelect(files[0]);
         } else if (text && typeof text === 'string' && text.trim() && (text.trim().startsWith("http://") || text.trim().startsWith("https://"))) {
+            e.preventDefault();
             const cleanUrl = text.trim();
             console.log('Processing URL:', cleanUrl);
             handleLinkPaste(cleanUrl);
@@ -690,37 +692,34 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             onDrop={handleDrop}
         >
             <div className="relative">
-                {/* Floating helper / metadata container */}
-                <motion.div
-                    className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 will-change-transform"
-                    animate={{
-                        width: animationValues.containerWidth,
-                    }}
-                    transition={{
-                        type: "tween",
-                        duration: 0.2,
-                        ease: "easeOut"
-                    }}
-                >
+                {/* Floating helper / metadata container - hide in TEXT mode */}
+                {mode !== PasteBinMode.TEXT && (
                     <motion.div
-                        className="w-full overflow-hidden rounded-2xl shadow-md border border-accent bg-background"
+                        className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 will-change-transform"
                         animate={{
-                            height: animationValues.containerHeight,
-                            padding: animationValues.containerPadding,
+                            width: animationValues.containerWidth,
                         }}
                         transition={{
                             type: "tween",
-                            duration: 0.15,
+                            duration: 0.2,
                             ease: "easeOut"
                         }}
                     >
-                        <div className="relative flex flex-col items-center justify-center">
-                            <AnimatePresence mode="wait">
-                                {isDragOver && <DragOverHint key="dragover-hint" />}
-
-                                {mode === PasteBinMode.TEXT && (
-                                    <TextModeHelper key="text-mode" onStartPrompt={handleToggleAiMode} />
-                                )}
+                        <motion.div
+                            className="w-full overflow-hidden rounded-2xl shadow-md border border-accent bg-background"
+                            animate={{
+                                height: animationValues.containerHeight,
+                                padding: animationValues.containerPadding,
+                            }}
+                            transition={{
+                                type: "tween",
+                                duration: 0.15,
+                                ease: "easeOut"
+                            }}
+                        >
+                            <div className="relative flex flex-col items-center justify-center">
+                                <AnimatePresence mode="wait">
+                                    {isDragOver && <DragOverHint key="dragover-hint" />}
 
                                 {mode === PasteBinMode.IDLE && !isDragOver && (
                                     <IdleStateHelper key="idle-helper" isDragOver={isDragOver} />
@@ -774,7 +773,8 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                             </AnimatePresence>
                         </div>
                     </motion.div>
-                </motion.div>
+                    </motion.div>
+                )}
 
                 {/* Unified Input/Textarea at bottom */}
                 <motion.div
@@ -851,6 +851,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                             }
                         }}
                         onFileSelect={() => fileInputRef.current?.click()}
+                        onStartPrompt={handleToggleAiMode}
                     />
 
                     <ActionButtons

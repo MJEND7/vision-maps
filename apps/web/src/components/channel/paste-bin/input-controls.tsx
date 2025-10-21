@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "motion/react";
 import { Textarea } from "../../ui/textarea";
 import { Button } from "../../ui/button";
-import { FileText } from "lucide-react";
+import { FileText, Brain } from "lucide-react";
 import { PasteBinMode } from "@/types/pastebin-component";
 import { AudioDeviceMenu } from "./audio-device-menu";
 
@@ -17,6 +17,7 @@ interface InputControlsProps {
     onMicrophoneSelect: () => Promise<void>;
     onDeviceSelect: (deviceId: string) => Promise<void>;
     onFileSelect: () => void;
+    onStartPrompt?: () => void;
 }
 
 export function InputControls({
@@ -31,6 +32,7 @@ export function InputControls({
     onMicrophoneSelect,
     onDeviceSelect,
     onFileSelect,
+    onStartPrompt,
 }: InputControlsProps) {
     const isIdleMode = mode === PasteBinMode.IDLE;
 
@@ -75,6 +77,16 @@ export function InputControls({
                         >
                             <FileText size={12} />
                         </Button>
+                        {onStartPrompt && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 rounded-xl px-2 text-xs border-border/50 hover:border-border transition-colors"
+                                onClick={onStartPrompt}
+                            >
+                                <Brain size={12} />
+                            </Button>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
