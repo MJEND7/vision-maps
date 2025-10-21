@@ -87,9 +87,6 @@ export interface Media {
     appleMusicType?: "song" | "album" | "playlist" | "artist"; // AppleMusic
     createdAt?: string; // Loom
     creator?: string; // Loom
-
-    // Chat properties (for AI nodes)
-    chatId?: string;
 }
 
 export type PasteBin = {

@@ -24,7 +24,6 @@ import { useTranscriptionState } from "@/hooks/pastebin/useTranscriptionState";
 // UI Sub-components
 import { IdleStateHelper } from "./idle-state-helper";
 import { DragOverHint } from "./drag-over-hint";
-import { TextModeHelper } from "./text-mode-helper";
 import { MediaPreview } from "./media-preview";
 import { EmbedPreview } from "./embed-preview";
 import { TranscriptionPanel } from "./transcription-panel";
@@ -69,13 +68,13 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
     const sendMessage = useMutation(api.messages.sendMessage);
     const deleteChat = useMutation(api.chats.deleteChat);
 
-    const { 
-        save: savePasteBinToDb, 
-        clear: clearPasteBin, 
-        mode, 
-        setMode, 
-        saveDebounce, 
-        pasteBin: pasteBinData 
+    const {
+        save: savePasteBinToDb,
+        clear: clearPasteBin,
+        mode,
+        setMode,
+        saveDebounce,
+        pasteBin: pasteBinData
     } = usePasteBin(visionId);
 
     // Use the reusable OG metadata hook
@@ -198,9 +197,9 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
         });
     };
 
-    const updateChatId = (chatIdValue: string | null) => {
+    const updateChatId = (chatIdValue: string) => {
         savePasteBinToDb(NodeVariants.AI, {
-            chatId: chatIdValue || undefined,
+            chatId: chatIdValue,
             thought: pasteBinData.thought,
         });
     };
@@ -211,6 +210,11 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             visionId: visionId as Id<"visions">,
             channelId: channelId as Id<"channels">
         });
+
+        if (!chatId) {
+            toast.error("Failed to get the chat")
+            return
+        }
 
         updateChatId(chatId);
 
@@ -432,21 +436,10 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             return;
         }
 
-        // If in TEXT mode with text, create chat with that text as first message
-        if (mode === PasteBinMode.TEXT) {
-            if (pasteBinData.text) {
-                const content = pasteBinData.text;
-                const chatId = await newChat(content);
-                handleSendMessage(chatId);
-            }
-            updateTextContent("")
-            setMode(PasteBinMode.AI);
-        } else if (mode === PasteBinMode.IDLE) {
-            // If in IDLE mode, just create a new empty chat
-            const chatId = await newChat("New Chat");
-            updateChatId(chatId);
-            setMode(PasteBinMode.AI);
-        }
+        if (mode !== PasteBinMode.IDLE) return
+
+        await newChat("New Chat");
+        setMode(PasteBinMode.AI);
     }, [mode, pasteBinData.text, newChat, handleSendMessage, updateTextContent, setMode, updateChatId, canUseAI, onShowUpgradeDialog]);
 
     const [isUploadingAudio, setIsUploadingAudio] = useState(false);
@@ -491,6 +484,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             }
         }
 
+        console.log(pasteBinData)
         if (pasteBinData.chatId && deleteUnusedChat) {
             try {
                 console.log("Deleting chat:", pasteBinData.chatId);
@@ -522,7 +516,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
-    }, [actions, clearTranscriptionState, deleteChat, isRecording, stopRecording, clearTranscript, clearPasteBin, saveDebounce, transcriptDebounce]);
+    }, [pasteBinData, actions, clearTranscriptionState, deleteChat, isRecording, stopRecording, clearTranscript, clearPasteBin, saveDebounce, transcriptDebounce]);
 
     const handleCreate = useCallback(async () => {
         if (saveDebounce.current) {
@@ -730,58 +724,58 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                                 <AnimatePresence mode="wait">
                                     {isDragOver && <DragOverHint key="dragover-hint" />}
 
-                                {mode === PasteBinMode.IDLE && !isDragOver && (
-                                    <IdleStateHelper key="idle-helper" isDragOver={isDragOver} />
-                                )}
+                                    {mode === PasteBinMode.IDLE && !isDragOver && (
+                                        <IdleStateHelper key="idle-helper" isDragOver={isDragOver} />
+                                    )}
 
-                                {pasteBinData.media && (pasteBinData.media.file || pasteBinData.media.uploadedUrl) && (
-                                    <MediaPreview
-                                        key="media-preview"
-                                        media={pasteBinData.media}
-                                        isUploading={isUploading}
-                                        imageLoaded={imageLoaded}
-                                        onImageLoad={() => actions.setImageLoaded(true)}
-                                        onImageError={() => actions.setImageLoaded(true)}
-                                    />
-                                )}
+                                    {pasteBinData.media && (pasteBinData.media.file || pasteBinData.media.uploadedUrl) && (
+                                        <MediaPreview
+                                            key="media-preview"
+                                            media={pasteBinData.media}
+                                            isUploading={isUploading}
+                                            imageLoaded={imageLoaded}
+                                            onImageLoad={() => actions.setImageLoaded(true)}
+                                            onImageError={() => actions.setImageLoaded(true)}
+                                        />
+                                    )}
 
-                                {mode === PasteBinMode.AI && pasteBinData.chatId && (
-                                    <div key="ai-chat" className="h-[400px] w-full p-4 overflow-hidden">
-                                        <ChatCard drivenIds={drivenMessageIds} onFocusInput={() => {
-                                            textareaRef.current?.focus();
-                                        }} chatId={pasteBinData.chatId} />
-                                    </div>
-                                )}
+                                    {mode === PasteBinMode.AI && pasteBinData.chatId && (
+                                        <div key="ai-chat" className="h-[400px] w-full p-4 overflow-hidden">
+                                            <ChatCard drivenIds={drivenMessageIds} onFocusInput={() => {
+                                                textareaRef.current?.focus();
+                                            }} chatId={pasteBinData.chatId} />
+                                        </div>
+                                    )}
 
-                                {mode === PasteBinMode.TRANSCRIPTION && (
-                                    <TranscriptionPanel
-                                        key="transcription-panel"
-                                        isRecording={isRecording}
-                                        isConnecting={isConnecting}
-                                        transcriptChunks={transcriptChunks}
-                                        transcriptContainerRef={transcriptContainerRef}
-                                        onContinueRecording={async () => {
-                                            if (selectedDeviceId) {
-                                                await startRecording('device', selectedDeviceId);
-                                            } else {
-                                                await startRecording('microphone');
-                                            }
-                                        }}
-                                    />
-                                )}
+                                    {mode === PasteBinMode.TRANSCRIPTION && (
+                                        <TranscriptionPanel
+                                            key="transcription-panel"
+                                            isRecording={isRecording}
+                                            isConnecting={isConnecting}
+                                            transcriptChunks={transcriptChunks}
+                                            transcriptContainerRef={transcriptContainerRef}
+                                            onContinueRecording={async () => {
+                                                if (selectedDeviceId) {
+                                                    await startRecording('device', selectedDeviceId);
+                                                } else {
+                                                    await startRecording('microphone');
+                                                }
+                                            }}
+                                        />
+                                    )}
 
-                                {isLoadingLinkMeta && <LoadingSkeleton key="loading-skeleton" />}
+                                    {isLoadingLinkMeta && <LoadingSkeleton key="loading-skeleton" />}
 
-                                {pasteBinData.media && pasteBinData.media.url && !pasteBinData.media.file && (
-                                    <EmbedPreview
-                                        key="embed-preview"
-                                        media={pasteBinData.media}
-                                        mediaToLinkMetadata={mediaToLinkMetadata}
-                                    />
-                                )}
-                            </AnimatePresence>
-                        </div>
-                    </motion.div>
+                                    {pasteBinData.media && pasteBinData.media.url && !pasteBinData.media.file && (
+                                        <EmbedPreview
+                                            key="embed-preview"
+                                            media={pasteBinData.media}
+                                            mediaToLinkMetadata={mediaToLinkMetadata}
+                                        />
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        </motion.div>
                     </motion.div>
                 )}
 
