@@ -432,6 +432,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             return;
         }
 
+        // If in TEXT mode with text, create chat with that text as first message
         if (mode === PasteBinMode.TEXT) {
             if (pasteBinData.text) {
                 const content = pasteBinData.text;
@@ -440,8 +441,13 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             }
             updateTextContent("")
             setMode(PasteBinMode.AI);
+        } else if (mode === PasteBinMode.IDLE) {
+            // If in IDLE mode, just create a new empty chat
+            const chatId = await newChat("New Chat");
+            updateChatId(chatId);
+            setMode(PasteBinMode.AI);
         }
-    }, [mode, pasteBinData.text, newChat, handleSendMessage, updateTextContent, setMode, canUseAI, onShowUpgradeDialog]);
+    }, [mode, pasteBinData.text, newChat, handleSendMessage, updateTextContent, setMode, updateChatId, canUseAI, onShowUpgradeDialog]);
 
     const [isUploadingAudio, setIsUploadingAudio] = useState(false);
     const [isStopping, setIsStopping] = useState(false);
