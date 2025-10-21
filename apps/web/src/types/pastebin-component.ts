@@ -93,10 +93,14 @@ export interface Media {
 }
 
 export type PasteBin = {
-    type?: string; // The type of media (this is diffarent to the mode as it is more spesific)
-    value?: string,
+    type?: string;
+    url?: string;
+    text?: string;
+    chatId?: string;
+    thought?: string;
     transcription?: {
         text: string;
         timestamp: number;
     }[];
+    media?: Media
 }

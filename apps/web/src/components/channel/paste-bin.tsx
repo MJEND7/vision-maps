@@ -28,6 +28,7 @@ import { convertToWav, stitchAudioBlobs } from "@/utils/audio";
 import { ApiRoutes } from "@/constants/apiRoutes";
 import useSavePasteBin from "@/hooks/pastebin/useSavePasteBin";
 import { PasteBinMode, Media } from "@/types/pastebin-component";
+import { useTranscriptionState } from "@/hooks/pastebin/useTranscriptionState";
 
 function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
     onCreateNode: (data: CreateNodeArgs) => void,
@@ -39,13 +40,23 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
     const { state, actions } = usePasteBinState();
     const { isDragOver, isLoadingLinkMeta, imageLoaded } = state;
 
+    // Transcription state hook
+    const {
+        transcriptChunks,
+        recordedAudioBlob,
+        previousAudioBlobs,
+        selectedDeviceId,
+        addChunk,
+        setRecordedAudioBlob,
+        addPreviousAudioBlob,
+        setSelectedDeviceId,
+        clearAll: clearTranscriptionState
+    } = useTranscriptionState();
+
     // Component state
     const [drivenMessageIds, setDrivenMessageIds] = useState<Set<string>>(new Set())
-    const [transcriptChunks, setTranscriptChunks] = useState<{ text: string; timestamp: number }[]>([]);
     const transcriptDebounce = useRef<NodeJS.Timeout | null>(null)
 
-    // Unified media state
-    const [media, setMedia] = useState<Media | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -56,9 +67,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
     const sendMessage = useMutation(api.messages.sendMessage);
     const deleteChat = useMutation(api.chats.deleteChat);
 
-    // Convex mutations for paste bin persistence
-    const { save: savePasteBinToDb, clear: clearPasteBin, saveDebounce, mode, setMode, pasteBin: pasteBinData } = useSavePasteBin(visionId);
-    const updateTranscriptArrayMutation = useMutation(api.userPasteBin.updateTranscriptArray);
+    const { save: savePasteBinToDb, clear: clearPasteBin, mode, setMode, saveDebounce, pasteBin: pasteBinData } = useSavePasteBin(visionId);
 
     // Use the reusable OG metadata hook
     const { fetchWithCache } = useOGMetadataWithCache();
@@ -73,7 +82,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
     } = useRealtimeTranscription({
         onTranscript: (text, timestamp) => {
             const newChunk = { text, timestamp };
-            setTranscriptChunks((prev) => [...prev, newChunk]);
+            addChunk(newChunk);
             if (transcriptDebounce.current) {
                 clearTimeout(transcriptDebounce.current)
             }
@@ -83,11 +92,8 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             }
 
             transcriptDebounce.current = setTimeout(() => {
-                updateTranscriptArrayMutation({
-                    visionId: visionId as Id<"visions">,
-                    valueArray: transcriptChunks,
-                });
-            }, 2000)
+                savePasteBinToDb(NodeVariants.Transcription, { transcription: transcriptChunks })
+            }, 1000)
         },
         onError: (error) => {
             console.error('Transcription error:', error);
@@ -165,28 +171,27 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
         };
     }, []);
 
-    const updateMedia = useCallback((mediaItem: Media | null) => {
+    const updateMedia = (mediaItem: Media | null) => {
         if (!mediaItem) {
             return
         }
 
-        setMedia(mediaItem);
         savePasteBinToDb(mediaItem.type, {
             value: mediaItem.uploadedUrl || mediaItem.url,
         });
-    }, [mode, savePasteBinToDb]);
+    };
 
-    const updateTextContent = useCallback((content: string) => {
+    const updateTextContent = (content: string) => {
         savePasteBinToDb(NodeVariants.Text, {
             value: content,
         });
-    }, [mode, savePasteBinToDb]);
+    };
 
-    const updateChatId = useCallback((chatIdValue: string | null) => {
+    const updateChatId = (chatIdValue: string | null) => {
         savePasteBinToDb(NodeVariants.AI, {
-            value: chatIdValue ? (chatIdValue as Id<"chats">) : undefined,
+            value: chatIdValue || undefined,
         });
-    }, [mode, savePasteBinToDb]);
+    };
 
     const newChat = useCallback(async (title: string) => {
         const chatId = await createChat({
@@ -199,11 +204,6 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
 
         return chatId
     }, [createChat, updateChatId, visionId, channelId]);
-
-    const updateIsAiMode = useCallback((aiModeValue: boolean) => {
-        setIsAiMode(aiModeValue);
-        setMode(aiModeValue ? PasteBinMode.AI : mode)
-    }, [mode, savePasteBinToDb]);
 
     const { startUpload, isUploading } = useUploadThing("mediaUploader", {
         onClientUploadComplete: (res) => {
@@ -391,7 +391,6 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
         if (value && !value.startsWith("http://") && !value.startsWith("https://")) {
             if (mode === PasteBinMode.IDLE) {
                 setMode(PasteBinMode.TEXT);
-                setIsTextMode(true);
             }
         }
     }, [handleLinkPaste, updateTextContent, mode, savePasteBinToDb]);
@@ -450,13 +449,10 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
         }
     }, [mode, textContent, newChat, handleSendMessage, updateIsAiMode, canUseAI]);
 
-    const [recordedAudioBlob, setRecordedAudioBlob] = useState<Blob | null>(null);
     const [isUploadingAudio, setIsUploadingAudio] = useState(false);
     const [isStopping, setIsStopping] = useState(false);
     const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
     const [isLoadingDevices, setIsLoadingDevices] = useState(false);
-    const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>(undefined);
-    const [previousAudioBlobs, setPreviousAudioBlobs] = useState<Blob[]>([]);
     const transcriptContainerRef = useRef<HTMLDivElement>(null);
 
     const loadAudioDevices = useCallback(async () => {
@@ -490,14 +486,14 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
         try {
             const audioBlob = await stopRecording();
             if (audioBlob) {
-                setPreviousAudioBlobs(prev => [...prev, audioBlob]);
+                addPreviousAudioBlob(audioBlob);
                 setRecordedAudioBlob(audioBlob);
                 console.log('[PasteBin] Audio blob captured:', audioBlob.size, 'bytes');
             }
         } finally {
             setIsStopping(false);
         }
-    }, [stopRecording]);
+    }, [stopRecording, addPreviousAudioBlob, setRecordedAudioBlob]);
 
     const clearMedia = useCallback(async (deleteUnusedChat = true) => {
         if (isRecording) {
@@ -532,17 +528,9 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
 
         clearPasteBin();
         clearTranscript();
-        setTranscriptChunks([]);
-        setRecordedAudioBlob(null);
-        setPreviousAudioBlobs([]);
-        setSelectedDeviceId(undefined);
-
-        updateMedia(null);
-        setTextContent("");
-        setMode(PasteBinMode.IDLE);
-        setIsTextMode(false);
-        updateIsAiMode(false);
-        updateChatId(null);
+        clearTranscriptionState();
+        clearContent();
+        resetMode();
 
         // Clear timers
         if (saveDebounce.current) {
@@ -560,7 +548,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
-    }, [actions, updateMedia, updateChatId, updateIsAiMode, deleteChat, media, isRecording, stopRecording, clearTranscript, clearPasteBin, visionId]);
+    }, [actions, clearContent, clearTranscriptionState, resetMode, deleteChat, media, chatId, isAiMode, isRecording, stopRecording, clearTranscript, clearPasteBin]);
 
     const handleCreate = useCallback(async () => {
         if (saveDebounce.current) {
@@ -613,7 +601,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             }
 
             if (mode === PasteBinMode.TRANSCRIPTION) {
-                const chunks = transcriptChunks.length > 0 ? transcriptChunks : (pasteBinData?.valueArray || []);
+                const chunks = transcriptChunks.length > 0 ? transcriptChunks : (pasteBinData?.transcription || []);
                 const transcriptValue = chunks.map(c => c.text).join(' ');
                 if (transcriptValue) {
                     let audioUrl: string | undefined;
@@ -706,7 +694,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
 
     const isValidForCreation = useCallback(() => {
         if (mode === PasteBinMode.TRANSCRIPTION) {
-            const chunks = transcriptChunks.length > 0 ? transcriptChunks : (pasteBinData?.valueArray || []);
+            const chunks = transcriptChunks.length > 0 ? transcriptChunks : (pasteBinData?.transcription || []);
             const transcriptValue = chunks.map(c => c.text).join(' ');
             return !isRecording && !!transcriptValue && transcriptValue.trim().length > 0;
         }
@@ -949,7 +937,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                                                         {isConnecting ? 'Connecting...' : isRecording ? 'Recording' : 'Transcription Complete'}
                                                     </span>
                                                 </div>
-                                                {!isRecording && !isConnecting && (transcriptChunks.length > 0 || (pasteBinData?.valueArray && pasteBinData.valueArray.length > 0)) && (
+                                                {!isRecording && !isConnecting && (transcriptChunks.length > 0 || (pasteBinData?.transcription && pasteBinData.transcription.length > 0)) && (
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
@@ -979,7 +967,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                                                 className="flex-1 overflow-y-auto overscroll-contain bg-background/50 rounded-lg p-3 border border-purple-500/20 space-y-2"
                                             >
                                                 {(() => {
-                                                    const chunks = transcriptChunks.length > 0 ? transcriptChunks : (pasteBinData?.valueArray || []);
+                                                    const chunks = transcriptChunks.length > 0 ? transcriptChunks : (pasteBinData?.transcription || []);
                                                     return chunks.length > 0 ? (
                                                         chunks.map((chunk, index) => {
                                                             const date = new Date(chunk.timestamp);
@@ -1118,22 +1106,21 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                                     ? mode === PasteBinMode.AI ? "Type you message here..." : `Type your thought here...`
                                     : "Enter media..."
                             }
-                            value={pasteBinData.values.text}
+                            value={textContent}
                             onChange={(e) => {
-                                if (e.target.value == "") {
+                                if (e.target.value === "") {
                                     clearPasteBin()
                                 } else if (mode === PasteBinMode.TEXT || mode === PasteBinMode.AI) {
                                     updateTextContent(e.target.value);
                                 } else {
                                     handleInputChange(e);
                                 }
-
                             }}
                             onKeyDown={async (e) => {
-                                if (e.key === "Enter" && !e.shiftKey && pasteBinData.value) {
+                                if (e.key === "Enter" && !e.shiftKey && textContent) {
                                     e.preventDefault();
-                                    if (mode === PasteBinMode.AI) {
-                                        handleSendMessage(pasteBinData.value);
+                                    if (mode === PasteBinMode.AI && chatId) {
+                                        handleSendMessage(chatId);
                                     } else if (mode === PasteBinMode.TEXT) {
                                         handleCreate();
                                     } else {
