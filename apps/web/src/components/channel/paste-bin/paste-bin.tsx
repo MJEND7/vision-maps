@@ -493,9 +493,12 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
 
         if (pasteBinData.chatId && deleteUnusedChat) {
             try {
+                console.log("Deleting chat:", pasteBinData.chatId);
                 await deleteChat({ chatId: pasteBinData.chatId as Id<"chats"> });
+                console.log("Chat deleted successfully");
             } catch (error) {
                 console.error("Failed to delete unused chat:", error);
+                toast.error("Failed to delete chat");
             }
         }
 
