@@ -18,7 +18,7 @@ import { useRealtimeTranscription } from "@/hooks/pastebin/useRealtimeTranscript
 import { toast } from "sonner";
 import { convertToWav, stitchAudioBlobs } from "@/utils/audio";
 import { ApiRoutes } from "@/constants/apiRoutes";
-import usePasteBin from "@/hooks/pastebin/useSavePasteBin";
+import usePasteBin from "@/hooks/pastebin/usePasteBin";
 import { PasteBinMode, Media } from "@/types/pastebin-component";
 import { useTranscriptionState } from "@/hooks/pastebin/useTranscriptionState";
 // UI Sub-components
@@ -182,6 +182,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
 
     const updateMedia = (mediaItem: Media | null) => {
         if (!mediaItem) {
+            toast.error("Failed to get any media")
             return
         }
 
@@ -379,7 +380,6 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             const cleanUrl = text.trim();
             console.log('Processing URL:', cleanUrl);
             handleLinkPaste(cleanUrl);
-            updateTextContent("");
         }
     }, [handleFileSelect, handleLinkPaste, updateTextContent]);
 
