@@ -7,7 +7,7 @@ import { Unauthenticated } from "convex/react";
 import { Button } from "../ui/button";
 import { ROUTES } from "@/lib/constants";
 import { SignedIn, useAuth } from "@clerk/clerk-react";
-import { useOrganization, useOrganizationList } from "@/contexts/OrganizationContext";
+import { useWorkspace, useWorkspaceList } from "@/contexts/WorkspaceContext";
 import { useMutation } from "convex/react";
 import { api } from "@/../convex/_generated/api";
 import {
@@ -96,19 +96,19 @@ export function PricingComponent() {
     const [isCreatingOrg, setIsCreatingOrg] = useState(false);
     const [isCheckingOut, setIsCheckingOut] = useState(false);
 
-    const { organization } = useOrganization();
-    const { userMemberships, isLoaded: orgListLoaded, setActive } = useOrganizationList();
-    const createOrgMutation = useMutation(api.orgs.create);
+    const { workspace } = useWorkspace();
+    const { userMemberships, isLoaded: orgListLoaded, setActive } = useWorkspaceList();
+    const createOrgMutation = useMutation(api.workspaces.create);
 
-    // Fetch plan from Convex - org plan if orgId exists, otherwise user plan
-    const { plan: planData } = useSubscription(orgId || userId || undefined, orgId ? OwnerType.Org : OwnerType.User);
+    // Fetch plan from Convex - workspace plan if workspace exists, otherwise user plan
+    const { plan: planData } = useSubscription(workspace?._id || userId || undefined, workspace ? OwnerType.Workspace : OwnerType.User);
 
     // Update current plan when planData changes
     useEffect(() => {
         if (planData) {
             setCurrentPlan(planData.planType || "free");
-            // Set proAlreadyOwned if user has pro plan and is in an organization
-            if (planData.planType === 'pro' && organization) {
+            // Set proAlreadyOwned if user has pro plan and is in a workspace
+            if (planData.planType === 'pro' && workspace) {
                 setProAlreadyOwned(true);
             }
             setIsLoadingPlan(false);
@@ -116,16 +116,16 @@ export function PricingComponent() {
             setCurrentPlan("free");
             setIsLoadingPlan(false);
         }
-    }, [planData, organization]);
+    }, [planData, workspace]);
 
-    // Update proAlreadyOwned state when organization changes
+    // Update proAlreadyOwned state when workspace changes
     useEffect(() => {
-        if (!organization) {
+        if (!workspace) {
             setProAlreadyOwned(false);
         } else if (currentPlan === 'pro') {
             setProAlreadyOwned(true);
         }
-    }, [organization, currentPlan]);
+    }, [workspace, currentPlan]);
 
     // Handle Stripe checkout
     const handleCheckout = async (planKey: string, selectedOrgId?: string) => {
@@ -141,10 +141,10 @@ export function PricingComponent() {
             };
 
             if (planKey === 'team' && selectedOrgId) {
-                endpoint = `/api/stripe/checkout-org?org_id=${selectedOrgId}`;
+                endpoint = `/api/stripe/checkout-workspace?workspace_id=${selectedOrgId}`;
                 // Get member count for seat calculation
-                const orgData = userMemberships.data?.find(m => m.organization.id === selectedOrgId);
-                body.seats = orgData?.organization.membersCount || 1;
+                const workspaceData = userMemberships.data?.find(m => m.workspace.id === selectedOrgId);
+                body.seats = workspaceData?.workspace.membersCount || 1;
             }
 
             const response = await fetch(endpoint, {
@@ -179,12 +179,12 @@ export function PricingComponent() {
             return "Current Plan";
         }
 
-        // Special case for Team plan - show current org name
-        if (planKey === "team" && organization) {
+        // Special case for Team plan - show current workspace name
+        if (planKey === "team" && workspace) {
             if (plan?.hasFreeTrial) {
-                return `Start Trial for ${organization.name}`;
+                return `Start Trial for ${workspace.name}`;
             }
-            return `Upgrade ${organization.name} to Team`;
+            return `Upgrade ${workspace.name} to Team`;
         }
 
         if (plan?.hasFreeTrial) {
@@ -202,37 +202,37 @@ export function PricingComponent() {
         setShowOrgSelector(true);
     };
 
-    // Handle org selection and proceed to checkout
-    const handleOrgSelection = async (orgId: string | null) => {
+    // Handle workspace selection and proceed to checkout
+    const handleOrgSelection = async (workspaceId: string | null) => {
         setIsProcessingOrgSelection(true);
         setShowOrgSelector(false);
 
-        // Switch to the selected organization
-        if (orgId) {
-            await setActive?.({ organization: orgId as any });
-            // Wait a moment for org switch to complete
+        // Switch to the selected workspace
+        if (workspaceId) {
+            await setActive?.({ workspace: workspaceId as any });
+            // Wait a moment for workspace switch to complete
             await new Promise(resolve => setTimeout(resolve, 500));
         }
 
         // Proceed to checkout
-        await handleCheckout('team', orgId || undefined);
+        await handleCheckout('team', workspaceId || undefined);
         setIsProcessingOrgSelection(false);
     };
 
-    // Handle Pro plan click when in organization
+    // Handle Pro plan click when in workspace
     const handleProPlanClick = async () => {
-        if (!organization || proAlreadyOwned) return;
+        if (!workspace || proAlreadyOwned) return;
 
         setIsProcessingOrgSelection(true);
 
         try {
             // Switch to personal account
-            await setActive?.({ organization: null });
+            await setActive?.({ workspace: null });
 
-            // Wait a moment for org switch to complete
+            // Wait a moment for workspace switch to complete
             await new Promise(resolve => setTimeout(resolve, 1500));
 
-            // The planData will automatically update when org switches to null
+            // The planData will automatically update when workspace switches to null
             // We can check proAlreadyOwned state which is updated by the useEffect
             if (currentPlan === 'pro') {
                 toast.error("You already own the Pro plan on your personal account");
@@ -406,13 +406,13 @@ export function PricingComponent() {
                                                 >
                                                     {isProcessingOrgSelection || isCheckingOut ? (
                                                         "Processing..."
-                                                    ) : organization ? (
+                                                    ) : workspace ? (
                                                         <div className="flex items-center justify-between w-full">
                                                             <div className="flex items-center gap-2">
                                                                 <Avatar className="w-5 h-5">
-                                                                    <AvatarImage src={organization.imageUrl} />
+                                                                    <AvatarImage src={workspace.imageUrl} />
                                                                     <AvatarFallback className="bg-blue-500 text-white text-xs">
-                                                                        {organization.name[0]}
+                                                                        {workspace.name[0]}
                                                                     </AvatarFallback>
                                                                 </Avatar>
                                                                 <span className="text-sm">
@@ -428,7 +428,7 @@ export function PricingComponent() {
                                                         </div>
                                                     )}
                                                 </Button>
-                                            ) : plan.key === "pro" && organization ? (
+                                            ) : plan.key === "pro" && workspace ? (
                                                 <Button
                                                     onClick={handleProPlanClick}
                                                     className={`w-full ${proAlreadyOwned ? "opacity-50 cursor-not-allowed" : "bg-primary hover:bg-primary/90"}`}
@@ -497,47 +497,47 @@ export function PricingComponent() {
                 </div>
             </section>
 
-            {/* Team Plan Organization Selector Dialog */}
+            {/* Team Plan Workspace Selector Dialog */}
             <Dialog open={showOrgSelector} onOpenChange={setShowOrgSelector}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Select Organization for Team Plan</DialogTitle>
+                        <DialogTitle>Select Workspace for Team Plan</DialogTitle>
                         <DialogDescription>
-                            Choose which organization you want to purchase the Team plan for, or create a new one.
+                            Choose which workspace you want to purchase the Team plan for, or create a new one.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-4">
-                        {/* Organizations */}
+                        {/* Workspaces */}
                         {orgListLoaded && userMemberships.data?.map((membership) => (
                             <Button
-                                key={membership.organization.id}
+                                key={membership.workspace.id}
                                 variant="outline"
                                 className="w-full p-4 h-auto justify-start"
-                                onClick={() => handleOrgSelection(membership.organization.id)}
+                                onClick={() => handleOrgSelection(membership.workspace.id)}
                                 disabled={isProcessingOrgSelection}
                             >
                                 <div className="flex items-center gap-3">
                                     <Avatar className="w-8 h-8">
-                                        <AvatarImage src={membership.organization.imageUrl} />
+                                        <AvatarImage src={membership.workspace.imageUrl} />
                                         <AvatarFallback className="bg-blue-500 text-white">
-                                            {membership.organization.name[0]}
+                                            {membership.workspace.name[0]}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="flex flex-col items-start">
                                         <span className="text-sm font-medium">
-                                            {membership.organization.name}
+                                            {membership.workspace.name}
                                         </span>
                                         <span className="text-xs text-muted-foreground flex items-center gap-1">
                                             <Users className="w-3 h-3" />
-                                            {membership.organization.membersCount} members
+                                            {membership.workspace.membersCount} members
                                         </span>
                                     </div>
                                 </div>
                             </Button>
                         ))}
 
-                        {/* Create New Organization */}
+                        {/* Create New Workspace */}
                         <Button
                             variant="outline"
                             className="w-full p-4 h-auto justify-start border-dashed"
@@ -549,7 +549,7 @@ export function PricingComponent() {
                                     <Plus className="w-4 h-4 text-muted-foreground" />
                                 </div>
                                 <div className="flex flex-col items-start">
-                                    <span className="text-sm font-medium">Create New Organization</span>
+                                    <span className="text-sm font-medium">Create New Workspace</span>
                                     <span className="text-xs text-muted-foreground">
                                         Set up a new team workspace
                                     </span>
@@ -560,22 +560,22 @@ export function PricingComponent() {
                 </DialogContent>
             </Dialog>
 
-            {/* Create Organization Dialog */}
+            {/* Create Workspace Dialog */}
             <Dialog open={showCreateOrg} onOpenChange={setShowCreateOrg}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Create Organization</DialogTitle>
+                        <DialogTitle>Create Workspace</DialogTitle>
                         <DialogDescription>
-                            Enter a name for your new organization to continue with the Team plan.
+                            Enter a name for your new workspace to continue with the Team plan.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="org-name">Organization Name</Label>
+                            <Label htmlFor="org-name">Workspace Name</Label>
                             <Input
                                 id="org-name"
-                                placeholder="Enter organization name"
+                                placeholder="Enter workspace name"
                                 value={newOrgName}
                                 onChange={(e) => setNewOrgName(e.target.value)}
                                 onKeyDown={(e) => {
@@ -600,7 +600,7 @@ export function PricingComponent() {
                                 onClick={handleCreateOrganization}
                                 disabled={!newOrgName.trim() || isCreatingOrg}
                             >
-                                {isCreatingOrg ? "Creating..." : "Create Organization"}
+                                {isCreatingOrg ? "Creating..." : "Create Workspace"}
                             </Button>
                         </div>
                     </div>

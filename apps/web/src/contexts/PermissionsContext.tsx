@@ -2,7 +2,7 @@
 
 import { createContext, useContext, ReactNode, useMemo } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { useOrganization } from "@/contexts/OrganizationContext";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import {
     Plan,
     Permission,
@@ -37,8 +37,8 @@ interface PermissionsProviderProps {
 
 export function PermissionsProvider({ children }: PermissionsProviderProps) {
     const { userId } = useAuth();
-    const { organization } = useOrganization();
-    const { plan: planData } = useSubscription(organization?._id || userId || undefined, organization ? OwnerType.Org : OwnerType.User);
+    const { workspace } = useWorkspace();
+    const { plan: planData } = useSubscription(workspace?._id || userId || undefined, workspace ? OwnerType.Workspace : OwnerType.User);
 
 
     // Determine plan type from database

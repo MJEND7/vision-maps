@@ -1,16 +1,16 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
-import { useOrganization } from "@/contexts/OrganizationContext";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useState, useEffect } from "react";
 
 /**
  * Hook that provides stable authentication state, preventing race conditions
- * during organization switching or authentication state changes.
+ * during workspace switching or authentication state changes.
  */
 export function useStableAuth() {
     const { user, isLoaded: userLoaded, isSignedIn } = useUser();
-    const { organization, isLoaded: orgLoaded } = useOrganization();
+    const { workspace, isLoaded: workspaceLoaded } = useWorkspace();
     const [isStable, setIsStable] = useState(false);
     const [wasAuthenticated, setWasAuthenticated] = useState(false);
 
@@ -23,40 +23,40 @@ export function useStableAuth() {
         }
 
         // Consider auth stable when:
-        // 1. Both user and org states are loaded
+        // 1. Both user and workspace states are loaded
         // 2. User is signed in with a valid user object
         // 3. Small delay to prevent race conditions
-        if (userLoaded && orgLoaded && isSignedIn && user) {
+        if (userLoaded && workspaceLoaded && isSignedIn && user) {
             const timer = setTimeout(() => {
                 setIsStable(true);
             }, 50);
             return () => clearTimeout(timer);
         } else {
             // If auth becomes invalid and user was previously authenticated,
-            // this suggests an org switch or similar transition
+            // this suggests a workspace switch or similar transition
             if (wasAuthenticated && !isSignedIn) {
                 setIsStable(false);
             }
         }
-    }, [userLoaded, orgLoaded, isSignedIn, user, wasAuthenticated]);
+    }, [userLoaded, workspaceLoaded, isSignedIn, user, wasAuthenticated]);
 
-    // Reset stability when organization changes
+    // Reset stability when workspace changes
     useEffect(() => {
         if (isStable) {
             setIsStable(false);
             const timer = setTimeout(() => {
-                if (userLoaded && orgLoaded && isSignedIn && user) {
+                if (userLoaded && workspaceLoaded && isSignedIn && user) {
                     setIsStable(true);
                 }
             }, 100);
             return () => clearTimeout(timer);
         }
-    }, [organization?._id]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [workspace?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return {
         user,
-        organization,
-        isLoaded: userLoaded && orgLoaded,
+        workspace,
+        isLoaded: userLoaded && workspaceLoaded,
         isSignedIn,
         isStable,
         isAuthenticated: isSignedIn && !!user && isStable,

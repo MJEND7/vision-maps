@@ -20,7 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser, SignOutButton, useAuth } from "@clerk/nextjs";
-import { useOrganization, useOrganizationList } from "@/contexts/OrganizationContext";
+import { useWorkspace, useWorkspaceList } from "@/contexts/WorkspaceContext";
 import { useRouter, usePathname } from "next/navigation"; // Added usePathname
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "convex/react";
@@ -32,13 +32,13 @@ import { ProfileSettingsDialog } from "@/components/ui/profile-settings-dialog";
 export function NotionSidebar() {
     const { user } = useUser();
     const { isSignedIn } = useAuth();
-    const { organization } = useOrganization();
+    const { workspace } = useWorkspace();
     const {
         userMemberships,
         userInvitations,
         isLoaded: orgListLoaded,
         setActive
-    } = useOrganizationList();
+    } = useWorkspaceList();
     const router = useRouter();
     const pathname = usePathname(); // Get current pathname
     const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
@@ -79,9 +79,9 @@ export function NotionSidebar() {
     const handleOrganizationSelect = async (orgId: string) => {
         try {
             if (orgId === "personal") {
-                await setActive?.({ organization: null });
+                await setActive?.({ workspace: null });
             } else {
-                await setActive?.({ organization: orgId as any });
+                await setActive?.({ workspace: orgId as any });
             }
 
             // Only revalidate after switch is complete
@@ -170,7 +170,7 @@ export function NotionSidebar() {
         }
 
         // Pro user → Encourage team upgrade
-        if (userPlan === "pro" && !organization) {
+        if (userPlan === "pro" && !workspace) {
             return (
                 <div
                     className="relative rounded-2xl p-4 mt-2 
@@ -214,15 +214,15 @@ export function NotionSidebar() {
                     <Button variant="ghost" className="flex-1 justify-between p-2 h-auto">
                         <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded bg-blue-500 flex items-center justify-center text-white text-xs font-semibold">
-                                {organization?.name?.[0] || user?.firstName?.[0] || "P"}
+                                {workspace?.name?.[0] || user?.firstName?.[0] || "P"}
                             </div>
                             <div className="flex flex-col items-start">
                                 <span className="text-sm font-medium truncate max-w-32">
-                                    {organization?.name || "Personal"}
+                                    {workspace?.name || "Personal"}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
-                                    {organization
-                                        ? `${organization.membersCount} member${organization.membersCount !== 1 ? "s" : ""}`
+                                    {workspace
+                                        ? `${workspace.membersCount} member${workspace.membersCount !== 1 ? "s" : ""}`
                                         : "Personal workspace"
                                     }
                                 </span>
@@ -231,7 +231,7 @@ export function NotionSidebar() {
                         <ChevronsUpDown className={`w-4 h-4`} />
                     </Button>
                 </CustomOrgPopup>
-                {organization && (
+                {workspace && (
                     <button
                         onClick={handleSettingsClick}
                         className="hover:rotate-180  rounded p-1 transition-all ease-in-out duration-500">
@@ -324,7 +324,7 @@ export function NotionSidebar() {
             </div>
 
             {/* Organization Settings Dialog */}
-            {organization && (
+            {workspace && (
                 <OrgSettingsDialog
                     open={orgSettingsOpen}
                     onOpenChange={setOrgSettingsOpen}

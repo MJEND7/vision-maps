@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { useOrganization, useOrganizationList } from "@/contexts/OrganizationContext";
+import { useWorkspace, useWorkspaceList } from "@/contexts/WorkspaceContext";
 import { api } from "@/../convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import {
@@ -37,7 +37,7 @@ import { Id } from "@/../convex/_generated/dataModel";
 
 interface CustomOrgPopupProps {
     children: React.ReactNode;
-    onOrgChange?: (orgId: Id<"organizations"> | null) => void;
+    onOrgChange?: (workspaceId: Id<"workspaces"> | null) => void;
 }
 
 interface CreateOrgPopupProps {
@@ -49,37 +49,37 @@ interface CreateOrgPopupProps {
 interface InviteUsersPopupProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    organizationId: Id<"organizations">;
+    organizationId: Id<"workspaces">;
     organizationName: string;
 }
 
 interface InlineInviteUsersProps {
-    organizationId: Id<"organizations">;
+    organizationId: Id<"workspaces">;
     onInviteSent: () => void;
     onDone: () => void;
 }
 
 export function CustomOrgPopup({ children, onOrgChange }: CustomOrgPopupProps) {
     const { user } = useUser();
-    const { organization } = useOrganization();
-    const { userMemberships, setActive, isLoaded } = useOrganizationList();
+    const { workspace } = useWorkspace();
+    const { userMemberships, setActive, isLoaded } = useWorkspaceList();
 
     const [createOrgOpen, setCreateOrgOpen] = useState(false);
     const [inviteUsersOpen, setInviteUsersOpen] = useState(false);
-    const [selectedOrgForInvite, setSelectedOrgForInvite] = useState<{id: Id<"organizations">, name: string} | null>(null);
+    const [selectedOrgForInvite, setSelectedOrgForInvite] = useState<{id: Id<"workspaces">, name: string} | null>(null);
 
-    const handleOrganizationSwitch = async (orgId: Id<"organizations"> | null) => {
+    const handleOrganizationSwitch = async (workspaceId: Id<"workspaces"> | null) => {
         try {
-            await setActive({ organization: orgId });
-            onOrgChange?.(orgId);
-            toast.success(`Switched to ${orgId ? 'organization' : 'personal workspace'}`);
+            await setActive({ workspace: workspaceId });
+            onOrgChange?.(workspaceId);
+            toast.success(`Switched to ${workspaceId ? 'workspace' : 'personal workspace'}`);
         } catch {
-            toast.error("Failed to switch organization");
+            toast.error("Failed to switch workspace");
         }
     };
 
-    const handleInviteUsers = (orgId: Id<"organizations">, orgName: string) => {
-        setSelectedOrgForInvite({ id: orgId, name: orgName });
+    const handleInviteUsers = (workspaceId: Id<"workspaces">, workspaceName: string) => {
+        setSelectedOrgForInvite({ id: workspaceId, name: workspaceName });
         setInviteUsersOpen(true);
     };
 
@@ -102,61 +102,37 @@ export function CustomOrgPopup({ children, onOrgChange }: CustomOrgPopupProps) {
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
 
-                    {/* Personal Account */}
-                    <DropdownMenuItem
-                        onClick={() => handleOrganizationSwitch(null)}
-                        className="p-3"
-                    >
-                        <div className="flex items-center justify-between w-full">
-                            <div className="flex items-center gap-3">
-                                <Avatar className="w-8 h-8">
-                                    <AvatarImage src={user?.imageUrl} />
-                                    <AvatarFallback className="bg-gray-500 text-white">
-                                        {user?.firstName?.[0] || "P"}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-medium">Personal Account</span>
-                                    <span className="text-xs text-muted-foreground">
-                                        {user?.emailAddresses?.[0]?.emailAddress}
-                                    </span>
-                                </div>
-                            </div>
-                            {!organization && <Check className="w-4 h-4 text-green-600" />}
-                        </div>
-                    </DropdownMenuItem>
-
                     {/* Workspaces */}
                     {isLoaded && userMemberships.data?.map((membership) => (
                         <DropdownMenuItem
-                            key={membership.organization.id}
-                            onClick={() => handleOrganizationSwitch(membership.organization.id as unknown as Id<"organizations">)}
+                            key={membership.workspace.id}
+                            onClick={() => handleOrganizationSwitch(membership.workspace.id as unknown as Id<"workspaces">)}
                             className="p-3"
                         >
                             <div className="flex items-center justify-between w-full">
                                 <div className="flex items-center gap-3">
                                     <Avatar className="w-8 h-8">
-                                        <AvatarImage src={membership.organization.imageUrl} />
+                                        <AvatarImage src={membership.workspace.imageUrl} />
                                         <AvatarFallback className="bg-blue-500 text-white">
-                                            {membership.organization.name[0]}
+                                            {membership.workspace.name[0]}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="flex flex-col">
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm font-medium">
-                                                {membership.organization.name}
+                                                {membership.workspace.name}
                                             </span>
                                             {membership.role === "admin" && (
                                                 <Crown className="w-3 h-3 text-amber-500" />
                                             )}
                                         </div>
                                         <span className="text-xs text-muted-foreground">
-                                            {membership.organization.membersCount} members
+                                            {membership.workspace.membersCount} members
                                         </span>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    {organization?._id === (membership.organization.id as unknown as Id<"organizations">) && (
+                                    {workspace?._id === (membership.workspace.id as unknown as Id<"workspaces">) && (
                                         <Check className="w-4 h-4 text-green-600" />
                                     )}
                                     {membership.role === "admin" && (
@@ -166,7 +142,7 @@ export function CustomOrgPopup({ children, onOrgChange }: CustomOrgPopupProps) {
                                             className="h-6 w-6 p-0"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleInviteUsers(membership.organization.id as unknown as Id<"organizations">, membership.organization.name);
+                                                handleInviteUsers(membership.workspace.id as unknown as Id<"workspaces">, membership.workspace.name);
                                             }}
                                         >
                                             <Users className="w-3 h-3" />
@@ -191,7 +167,7 @@ export function CustomOrgPopup({ children, onOrgChange }: CustomOrgPopupProps) {
                 <InviteUsersPopup
                     open={inviteUsersOpen}
                     onOpenChange={setInviteUsersOpen}
-                    organizationId={selectedOrgForInvite.id}
+                    organizationId={selectedOrgForInvite.id as any as Id<"workspaces">}
                     organizationName={selectedOrgForInvite.name}
                 />
             )}
@@ -203,28 +179,28 @@ function CreateOrgPopup({ open, onOpenChange, onOrgCreated }: CreateOrgPopupProp
     const [orgName, setOrgName] = useState("");
     const [loading, setLoading] = useState(false);
     const [showInviteStep, setShowInviteStep] = useState(false);
-    const [createdOrgId, setCreatedOrgId] = useState<Id<"organizations"> | null>(null);
+    const [createdOrgId, setCreatedOrgId] = useState<Id<"workspaces"> | null>(null);
 
-    const createOrganization = useMutation(api.orgs.create);
-    const { setActive } = useOrganizationList();
+    const createOrganization = useMutation(api.workspaces.create);
+    const { setActive } = useWorkspaceList();
 
     const handleCreateOrg = async () => {
         if (!orgName.trim()) return;
 
         setLoading(true);
         try {
-            const orgId = await createOrganization({ name: orgName.trim() });
-            if (orgId) {
-                setCreatedOrgId(orgId);
+            const workspaceId = await createOrganization({ name: orgName.trim() });
+            if (workspaceId) {
+                setCreatedOrgId(workspaceId);
 
-                // Switch to the newly created organization
-                await setActive({ organization: orgId });
-                toast.success("Organization created successfully!");
+                // Switch to the newly created workspace
+                await setActive({ workspace: workspaceId });
+                toast.success("Workspace created successfully!");
                 setShowInviteStep(true);
             }
         } catch (error) {
-            console.error("Failed to create organization:", error);
-            toast.error("Failed to create organization");
+            console.error("Failed to create workspace:", error);
+            toast.error("Failed to create workspace");
         } finally {
             setLoading(false);
         }
@@ -243,14 +219,14 @@ function CreateOrgPopup({ open, onOpenChange, onOrgCreated }: CreateOrgPopupProp
                 {!showInviteStep ? (
                     <>
                         <DialogHeader>
-                            <DialogTitle>Create Organization</DialogTitle>
+                            <DialogTitle>Create Workspace</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-3">
                             <div className="space-y-3">
                                 <Label htmlFor="org-name">Name</Label>
                                 <Input
                                     id="org-name"
-                                    placeholder="Enter organization name"
+                                    placeholder="Enter workspace name"
                                     value={orgName}
                                     onChange={(e) => setOrgName(e.target.value)}
                                     onKeyDown={(e) => {
@@ -349,7 +325,7 @@ export function InviteUsersPopup({ open, onOpenChange, organizationId, organizat
             await Promise.all(
                 selectedUsers.map(async (user) => {
                     await inviteMember({
-                        organizationId,
+                        organizationId: organizationId as any as Id<"organizations">,
                         recipientEmail: user.email,
                         role: user.role
                     });
@@ -563,7 +539,7 @@ function InlineInviteUsers({ organizationId, onInviteSent, onDone }: InlineInvit
                 await Promise.all(
                     selectedUsers.map(async (user) => {
                         await inviteMember({
-                            organizationId,
+                            organizationId: organizationId as any as Id<"organizations">,
                             recipientEmail: user.email,
                             role: user.role
                         });

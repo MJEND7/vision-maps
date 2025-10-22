@@ -5,13 +5,14 @@ import { api } from "@/../convex/_generated/api";
 
 export enum OwnerType {
     User = "user",
-    Org = "org"
+    Org = "org",
+    Workspace = "workspace"
 }
 
 export function useSubscription(ownerId: string | undefined, ownerType: OwnerType) {
     const plan = useQuery(
         api.plans.getPlanByOwner,
-        ownerId ? { ownerType: (ownerType as OwnerType.User | OwnerType.Org), ownerId } : "skip"
+        ownerId ? { ownerType: (ownerType as OwnerType.User | OwnerType.Org | OwnerType.Workspace), ownerId } : "skip"
     );
 
     const planType = plan?.planType || "free";

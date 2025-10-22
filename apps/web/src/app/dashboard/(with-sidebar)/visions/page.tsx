@@ -18,15 +18,16 @@ import { Id } from '@/../convex/_generated/dataModel';
 import { toast } from 'sonner';
 import { StaticFacePile } from '@/components/ui/face-pile';
 import { VisionTableSkeleton, VisionGridSkeleton } from '@/components/vision-skeletons';
-import { useOrganization } from '@/contexts/OrganizationContext';
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { Plan } from '@/lib/permissions';
 import { UpgradeDialog } from '@/components/ui/upgrade-dialog';
 
 export default function VisionsPage() {
     const router = useRouter();
-    const { organization } = useOrganization();
+    const { workspace } = useWorkspace();
     const { canCreateVision: checkCanCreateVision, visionLimit, plan } = usePermissions();
+    console.log(plan)
     const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
     const LOCAL_VIEW_MODE = "visions-view-mode";
@@ -66,9 +67,9 @@ export default function VisionsPage() {
     // Convex queries and mutations - only call when authenticated
     const visionsData = useQuery(
         api.visions.list,
-        organization?._id ? {
+        workspace?._id ? {
             search: debouncedSearch || undefined,
-            workspaceId: organization._id,
+            workspaceId: workspace._id,
             sortBy: sortBy as "updatedAt" | "createdAt" | "title",
             limit: 50
         } : "skip",
@@ -83,7 +84,7 @@ export default function VisionsPage() {
     const canCreate = checkCanCreateVision(visionCount);
 
     // Check if user is in org but doesn't have Teams tier
-    const isInOrgWithoutTeams = organization && !organization.isDefault && plan !== Plan.TEAMS;
+    const isInOrgWithoutTeams = workspace && !workspace.isDefault && plan !== Plan.TEAMS;
 
     const newVision = async () => {
         // If in org without Teams tier, show upgrade prompt
@@ -98,7 +99,7 @@ export default function VisionsPage() {
         }
 
         const id = await createVision({
-            workspaceId: organization?._id!
+            workspaceId: workspace?._id!
         });
         router.push(`${ROUTES.PROFILE.VISIONS}/${id}`);
     };
@@ -180,11 +181,11 @@ export default function VisionsPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 lg:gap-6">
                         <div className="space-y-1">
                             <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">
-                                {organization ? `${organization.name} Vision Maps` : 'Your Vision Maps'}
+                                {workspace ? `${workspace.name} Vision Maps` : 'Your Vision Maps'}
                             </h2>
                             <p className="text-muted-foreground text-sm sm:text-base">
-                                {organization
-                                    ? `Manage visions for ${organization.name} organization.`
+                                {workspace
+                                    ? `Manage visions for ${workspace.name} workspace.`
                                     : 'Welcome to your personal vision dashboard.'
                                 }
                             </p>

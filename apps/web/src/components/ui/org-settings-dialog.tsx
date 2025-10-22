@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
-import { useOrganization, useOrganizationList } from "@/contexts/OrganizationContext";
+import { useWorkspace, useWorkspaceList } from "@/contexts/WorkspaceContext";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/../convex/_generated/api";
 import { Id } from "@/../convex/_generated/dataModel";
@@ -90,29 +90,29 @@ interface DangerTabProps {
 
 export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps) {
     const { user } = useUser();
-    const { organization, isAdmin } = useOrganization();
-    const { setActive } = useOrganizationList();
+    const { workspace, isAdmin } = useWorkspace();
+    const { setActive } = useWorkspaceList();
 
-    // Fetch members from Convex (using workspace members since organization is now a workspace)
+    // Fetch members from Convex (using workspace members)
     const convexMembers = useQuery(
         api.workspaces.getMembers,
-        organization ? { workspaceId: organization._id as unknown as Id<"workspaces"> } : "skip"
+        workspace ? { workspaceId: workspace._id as unknown as Id<"workspaces"> } : "skip"
     );
 
     // Fetch pending invites
     const pendingInvites = useQuery(
         api.notifications.getOrgPendingInvites,
-        organization ? { organizationId: organization._id } : "skip"
+        workspace ? { organizationId: workspace._id } : "skip"
     );
 
     const [activeTab, setActiveTab] = useState("members");
     const [showLeaveDialog, setShowLeaveDialog] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showInviteDialog, setShowInviteDialog] = useState(false);
-    const [orgName, setOrgName] = useState(organization?.name || "");
+    const [orgName, setOrgName] = useState(workspace?.name || "");
     const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
-    // Mutations (using workspace functions since organization is now a workspace)
+    // Mutations (using workspace functions)
     const createNotification = useMutation(api.notifications.createNotification);
     const updateOrg = useMutation(api.workspaces.update);
     const removeOrg = useMutation(api.workspaces.remove);
@@ -121,8 +121,8 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
     const deleteNotification = useMutation(api.notifications.deleteNotification);
 
     // Create compatibility layer to match original component structure
-    const membership = organization ? {
-        role: organization.role || "member"
+    const membership = workspace ? {
+        role: workspace.role || "member"
     } : null;
 
     const memberships = {
@@ -139,27 +139,27 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
         }))
     };
 
-    // Update orgName when organization changes (but not when user is typing)
+    // Update orgName when workspace changes (but not when user is typing)
     useEffect(() => {
-        if (organization?.name) {
-            setOrgName(organization.name);
+        if (workspace?.name) {
+            setOrgName(workspace.name);
         }
-    }, [organization?.name]);
+    }, [workspace?.name]);
 
-    if (!organization || !membership) {
+    if (!workspace || !membership) {
         return null;
     }
     
     const handleLeaveOrg = async () => {
         try {
-            if (organization && user?.id) {
+            if (workspace && user?.id) {
                 await removeMember({
-                    workspaceId: organization._id as unknown as Id<"workspaces">,
+                    workspaceId: workspace._id as unknown as Id<"workspaces">,
                     userId: user.id
                 });
             }
 
-            await setActive?.({ organization: null });
+            await setActive?.({ workspace: null });
 
             toast.success("Left workspace successfully");
             onOpenChange(false);
@@ -171,11 +171,11 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
 
     const handleDeleteOrg = async () => {
         try {
-            if (organization) {
-                await removeOrg({ workspaceId: organization._id as unknown as Id<"workspaces"> });
+            if (workspace) {
+                await removeOrg({ workspaceId: workspace._id as unknown as Id<"workspaces"> });
             }
 
-            await setActive?.({ organization: null });
+            await setActive?.({ workspace: null });
 
             toast.success("Workspace deleted successfully");
             onOpenChange(false);
@@ -193,9 +193,9 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
 
         setIsUpdatingProfile(true);
         try {
-            if (organization) {
+            if (workspace) {
                 await updateOrg({
-                    workspaceId: organization._id as unknown as Id<"workspaces">,
+                    workspaceId: workspace._id as unknown as Id<"workspaces">,
                     name: orgName.trim()
                 });
             }
@@ -212,13 +212,13 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
     const handleRoleChange = async (memberId: string, newRole: string, memberName: string) => {
         try {
             const targetMembership = memberships?.data?.find(m => m.id === memberId);
-            if (!targetMembership || !organization) {
+            if (!targetMembership || !workspace) {
                 toast.error("Member not found");
                 return;
             }
 
             await updateMemberRole({
-                workspaceId: organization._id as unknown as Id<"workspaces">,
+                workspaceId: workspace._id as unknown as Id<"workspaces">,
                 userId: targetMembership.publicUserData.userId,
                 newRole: newRole
             });
@@ -230,7 +230,7 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
                         recipientId: targetMembership.publicUserData.userId,
                         type: "system",
                         title: "Role Updated",
-                        message: `Your role in "${organization?.name}" has been updated to ${RoleUtils.getDisplayName(newRole)}`,
+                        message: `Your role in "${workspace?.name}" has been updated to ${RoleUtils.getDisplayName(newRole)}`,
                     });
                 } catch (notificationError) {
                     console.warn("Failed to send role change notification:", notificationError);
@@ -248,13 +248,13 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
     const handleRemoveMember = async (memberId: string, memberName: string) => {
         try {
             const targetMembership = memberships?.data?.find(m => m.id === memberId);
-            if (!targetMembership || !organization) {
+            if (!targetMembership || !workspace) {
                 toast.error("Member not found");
                 return;
             }
 
             await removeMember({
-                workspaceId: organization._id as unknown as Id<"workspaces">,
+                workspaceId: workspace._id as unknown as Id<"workspaces">,
                 userId: targetMembership.publicUserData.userId
             });
 
@@ -282,14 +282,14 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
                     <DialogHeader className="px-6 py-4 border-b">
                         <DialogTitle className="flex items-center gap-3">
                             <Avatar className="w-8 h-8">
-                                <AvatarImage src={organization.imageUrl} />
+                                <AvatarImage src={workspace.imageUrl} />
                                 <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                                    {organization.name[0]}
+                                    {workspace.name[0]}
                                 </AvatarFallback>
                             </Avatar>
                             <div>
-                                <h2 className="text-xl font-semibold">{organization.name}</h2>
-                                <p className="text-sm text-muted-foreground">Organization Settings</p>
+                                <h2 className="text-xl font-semibold">{workspace.name}</h2>
+                                <p className="text-sm text-muted-foreground">Workspace Settings</p>
                             </div>
                         </DialogTitle>
                     </DialogHeader>
@@ -309,7 +309,7 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
                                     <Users className="w-4 h-4" />
                                     <span className="font-medium whitespace-nowrap">Members</span>
                                     <span className="ml-auto text-xs bg-background/20 px-2 py-0.5 rounded-full whitespace-nowrap">
-                                        {organization?.membersCount || 0}
+                                        {workspace?.membersCount || 0}
                                     </span>
                                 </button>
                                 
@@ -373,7 +373,7 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
                             <div className="h-full overflow-y-auto scrollbar-hide p-4 sm:p-8">
                                 {activeTab === "members" && (
                                     <MembersTab
-                                        organization={organization}
+                                        organization={workspace}
                                         memberships={memberships}
                                         currentUser={user}
                                         isAdmin={isAdmin}
@@ -393,7 +393,7 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
 
                                 {activeTab === "profile" && (
                                     <ProfileTab
-                                        organization={organization}
+                                        organization={workspace}
                                         isAdmin={isAdmin}
                                         orgName={orgName}
                                         setOrgName={setOrgName}
@@ -404,7 +404,7 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
 
                                 {activeTab === "billing" && (
                                     <OrgBillingTab
-                                        organization={organization}
+                                        organization={workspace}
                                         isAdmin={isAdmin}
                                     />
                                 )}
@@ -412,7 +412,7 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
                                 {activeTab === "danger" && (
                                     <DangerTab
                                         isAdmin={isAdmin}
-                                        organizationName={organization.name}
+                                        organizationName={workspace.name}
                                         onLeave={() => setShowLeaveDialog(true)}
                                         onDelete={() => setShowDeleteDialog(true)}
                                     />
@@ -423,14 +423,14 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
                 </DialogContent>
             </Dialog>
 
-            {/* Leave Organization Confirmation */}
+            {/* Leave Workspace Confirmation */}
             <AlertDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Leave Organization</AlertDialogTitle>
+                        <AlertDialogTitle>Leave Workspace</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to leave &quot;{organization.name}&quot;? This action cannot be undone.
-                            You will need to be re-invited to access this organization again.
+                            Are you sure you want to leave &quot;{workspace.name}&quot;? This action cannot be undone.
+                            You will need to be re-invited to access this workspace again.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -440,20 +440,20 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
                             className="bg-destructive hover:bg-destructive/90"
                         >
                             <LogOut className="w-4 h-4 mr-2" />
-                            Leave Organization
+                            Leave Workspace
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Delete Organization Confirmation */}
+            {/* Delete Workspace Confirmation */}
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Organization</AlertDialogTitle>
+                        <AlertDialogTitle>Delete Workspace</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete &quot;{organization.name}&quot;? This action cannot be undone.
-                            All data associated with this organization will be permanently deleted.
+                            Are you sure you want to delete &quot;{workspace.name}&quot;? This action cannot be undone.
+                            All data associated with this workspace will be permanently deleted.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -463,7 +463,7 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
                             className="bg-destructive hover:bg-destructive/90"
                         >
                             <Trash2 className="w-4 h-4 mr-2" />
-                            Delete Organization
+                            Delete Workspace
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -473,8 +473,8 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
             <InviteUsersPopup
                 open={showInviteDialog}
                 onOpenChange={setShowInviteDialog}
-                organizationId={organization._id}
-                organizationName={organization.name}
+                organizationId={workspace._id}
+                organizationName={workspace.name}
             />
         </>
     );
@@ -648,7 +648,7 @@ function ProfileTab({ organization, isAdmin, orgName, setOrgName, onUpdateProfil
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Organization Profile</h3>
+                <h3 className="text-lg font-medium">Workspace Profile</h3>
             </div>
 
             <div className="space-y-4">
@@ -672,18 +672,18 @@ function ProfileTab({ organization, isAdmin, orgName, setOrgName, onUpdateProfil
 
                 <div className="grid gap-4">
                     <div className="space-y-2">
-                        <Label htmlFor="org-name">Organization Name</Label>
+                        <Label htmlFor="org-name">Workspace Name</Label>
                         <Input
                             id="org-name"
                             value={orgName}
                             onChange={(e) => setOrgName(e.target.value)}
                             disabled={!isAdmin}
-                            placeholder="Enter organization name"
+                            placeholder="Enter workspace name"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label>Organization ID</Label>
+                        <Label>Workspace ID</Label>
                         <Input
                             value={organization._id}
                             disabled
@@ -718,8 +718,8 @@ function ProfileTab({ organization, isAdmin, orgName, setOrgName, onUpdateProfil
 }
 
 // Wrapper for Org Billing Tab
-function OrgBillingTab({ organization, isAdmin }: { organization: Organization; isAdmin: boolean }) {
-    const { plan: orgPlan, planType, isOnTrial, status, isActive } = useSubscription(organization._id, OwnerType.Org);
+function OrgBillingTab({ organization, isAdmin }: { organization: any; isAdmin: boolean }) {
+    const { plan: orgPlan, planType, isOnTrial, status, isActive } = useSubscription(organization._id, OwnerType.Workspace);
 
     const getPlanBadgeColor = () => {
         if (isOnTrial)
@@ -740,7 +740,7 @@ function OrgBillingTab({ organization, isAdmin }: { organization: Organization; 
     return (
         <SharedBillingTab
             ownerId={organization._id}
-            ownerType="org"
+            ownerType="workspace"
             plan={orgPlan}
             planType={planType}
             isOnTrial={isOnTrial}
@@ -764,13 +764,13 @@ function DangerTab({ isAdmin, organizationName, onLeave, onDelete }: DangerTabPr
             </div>
 
             <div className="space-y-4">
-                {/* Leave Organization - Available to all members */}
+                {/* Leave Workspace - Available to all members */}
                 <div className="p-4 border border-destructive/20 rounded-lg bg-destructive/5">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h4 className="font-medium">Leave Organization</h4>
+                            <h4 className="font-medium">Leave Workspace</h4>
                             <p className="text-sm text-muted-foreground">
-                                You will no longer have access to this organization.
+                                You will no longer have access to this workspace.
                             </p>
                         </div>
                         <Button variant="destructive" onClick={onLeave}>
@@ -780,12 +780,12 @@ function DangerTab({ isAdmin, organizationName, onLeave, onDelete }: DangerTabPr
                     </div>
                 </div>
 
-                {/* Delete Organization - Only available to admins */}
+                {/* Delete Workspace - Only available to admins */}
                 {isAdmin && (
                     <div className="p-4 border border-destructive/20 rounded-lg bg-destructive/5">
                         <div className="flex items-center justify-between">
                             <div>
-                                <h4 className="font-medium">Delete Organization</h4>
+                                <h4 className="font-medium">Delete Workspace</h4>
                                 <p className="text-sm text-muted-foreground">
                                     Permanently delete &quot;{organizationName}&quot; and all associated data.
                                 </p>

@@ -9,8 +9,8 @@ import { shadcn } from "@clerk/themes";
 import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
 import { extractRouterConfig } from "uploadthing/server";
 import { uploadThingFileRouter } from "./api/uploadthing/core";
-import { OrganizationProvider } from "../contexts/OrganizationContext";
 import { WorkspaceProvider } from "../contexts/WorkspaceContext";
+import { PermissionsProvider } from "../contexts/PermissionsContext";
 
 export const metadata: Metadata = {
     title: "Vision",
@@ -84,9 +84,9 @@ export default function RootLayout({
                 }}>
                     <ConvexClientProvider>
                         <WorkspaceProvider>
-                            <OrganizationProvider>
+                            <PermissionsProvider>
                                 {children}
-                            </OrganizationProvider>
+                            </PermissionsProvider>
                         </WorkspaceProvider>
                     </ConvexClientProvider>
                 </ClerkProvider>

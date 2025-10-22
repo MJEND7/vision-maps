@@ -22,7 +22,7 @@ import { toast } from "sonner";
 interface BillingTabProps {
     // Owner information
     ownerId: string;
-    ownerType: "user" | "org";
+    ownerType: "user" | "org" | "workspace";
 
     // Plan information
     plan: any;
@@ -60,7 +60,7 @@ export function BillingTab({
     // Fetch invoice history (only for orgs, user invoices would use getUserInvoices)
     const invoices = useQuery(
         api.invoices.getOrgInvoices,
-        ownerType === "org" && ownerId ? { organizationId: ownerId as any, limit: 5 } : "skip"
+        ownerType === "org" || ownerType === "workspace" && ownerId ? { organizationId: ownerId as any, limit: 5 } : "skip"
     );
 
     const handleManageSubscription = async () => {
@@ -95,7 +95,7 @@ export function BillingTab({
         return (plan.seats || 1) * PRICE_PER_SEAT;
     };
 
-    const isOrgPlan = ownerType === "org";
+    const isOrgPlan = ownerType === "org" || ownerType === "workspace";
     const showCostEstimate = isOrgPlan && planType === "team" && plan && "seats" in plan && estimatedMonthlyCost();
     const showPaymentHistory = planType !== "free" && invoices && invoices.length > 0;
 

@@ -6,7 +6,7 @@ import { Bell, Check, Trash2, Users, MessageSquare, Settings, UserCheck, UserX, 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@clerk/nextjs";
-import { useOrganization } from "@/contexts/OrganizationContext";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/../convex/_generated/api";
@@ -111,7 +111,7 @@ const extractPaymentInfo = (message: string, title: string) => {
 
 export default function NotificationsPage() {
     const { isLoaded: userLoaded, isSignedIn } = useUser();
-    const { isLoaded: orgLoaded } = useOrganization();
+    const { isLoaded: workspaceLoaded } = useWorkspace();
     const router = useRouter();
     const [filter, setFilter] = useState<"all" | "unread">("all");
 
@@ -120,7 +120,7 @@ export default function NotificationsPage() {
     const notifications = allNotifications || [];
 
     // Track if we're in an unstable auth state (during org operations)
-    const isAuthStable = userLoaded && orgLoaded && isSignedIn;
+    const isAuthStable = userLoaded && workspaceLoaded && isSignedIn;
 
     // Auto-mark all notifications as read when page loads
     useEffect(() => {
