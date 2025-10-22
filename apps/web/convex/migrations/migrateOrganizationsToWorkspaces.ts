@@ -345,3 +345,80 @@ export const runMigration = mutation({
     }
   },
 });
+
+/**
+ * FIX MIGRATION: Ensure all visions have workspace field set
+ * This should be run after the initial migration to fix any visions that don't have a workspace field.
+ * This addresses the issue where visions might not have been properly migrated.
+ */
+export const fixVisionWorkspaceReferences = mutation({
+  args: {},
+  handler: async (ctx) => {
+    console.log("Starting fix: Ensuring all visions have workspace references...");
+
+    const fixReport = {
+      visionsFixed: 0,
+      visionsWithoutWorkspace: 0,
+      visionsWithOrganization: 0,
+      errors: [] as string[],
+    };
+
+    try {
+      const visions = await ctx.db.query("visions").collect();
+      const orgIdToWorkspaceIdMap = new Map<string, string>();
+
+      // Build organization to workspace mapping
+      const organizations = await ctx.db.query("organizations").collect();
+      for (const org of organizations) {
+        // Find the corresponding workspace
+        const workspace = await ctx.db
+          .query("workspaces")
+          .filter((q) => q.eq(q.field("createdBy"), org.createdBy))
+          .first();
+
+        if (workspace) {
+          orgIdToWorkspaceIdMap.set(org._id, workspace._id);
+        }
+      }
+
+      // Fix visions without workspace field
+      for (const vision of visions) {
+        try {
+          const visionWithOrg = vision as any;
+
+          // Check if vision has workspace field
+          if (!vision.workspace && visionWithOrg.organization) {
+            // Vision has organization but no workspace - needs fixing
+            const workspaceId = orgIdToWorkspaceIdMap.get(visionWithOrg.organization);
+            if (workspaceId) {
+              await ctx.db.patch(vision._id, {
+                workspace: workspaceId,
+              });
+              fixReport.visionsFixed++;
+              fixReport.visionsWithOrganization++;
+              console.log(`Fixed vision ${vision._id}: set workspace to ${workspaceId}`);
+            } else {
+              throw new Error(`No workspace mapping found for organization ${visionWithOrg.organization}`);
+            }
+          } else if (!vision.workspace && !visionWithOrg.organization) {
+            // Vision has neither workspace nor organization - needs investigation
+            fixReport.visionsWithoutWorkspace++;
+            console.warn(`Vision ${vision._id} has neither workspace nor organization field!`);
+          }
+        } catch (error) {
+          const errorMsg = `Failed to fix vision ${vision._id}: ${error}`;
+          console.error(errorMsg);
+          fixReport.errors.push(errorMsg);
+        }
+      }
+
+      console.log("Fix complete!");
+      console.log("Fix Report:", JSON.stringify(fixReport, null, 2));
+
+      return fixReport;
+    } catch (error) {
+      console.error("FATAL ERROR during fix:", error);
+      throw error;
+    }
+  },
+});
