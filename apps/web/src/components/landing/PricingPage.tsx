@@ -84,7 +84,7 @@ const plans = [
 
 export function PricingComponent() {
     const router = useRouter();
-    const { userId, orgId } = useAuth();
+    const { userId } = useAuth();
     const [isAnnual, setIsAnnual] = useState(false);
     const [currentPlan, setCurrentPlan] = useState<string>("free");
     const [isLoadingPlan, setIsLoadingPlan] = useState(true);

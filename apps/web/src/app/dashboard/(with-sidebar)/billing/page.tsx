@@ -6,6 +6,10 @@ import { BillingTab as SharedBillingTab } from "@/components/billing/BillingTab"
 
 export default function WorkspaceBillingPage() {
     const { workspace, isAdmin } = useWorkspace();
+    const { plan: workspacePlan, planType, isOnTrial, status, isActive } = useSubscription(
+        workspace?._id || "",
+        OwnerType.Workspace
+    );
 
     if (!workspace) {
         return (
@@ -14,11 +18,6 @@ export default function WorkspaceBillingPage() {
             </div>
         );
     }
-
-    const { plan: workspacePlan, planType, isOnTrial, status, isActive } = useSubscription(
-        workspace._id,
-        OwnerType.Workspace
-    );
 
     const getPlanBadgeColor = () => {
         if (isOnTrial)

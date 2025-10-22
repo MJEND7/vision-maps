@@ -60,7 +60,6 @@ interface InlineInviteUsersProps {
 }
 
 export function CustomOrgPopup({ children, onOrgChange }: CustomOrgPopupProps) {
-    const { user } = useUser();
     const { workspace } = useWorkspace();
     const { userMemberships, setActive, isLoaded } = useWorkspaceList();
 

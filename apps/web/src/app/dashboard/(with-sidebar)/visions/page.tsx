@@ -97,8 +97,13 @@ export default function VisionsPage() {
             return;
         }
 
+        if (!workspace) {
+            toast.error("Please select a workspace");
+            return;
+        }
+
         const id = await createVision({
-            workspaceId: workspace?._id!
+            workspaceId: workspace._id
         });
         router.push(`${ROUTES.PROFILE.VISIONS}/${id}`);
     };

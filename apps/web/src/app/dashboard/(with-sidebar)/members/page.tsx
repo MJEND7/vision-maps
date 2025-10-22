@@ -67,40 +67,38 @@ export default function MembersPage() {
     const updateMemberRole = useMutation(api.workspaces.updateMemberRole);
     const deleteNotification = useMutation(api.notifications.deleteNotification);
 
-    const activeMembers: Member[] =
-        useMemo(() => {
-            return (
-                convexMembers?.map((m) => ({
-                    id: m._id,
-                    role: m.role,
-                    publicUserData: {
-                        userId: m.userId,
-                        firstName: m.user?.name?.split(" ")[0] || "",
-                        lastName: m.user?.name?.split(" ").slice(1).join(" ") || "",
-                        imageUrl: m.user?.picture,
-                        emailAddress: m.user?.email || "",
-                    },
-                })) || []
-            );
-        }, [convexMembers]) || [];
+    const activeMembers = useMemo<Member[]>(() => {
+        return (
+            convexMembers?.map((m) => ({
+                id: m._id,
+                role: m.role,
+                publicUserData: {
+                    userId: m.userId,
+                    firstName: m.user?.name?.split(" ")[0] || "",
+                    lastName: m.user?.name?.split(" ").slice(1).join(" ") || "",
+                    imageUrl: m.user?.picture,
+                    emailAddress: m.user?.email || "",
+                },
+            })) || []
+        );
+    }, [convexMembers]);
 
-    const pendingMembers: Member[] =
-        useMemo(() => {
-            return (
-                (pendingInvites || []).map((invite: PendingInvite) => ({
-                    id: invite.id,
-                    role: invite.role,
-                    publicUserData: {
-                        userId: "",
-                        firstName: invite.recipientName?.split(" ")[0] || "",
-                        lastName: invite.recipientName?.split(" ").slice(1).join(" ") || "",
-                        imageUrl: invite.recipientPicture,
-                        emailAddress: invite.recipientEmail,
-                    },
-                    isPending: true,
-                })) || []
-            );
-        }, [pendingInvites]) || [];
+    const pendingMembers = useMemo<Member[]>(() => {
+        return (
+            (pendingInvites || []).map((invite: PendingInvite) => ({
+                id: invite.id,
+                role: invite.role,
+                publicUserData: {
+                    userId: "",
+                    firstName: invite.recipientName?.split(" ")[0] || "",
+                    lastName: invite.recipientName?.split(" ").slice(1).join(" ") || "",
+                    imageUrl: invite.recipientPicture,
+                    emailAddress: invite.recipientEmail,
+                },
+                isPending: true,
+            })) || []
+        );
+    }, [pendingInvites]);
 
     const allMembers = useMemo(
         () => [...activeMembers, ...pendingMembers],

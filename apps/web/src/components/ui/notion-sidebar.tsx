@@ -7,7 +7,6 @@ import {
     Map,
     Settings,
     Bell,
-    LogOut,
     HelpCircle,
     ChevronsUpDown,
     Clock,
@@ -16,11 +15,10 @@ import {
     Zap,
     Star,
     DollarSign,
-    AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useUser, SignOutButton, useAuth } from "@clerk/nextjs";
+import { useUser, useAuth } from "@clerk/nextjs";
 import { useWorkspace, useWorkspaceList } from "@/contexts/WorkspaceContext";
 import { useRouter, usePathname } from "next/navigation"; // Added usePathname
 import { Badge } from "@/components/ui/badge";
@@ -69,12 +67,6 @@ export function NotionSidebar() {
 
     const handleProfileClick = () => {
         setProfileSettingsOpen(true);
-    };
-
-    const handleSettingsClick = () => {
-        if (workspace) {
-            router.push(`/dashboard/settings`);
-        }
     };
 
     const handleOrganizationSelect = async (orgId: string) => {
