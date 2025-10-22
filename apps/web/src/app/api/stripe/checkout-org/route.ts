@@ -5,6 +5,7 @@ import { TRIAL_PERIOD_DAYS } from "@/lib/stripe/constants";
 import { redis } from "@/lib/redis";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/../convex/_generated/api";
+import { Id } from "@/../convex/_generated/dataModel";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -42,16 +43,16 @@ export async function POST(req: Request) {
             );
         }
 
-        // Check if user is an admin member of the organization
-        const members = await convex.query(api.orgs.getMembers, {
-            organizationId: orgId as any,
+        // Check if user is an admin member of the workspace
+        const members = await convex.query(api.workspaces.getMembers, {
+            workspaceId: orgId as unknown as Id<"workspaces">,
         });
 
         const userMembership = members.find((m) => m.userId === userId);
 
         if (!userMembership || userMembership.role !== "admin") {
             return NextResponse.json(
-                { error: "Only organization admins can manage billing" },
+                { error: "Only workspace admins can manage billing" },
                 { status: 403 }
             );
         }

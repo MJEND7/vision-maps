@@ -5,6 +5,7 @@ import { useUser } from "@clerk/nextjs";
 import { useOrganization, useOrganizationList } from "@/contexts/OrganizationContext";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/../convex/_generated/api";
+import { Id } from "@/../convex/_generated/dataModel";
 import {
     Dialog,
     DialogContent,
@@ -92,10 +93,10 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
     const { organization, isAdmin } = useOrganization();
     const { setActive } = useOrganizationList();
 
-    // Fetch members from Convex
+    // Fetch members from Convex (using workspace members since organization is now a workspace)
     const convexMembers = useQuery(
-        api.orgs.getMembers,
-        organization ? { organizationId: organization._id } : "skip"
+        api.workspaces.getMembers,
+        organization ? { workspaceId: organization._id as unknown as Id<"workspaces"> } : "skip"
     );
 
     // Fetch pending invites
@@ -111,12 +112,12 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
     const [orgName, setOrgName] = useState(organization?.name || "");
     const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
-    // Mutations
+    // Mutations (using workspace functions since organization is now a workspace)
     const createNotification = useMutation(api.notifications.createNotification);
-    const updateOrg = useMutation(api.orgs.update);
-    const removeOrg = useMutation(api.orgs.remove);
-    const removeMember = useMutation(api.orgs.removeMember);
-    const updateMemberRole = useMutation(api.orgs.updateMemberRole);
+    const updateOrg = useMutation(api.workspaces.update);
+    const removeOrg = useMutation(api.workspaces.remove);
+    const removeMember = useMutation(api.workspaces.removeMember);
+    const updateMemberRole = useMutation(api.workspaces.updateMemberRole);
     const deleteNotification = useMutation(api.notifications.deleteNotification);
 
     // Create compatibility layer to match original component structure
@@ -126,14 +127,14 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
 
     const memberships = {
         data: convexMembers?.map(m => ({
-            id: m.id,
+            id: m._id,
             role: m.role,
             publicUserData: {
                 userId: m.userId,
-                firstName: m.name?.split(' ')[0] || '',
-                lastName: m.name?.split(' ').slice(1).join(' ') || '',
-                imageUrl: m.picture,
-                emailAddress: m.email
+                firstName: m.user?.name?.split(' ')[0] || '',
+                lastName: m.user?.name?.split(' ').slice(1).join(' ') || '',
+                imageUrl: m.user?.picture,
+                emailAddress: m.user?.email
             }
         }))
     };
@@ -153,40 +154,40 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
         try {
             if (organization && user?.id) {
                 await removeMember({
-                    organizationId: organization._id,
+                    workspaceId: organization._id as unknown as Id<"workspaces">,
                     userId: user.id
                 });
             }
 
             await setActive?.({ organization: null });
 
-            toast.success("Left organization successfully");
+            toast.success("Left workspace successfully");
             onOpenChange(false);
         } catch (error) {
-            console.error("Failed to leave organization:", error);
-            toast.error("Failed to leave organization");
+            console.error("Failed to leave workspace:", error);
+            toast.error("Failed to leave workspace");
         }
     };
 
     const handleDeleteOrg = async () => {
         try {
             if (organization) {
-                await removeOrg({ organizationId: organization._id });
+                await removeOrg({ workspaceId: organization._id as unknown as Id<"workspaces"> });
             }
 
             await setActive?.({ organization: null });
 
-            toast.success("Organization deleted successfully");
+            toast.success("Workspace deleted successfully");
             onOpenChange(false);
         } catch (error) {
-            console.error("Failed to delete organization:", error);
-            toast.error("Failed to delete organization");
+            console.error("Failed to delete workspace:", error);
+            toast.error("Failed to delete workspace");
         }
     };
 
     const handleUpdateProfile = async () => {
         if (!orgName.trim()) {
-            toast.error("Organization name cannot be empty");
+            toast.error("Workspace name cannot be empty");
             return;
         }
 
@@ -194,15 +195,15 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
         try {
             if (organization) {
                 await updateOrg({
-                    organizationId: organization._id,
+                    workspaceId: organization._id as unknown as Id<"workspaces">,
                     name: orgName.trim()
                 });
             }
 
-            toast.success("Organization profile updated successfully");
+            toast.success("Workspace profile updated successfully");
         } catch (error) {
-            console.error("Failed to update organization:", error);
-            toast.error("Failed to update organization");
+            console.error("Failed to update workspace:", error);
+            toast.error("Failed to update workspace");
         } finally {
             setIsUpdatingProfile(false);
         }
@@ -217,7 +218,7 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
             }
 
             await updateMemberRole({
-                organizationId: organization._id,
+                workspaceId: organization._id as unknown as Id<"workspaces">,
                 userId: targetMembership.publicUserData.userId,
                 newRole: newRole
             });
@@ -253,11 +254,11 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
             }
 
             await removeMember({
-                organizationId: organization._id,
+                workspaceId: organization._id as unknown as Id<"workspaces">,
                 userId: targetMembership.publicUserData.userId
             });
 
-            toast.success(`${memberName} removed from organization`);
+            toast.success(`${memberName} removed from workspace`);
         } catch (error) {
             console.error("Failed to remove member:", error);
             toast.error("Failed to remove member");
