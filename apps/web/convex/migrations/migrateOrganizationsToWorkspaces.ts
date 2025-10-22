@@ -63,10 +63,12 @@ export const runMigration = mutation({
             updatedAt: org.updatedAt,
           });
 
-          orgIdToWorkspaceIdMap.set(org._id.toString(), workspaceId.toString());
+          // Store mapping using consistent string format (IDs from DB are always strings)
+          const orgIdKey = org._id as any as string;
+          orgIdToWorkspaceIdMap.set(orgIdKey, workspaceId);
           migrationReport.organizationsCreatedAsWorkspaces++;
 
-          console.log(`Created workspace ${workspaceId} from organization ${org._id}`);
+          console.log(`Created workspace ${workspaceId} from organization ${org._id} (key: ${orgIdKey})`);
         } catch (error) {
           const errorMsg = `Failed to migrate organization ${org._id}: ${error}`;
           console.error(errorMsg);
@@ -83,7 +85,8 @@ export const runMigration = mutation({
 
       for (const member of orgMembers) {
         try {
-          const workspaceId = orgIdToWorkspaceIdMap.get(member.organizationId.toString());
+          const orgIdKey = member.organizationId as any as string;
+          const workspaceId = orgIdToWorkspaceIdMap.get(orgIdKey);
           if (!workspaceId) {
             throw new Error(`No workspace found for organization ${member.organizationId}`);
           }
@@ -116,7 +119,8 @@ export const runMigration = mutation({
         try {
           const visionWithOrg = vision as any;
           if (visionWithOrg.organization) {
-            const workspaceId = orgIdToWorkspaceIdMap.get(visionWithOrg.organization);
+            const orgIdKey = visionWithOrg.organization as string;
+            const workspaceId = orgIdToWorkspaceIdMap.get(orgIdKey);
             if (!workspaceId) {
               throw new Error(
                 `Vision ${vision._id} has organization ${visionWithOrg.organization} but no workspace mapping`
@@ -150,7 +154,8 @@ export const runMigration = mutation({
       for (const plan of plans) {
         try {
           if (plan.ownerType === "org") {
-            const workspaceId = orgIdToWorkspaceIdMap.get(plan.ownerId);
+            const orgIdKey = plan.ownerId as any as string;
+            const workspaceId = orgIdToWorkspaceIdMap.get(orgIdKey);
             if (!workspaceId) {
               throw new Error(`No workspace found for org plan owner ${plan.ownerId}`);
             }

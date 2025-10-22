@@ -22,6 +22,10 @@ The migration script (`migrateOrganizationsToWorkspaces.ts`) converts your entir
 
 ## Running the Migration
 
+### Step 1: Run the Main Migration (Required)
+
+First, run the initial migration to convert organizations to workspaces:
+
 ### Option 1: Using Convex Dashboard (Recommended for First-Time Users)
 
 1. **Open Convex Dashboard:**
@@ -120,6 +124,27 @@ After the migration completes, you'll receive a report like:
 - **plansConverted**: Number of plans that were converted from org/user to workspace ownership
 - **defaultWorkspacesCreated**: Number of default workspaces created for users with personal visions
 - **errors**: Array of any errors that occurred (should be empty for successful migration)
+
+## Step 2: Run the Vision Fix Migration (Recommended)
+
+After the main migration completes, it's recommended to run the vision fix migration to ensure all visions have proper workspace references:
+
+### Using Convex Dashboard:
+
+1. Search for `fixVisionWorkspaceReferences` in the functions list
+2. Click on `migrations/migrateOrganizationsToWorkspaces.fixVisionWorkspaceReferences`
+3. Click "Run mutation"
+4. Check the report for:
+   - `visionsFixed`: How many visions were fixed
+   - `visionsWithOrganization`: How many visions had organization refs that were migrated
+   - `visionsWithoutWorkspace`: How many visions have neither org nor workspace (unusual)
+   - `errors`: Any errors encountered
+
+### Using Convex CLI:
+
+```bash
+npx convex run migrations/migrateOrganizationsToWorkspaces:fixVisionWorkspaceReferences
+```
 
 ## Post-Migration Steps
 
@@ -249,6 +274,35 @@ If users don't see their workspaces in the workspace switcher:
    - Open React DevTools
    - Check if `WorkspaceProvider` shows loaded state
    - Verify `useWorkspace()` returns the workspace
+
+### User's Teams Plan Not Detected
+
+If a user has a Teams plan but it's not being recognized:
+
+1. **Check the plan status:**
+   - Use the debug query to inspect the user's plans
+   - Look for the Teams plan and verify its status is "active" or "trialing"
+
+2. **Run the debug query** (using Convex dashboard or CLI):
+   ```bash
+   npx convex run migrations/debugPlans:inspectUserPlans --userId="<user-id>"
+   ```
+
+   This will show:
+   - All workspace memberships and their plans
+   - All organization memberships and their plans
+   - User's personal plan
+   - Plan statuses and owner IDs
+
+3. **Common issues:**
+   - Plan status is not "active" or "trialing" (might be "inactive")
+   - Plan wasn't properly migrated (check ownerType and ownerId)
+   - User is only a member of a default workspace (they don't get TEAMS from default workspaces)
+
+4. **If plan status is wrong:**
+   - Check your Stripe webhook handling
+   - Verify subscription status in Stripe dashboard
+   - Make sure plan was properly converted from org to workspace
 
 ## Rollback
 

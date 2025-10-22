@@ -18,6 +18,7 @@ import type * as http from "../http.js";
 import type * as invoices from "../invoices.js";
 import type * as messageHelpers from "../messageHelpers.js";
 import type * as messages from "../messages.js";
+import type * as migrations_debugPlans from "../migrations/debugPlans.js";
 import type * as migrations_migrateOrganizationsToWorkspaces from "../migrations/migrateOrganizationsToWorkspaces.js";
 import type * as nodes from "../nodes.js";
 import type * as notifications from "../notifications.js";
@@ -85,6 +86,7 @@ declare const fullApi: ApiFromModules<{
   invoices: typeof invoices;
   messageHelpers: typeof messageHelpers;
   messages: typeof messages;
+  "migrations/debugPlans": typeof migrations_debugPlans;
   "migrations/migrateOrganizationsToWorkspaces": typeof migrations_migrateOrganizationsToWorkspaces;
   nodes: typeof nodes;
   notifications: typeof notifications;
