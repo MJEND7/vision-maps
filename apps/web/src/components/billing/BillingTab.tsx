@@ -58,9 +58,10 @@ export function BillingTab({
     const [isLoadingPortal, setIsLoadingPortal] = useState(false);
 
     // Fetch invoice history (only for orgs, user invoices would use getUserInvoices)
+    // Workspaces don't have their own invoices yet - they may inherit from parent org
     const invoices = useQuery(
         api.invoices.getOrgInvoices,
-        ownerType === "org" || ownerType === "workspace" && ownerId ? { organizationId: ownerId as any, limit: 5 } : "skip"
+        ownerType === "org" && ownerId ? { organizationId: ownerId as any, limit: 5 } : "skip"
     );
 
     const handleManageSubscription = async () => {
