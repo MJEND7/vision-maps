@@ -9,11 +9,14 @@ import { MutationCtx, QueryCtx } from "./_generated/server";
  */
 export async function getUserPlan(ctx: QueryCtx | MutationCtx): Promise<Plan> {
   const identity = await ctx.auth.getUserIdentity();
+  console.log(identity)
+
   if (!identity) {
     return Plan.FREE;
   }
 
   const userId = identity.userId;
+  console.log(userId)
 
   if (!userId) {
       throw new Error("Failed to get user")
