@@ -18,7 +18,7 @@ export interface Vision {
     title: string,
     banner?: string,
     description?: string,
-    workspace: string,  // REQUIRED - all visions must belong to a workspace
+    workspace?: string,  
     updatedAt?: number,
     createdWithPlan?: string,
 }
@@ -31,8 +31,8 @@ export class Visions {
         banner: v.string(),
         description: v.optional(v.string()),
         updatedAt: v.number(),
-        organization: v.optional(v.string()),  // Legacy field - kept for migration purposes only
-        workspace: v.string(),  // REQUIRED - all visions must reference a workspace
+        organization: v.optional(v.string()),  
+        workspace: v.optional(v.string()),  
         createdWithPlan: v.optional(v.string()),
     });
     static TableConnectedUsers = defineTable({
