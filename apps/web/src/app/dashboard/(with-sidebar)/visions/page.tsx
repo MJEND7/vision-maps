@@ -83,7 +83,7 @@ export default function VisionsPage() {
     const canCreate = checkCanCreateVision(visionCount);
 
     // Check if user is in org but doesn't have Teams tier
-    const isInOrgWithoutTeams = organization && plan !== Plan.TEAMS;
+    const isInOrgWithoutTeams = organization && !organization.isDefault && plan !== Plan.TEAMS;
 
     const newVision = async () => {
         // If in org without Teams tier, show upgrade prompt

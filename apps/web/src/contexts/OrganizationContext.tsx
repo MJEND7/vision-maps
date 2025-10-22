@@ -24,6 +24,7 @@ interface Organization {
     publicMetadata: Record<string, any>;
     privateMetadata: Record<string, any>;
     createdBy: string;
+    isDefault?: boolean;
     createdAt: number;
     updatedAt: number;
     role?: string;
