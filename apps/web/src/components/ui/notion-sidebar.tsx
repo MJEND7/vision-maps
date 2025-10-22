@@ -27,7 +27,6 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "convex/react";
 import { cn } from "@/lib/utils"; // Assuming you have this utility
 import { CustomOrgPopup } from "@/components/ui/custom-org-popup";
-import { OrgSettingsDialog } from "@/components/ui/org-settings-dialog";
 import { ProfileSettingsDialog } from "@/components/ui/profile-settings-dialog";
 
 export function NotionSidebar() {
@@ -43,9 +42,7 @@ export function NotionSidebar() {
     const router = useRouter();
     const pathname = usePathname(); // Get current pathname
     const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
-    const [orgSettingsOpen, setOrgSettingsOpen] = useState(false);
     const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
-    const [workspaceSettingsTab, setWorkspaceSettingsTab] = useState<"members" | "profile" | "billing" | "danger">("members");
 
     const notificationCount = useQuery(
         api.notifications.getUnreadCount,
@@ -75,12 +72,7 @@ export function NotionSidebar() {
     };
 
     const handleSettingsClick = () => {
-        setOrgSettingsOpen(true);
-    };
-
-    const handleWorkspaceSettingsClick = (tab: "members" | "profile" | "billing" | "danger") => {
-        setWorkspaceSettingsTab(tab);
-        setOrgSettingsOpen(true);
+        router.push("/dashboard/workspace/settings");
     };
 
     const handleOrganizationSelect = async (orgId: string) => {
@@ -294,9 +286,12 @@ export function NotionSidebar() {
 
                             {/* Members & Invites */}
                             <Button
-                                variant="ghost"
-                                className="w-full justify-start text-left p-2"
-                                onClick={() => handleWorkspaceSettingsClick("members")}
+                                variant={isActiveRoute("/dashboard/workspace/members") ? "secondary" : "ghost"}
+                                className={cn(
+                                    "w-full justify-start text-left p-2",
+                                    isActiveRoute("/dashboard/workspace/members") && "bg-accent text-accent-foreground font-medium"
+                                )}
+                                onClick={() => router.push("/dashboard/workspace/members")}
                             >
                                 <div className="flex items-center gap-2">
                                     <Users className="w-4 h-4" />
@@ -304,11 +299,14 @@ export function NotionSidebar() {
                                 </div>
                             </Button>
 
-                            {/* Workspace Profile */}
+                            {/* Workspace Settings */}
                             <Button
-                                variant="ghost"
-                                className="w-full justify-start text-left p-2"
-                                onClick={() => handleWorkspaceSettingsClick("profile")}
+                                variant={isActiveRoute("/dashboard/workspace/settings") ? "secondary" : "ghost"}
+                                className={cn(
+                                    "w-full justify-start text-left p-2",
+                                    isActiveRoute("/dashboard/workspace/settings") && "bg-accent text-accent-foreground font-medium"
+                                )}
+                                onClick={() => router.push("/dashboard/workspace/settings")}
                             >
                                 <div className="flex items-center gap-2">
                                     <Settings className="w-4 h-4" />
@@ -318,25 +316,16 @@ export function NotionSidebar() {
 
                             {/* Billing */}
                             <Button
-                                variant="ghost"
-                                className="w-full justify-start text-left p-2"
-                                onClick={() => handleWorkspaceSettingsClick("billing")}
+                                variant={isActiveRoute("/dashboard/workspace/billing") ? "secondary" : "ghost"}
+                                className={cn(
+                                    "w-full justify-start text-left p-2",
+                                    isActiveRoute("/dashboard/workspace/billing") && "bg-accent text-accent-foreground font-medium"
+                                )}
+                                onClick={() => router.push("/dashboard/workspace/billing")}
                             >
                                 <div className="flex items-center gap-2">
                                     <DollarSign className="w-4 h-4" />
                                     <span className="text-sm">Billing</span>
-                                </div>
-                            </Button>
-
-                            {/* Danger Zone */}
-                            <Button
-                                variant="ghost"
-                                className="w-full justify-start text-left p-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                onClick={() => handleWorkspaceSettingsClick("danger")}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <AlertTriangle className="w-4 h-4" />
-                                    <span className="text-sm">Danger Zone</span>
                                 </div>
                             </Button>
                         </>
@@ -386,15 +375,6 @@ export function NotionSidebar() {
                     </div>
                 </button>
             </div>
-
-            {/* Organization Settings Dialog */}
-            {workspace && (
-                <OrgSettingsDialog
-                    open={orgSettingsOpen}
-                    onOpenChange={setOrgSettingsOpen}
-                    defaultTab={workspaceSettingsTab}
-                />
-            )}
 
             {/* Profile Settings Dialog */}
             <ProfileSettingsDialog
