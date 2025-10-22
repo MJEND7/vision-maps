@@ -27,7 +27,6 @@ export default function VisionsPage() {
     const router = useRouter();
     const { workspace } = useWorkspace();
     const { canCreateVision: checkCanCreateVision, visionLimit, plan } = usePermissions();
-    console.log(plan)
     const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
     const LOCAL_VIEW_MODE = "visions-view-mode";

@@ -37,11 +37,11 @@ export default function WorkspaceBillingPage() {
     };
 
     return (
-        <div className="flex-1 flex flex-col">
+        <div className="mx-auto max-w-4xl px-4 py-8 space-y-8">
             {/* Header */}
-            <div className="border-b border-border p-6">
+            <div>
                 <div>
-                    <h1 className="text-2xl font-bold">Workspace Billing</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Billing</h1>
                     <p className="text-sm text-muted-foreground mt-1">
                         Manage your workspace plan and billing
                     </p>

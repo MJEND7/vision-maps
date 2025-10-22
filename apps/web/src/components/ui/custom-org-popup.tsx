@@ -283,7 +283,7 @@ export function InviteUsersPopup({ open, onOpenChange, organizationId, organizat
     );
 
     const { user } = useUser();
-    const inviteMember = useMutation(api.orgs.inviteMember);
+    const inviteMember = useMutation(api.workspaces.inviteMember);
 
     // Filter out current user and already selected users from suggestions
     const filteredSearchUsers = searchUsers?.filter(searchUser => {
@@ -325,7 +325,7 @@ export function InviteUsersPopup({ open, onOpenChange, organizationId, organizat
             await Promise.all(
                 selectedUsers.map(async (user) => {
                     await inviteMember({
-                        organizationId: organizationId as any as Id<"organizations">,
+                        workspaceId: organizationId,
                         recipientEmail: user.email,
                         role: user.role
                     });
@@ -503,7 +503,7 @@ function InlineInviteUsers({ organizationId, onInviteSent, onDone }: InlineInvit
     );
 
     const { user } = useUser();
-    const inviteMember = useMutation(api.orgs.inviteMember);
+    const inviteMember = useMutation(api.workspaces.inviteMember);
 
     const filteredSearchUsers = searchUsers?.filter(searchUser => {
         if (user && searchUser.email === user.emailAddresses?.[0]?.emailAddress) {
@@ -539,7 +539,7 @@ function InlineInviteUsers({ organizationId, onInviteSent, onDone }: InlineInvit
                 await Promise.all(
                     selectedUsers.map(async (user) => {
                         await inviteMember({
-                            organizationId: organizationId as any as Id<"organizations">,
+                            workspaceId: organizationId,
                             recipientEmail: user.email,
                             role: user.role
                         });

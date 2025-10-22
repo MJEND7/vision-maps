@@ -42,6 +42,11 @@ export class Notifications {
                 organizationId: v.string(),
                 organizationName: v.string(),
                 role: v.string() // "admin" or "basic_member"
+            }),
+            v.object({
+                workspaceId: v.id("workspaces"),
+                workspaceName: v.string(),
+                role: v.string() // "admin" or "member"
             })
         )),
         // Notification state

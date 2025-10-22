@@ -232,13 +232,6 @@ export function NotionSidebar() {
                         <ChevronsUpDown className={`w-4 h-4`} />
                     </Button>
                 </CustomOrgPopup>
-                {workspace && (
-                    <button
-                        onClick={handleSettingsClick}
-                        className="hover:rotate-180  rounded p-1 transition-all ease-in-out duration-500">
-                        <Settings size={18} />
-                    </button>
-                )}
             </div>
 
             {/* Navigation */}

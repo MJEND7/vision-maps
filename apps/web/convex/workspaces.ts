@@ -158,6 +158,95 @@ export const getMembers = query({
     },
 });
 
+export const inviteMember = mutation({
+    args: inviteMemberArgs,
+    handler: async (ctx, { workspaceId, recipientEmail, role }) => {
+        const identity = await requireAuth(ctx);
+
+        const workspace = await ctx.db.get(workspaceId);
+        if (!workspace) {
+            throw new Error("Workspace not found");
+        }
+
+        // Check if requester is admin
+        const requesterMembership = await ctx.db
+            .query("workspace_members")
+            .withIndex("by_workspace_and_user", (q) =>
+                q.eq("workspaceId", workspaceId).eq("userId", identity.userId!.toString())
+            )
+            .first();
+
+        if (!requesterMembership || requesterMembership.role !== WorkspaceMemberRole.Admin) {
+            throw new Error("Only admins can invite members to the workspace");
+        }
+
+        const recipient = await ctx.db
+            .query("users")
+            .filter((q) => q.eq(q.field("email"), recipientEmail))
+            .first();
+
+        if (!recipient) {
+            throw new Error("User not found with this email address");
+        }
+
+        // Check if user is already a member
+        const existingMembership = await ctx.db
+            .query("workspace_members")
+            .withIndex("by_workspace_and_user", (q) =>
+                q.eq("workspaceId", workspaceId).eq("userId", recipient.externalId)
+            )
+            .first();
+
+        if (existingMembership) {
+            throw new Error("User is already a member of this workspace");
+        }
+
+        // Check for existing pending invitation
+        const allNotifications = await ctx.db
+            .query("notifications")
+            .filter((q) =>
+                q.and(
+                    q.eq(q.field("type"), "workspace_invite"),
+                    q.eq(q.field("recipientId"), recipient.externalId),
+                    q.eq(q.field("inviteStatus"), "pending"),
+                    q.neq(q.field("isDeleted"), true)
+                )
+            )
+            .collect();
+
+        const existingInvite = allNotifications.find(
+            (n) => n.inviteData && "workspaceId" in n.inviteData && n.inviteData.workspaceId === workspaceId
+        );
+
+        if (existingInvite) {
+            throw new Error("User already has a pending invitation to this workspace");
+        }
+
+        const sender = await ctx.db
+            .query("users")
+            .filter((q) => q.eq(q.field("externalId"), identity.userId!.toString()))
+            .first();
+
+        const notificationId = await ctx.db.insert("notifications", {
+            recipientId: recipient.externalId,
+            senderId: identity.userId!.toString(),
+            type: "workspace_invite",
+            title: "Workspace Invitation",
+            message: `${sender?.name || 'Someone'} invited you to join "${workspace.name}" as ${role || "member"}`,
+            inviteStatus: "pending",
+            inviteData: {
+                workspaceId,
+                workspaceName: workspace.name,
+                role: role || "member"
+            },
+            isRead: false,
+            createdAt: new Date().toISOString()
+        });
+
+        return notificationId;
+    },
+});
+
 export const create = mutation({
     args: createArgs,
     handler: async (ctx, { name, slug, imageUrl, isDefault }) => {

@@ -41,6 +41,7 @@ import {
 import { Google } from "@/icons/google";
 import { Github } from "lucide-react";
 import { truncate } from "@/utils/string";
+import ThemeSwitcher from "../ThemeSwitcher";
 
 interface ProfileSettingsDialogProps {
     open: boolean;
@@ -246,17 +247,12 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
             <DialogContent className="flex flex-col gap-0 sm:max-w-[800px] max-w-[95vw] h-[90vh] sm:h-[60vh] max-h-[95vh] overflow-hidden p-0">
                 <DialogHeader className="px-6 py-4 border-b">
                     <DialogTitle className="flex items-center gap-3">
-                        <Avatar className="w-8 h-8">
-                            <AvatarImage src={user.imageUrl} />
-                            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                                {user.firstName?.[0] || user.username?.[0]}
-                            </AvatarFallback>
-                        </Avatar>
                         <div>
                             <h2 className="text-xl font-semibold">Settings</h2>
                             <p className="text-sm text-muted-foreground">Manage your account and preferences</p>
                         </div>
                     </DialogTitle>
+                    <ThemeSwitcher size={"lg"}/>
                 </DialogHeader>
 
                 <div className="flex flex-col sm:flex-row h-full overflow-hidden">
@@ -299,10 +295,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
 
                         <SignOutButton>
                             <button
-                                className={`flex-shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 text-left rounded-lg transition-colors ${activeTab === "billing"
-                                    ? "bg-primary text-primary-foreground shadow-sm"
-                                    : "hover:bg-red-300/30 hover:text-red-400"
-                                    }`}
+                                className={`flex-shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 text-left rounded-lg transition-colors hover:bg-red-300/30 hover:text-red-400`}
                             >
                                 <LogOut className="w-4 h-4 " />
                                 <span className="font-medium whitespace-nowrap">Logout</span>
@@ -312,7 +305,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
 
                     {/* Main Content */}
                     <div className="flex-1 overflow-hidden">
-                        <div className="h-full overflow-y-auto scrollbar-hide p-4 sm:p-8">
+                        <div className="h-full overflow-y-auto scrollbar-hide p-4">
                             {activeTab === "profile" && (
                                 <ProfileTab
                                     user={user}
@@ -383,12 +376,6 @@ function ProfileTab({
 }: any) {
     return (
         <div className="space-y-6">
-            <div>
-                <h3 className="text-xl font-semibold">Profile</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                    Manage your personal details and profile settings
-                </p>
-            </div>
 
             <div className="space-y-6 p-6 border rounded-xl bg-card shadow-sm">
                 {/* Avatar + Name */}
@@ -612,12 +599,6 @@ function SecurityTab({
 
     return (
         <div className="space-y-6">
-            <div>
-                <h3 className="text-xl font-semibold">Security</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                    Manage your password, sessions, and account security
-                </p>
-            </div>
 
             {/* Password */}
             <div className="space-y-6 p-6 border rounded-xl bg-card shadow-sm">

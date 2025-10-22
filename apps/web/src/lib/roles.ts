@@ -30,8 +30,10 @@ export class RoleUtils {
   static getDisplayName(role: string): string {
     switch (role) {
       case OrgRole.ADMIN:
+      case "admin":
         return "Admin";
       case OrgRole.MEMBER:
+      case "member":
         return "Member";
       default:
         return "Unknown";

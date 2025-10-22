@@ -64,6 +64,10 @@ const getOrgPendingInvitesArgs = v.object({
   organizationId: v.string(),
 });
 
+const getWorkspacePendingInvitesArgs = v.object({
+  workspaceId: v.id("workspaces"),
+});
+
 export const getUserNotifications = query({
   args: getUserNotificationsArgs,
   handler: async (ctx, args) => {
@@ -205,8 +209,12 @@ export const deleteNotification = mutation({
       throw new Error("Notification not found");
     }
 
-    if (identity.userId!.toString() !== notification.recipientId) {
-      throw new Error("You can only delete your own notifications");
+    const userId = identity.userId!.toString();
+    const isRecipient = userId === notification.recipientId;
+    const isSender = userId === notification.senderId;
+
+    if (!isRecipient && !isSender) {
+      throw new Error("You can only delete notifications you received or sent");
     }
 
     await ctx.db.patch(args.notificationId, {
@@ -601,6 +609,66 @@ export const getOrgPendingInvites = query({
 
     const enrichedInvites = await Promise.all(
       orgInvites.map(async (invite) => {
+        const recipient = await ctx.db
+          .query("users")
+          .filter((q) => q.eq(q.field("externalId"), invite.recipientId))
+          .first();
+
+        return {
+          id: invite._id,
+          recipientId: invite.recipientId,
+          recipientEmail: recipient?.email || "Unknown",
+          recipientName: recipient?.name || "Unknown",
+          recipientPicture: recipient?.picture,
+          role: invite.inviteData?.role || "member",
+          createdAt: invite.createdAt,
+          inviteStatus: invite.inviteStatus,
+        };
+      })
+    );
+
+    return enrichedInvites;
+  }
+});
+
+export const getWorkspacePendingInvites = query({
+  args: getWorkspacePendingInvitesArgs,
+  handler: async (ctx, args) => {
+    const identity = await requireAuth(ctx);
+
+    if (!identity.userId) {
+      throw new Error("Failed to get userId");
+    }
+
+    // Check if user is admin in the workspace
+    const membership = await ctx.db
+      .query("workspace_members")
+      .withIndex("by_workspace_and_user", (q) =>
+        q.eq("workspaceId", args.workspaceId).eq("userId", identity.userId!.toString())
+      )
+      .first();
+
+    if (!membership || membership.role !== "admin") {
+      return [];
+    }
+
+    const allNotifications = await ctx.db
+      .query("notifications")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("type"), "workspace_invite"),
+          q.eq(q.field("inviteStatus"), "pending"),
+          q.neq(q.field("isDeleted"), true)
+        )
+      )
+      .collect();
+
+    const workspaceInvites = allNotifications.filter(
+      (n) => n.inviteData && "workspaceId" in n.inviteData && n.inviteData.workspaceId === args.workspaceId
+    );
+
+    const enrichedInvites = await Promise.all(
+      workspaceInvites.map(async (invite) => {
         const recipient = await ctx.db
           .query("users")
           .filter((q) => q.eq(q.field("externalId"), invite.recipientId))

@@ -102,13 +102,6 @@ export function BillingTab({
 
     return (
         <div className="space-y-6">
-            <div>
-                <h3 className="text-xl font-semibold">{isOrgPlan ? "Organization Plan" : "Personal Plan"}</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                    Manage your {isOrgPlan ? "organization's" : ""} subscription and billing settings
-                </p>
-            </div>
-
             {/* Subscription Card */}
             <div className="space-y-6 p-6 border rounded-xl bg-card shadow-sm">
                 <div className="flex items-center gap-3">
