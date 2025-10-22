@@ -72,7 +72,9 @@ export function NotionSidebar() {
     };
 
     const handleSettingsClick = () => {
-        router.push("/dashboard/workspace/settings");
+        if (workspace) {
+            router.push(`/dashboard/settings`);
+        }
     };
 
     const handleOrganizationSelect = async (orgId: string) => {
@@ -286,12 +288,12 @@ export function NotionSidebar() {
 
                             {/* Members & Invites */}
                             <Button
-                                variant={isActiveRoute("/dashboard/workspace/members") ? "secondary" : "ghost"}
+                                variant={isActiveRoute("/dashboard/members") ? "secondary" : "ghost"}
                                 className={cn(
                                     "w-full justify-start text-left p-2",
-                                    isActiveRoute("/dashboard/workspace/members") && "bg-accent text-accent-foreground font-medium"
+                                    isActiveRoute("/dashboard/members") && "bg-accent text-accent-foreground font-medium"
                                 )}
-                                onClick={() => router.push("/dashboard/workspace/members")}
+                                onClick={() => router.push("/dashboard/members")}
                             >
                                 <div className="flex items-center gap-2">
                                     <Users className="w-4 h-4" />
@@ -301,12 +303,12 @@ export function NotionSidebar() {
 
                             {/* Workspace Settings */}
                             <Button
-                                variant={isActiveRoute("/dashboard/workspace/settings") ? "secondary" : "ghost"}
+                                variant={isActiveRoute("/dashboard/settings") ? "secondary" : "ghost"}
                                 className={cn(
                                     "w-full justify-start text-left p-2",
-                                    isActiveRoute("/dashboard/workspace/settings") && "bg-accent text-accent-foreground font-medium"
+                                    isActiveRoute("/dashboard/settings") && "bg-accent text-accent-foreground font-medium"
                                 )}
-                                onClick={() => router.push("/dashboard/workspace/settings")}
+                                onClick={() => router.push("/dashboard/settings")}
                             >
                                 <div className="flex items-center gap-2">
                                     <Settings className="w-4 h-4" />
@@ -316,12 +318,12 @@ export function NotionSidebar() {
 
                             {/* Billing */}
                             <Button
-                                variant={isActiveRoute("/dashboard/workspace/billing") ? "secondary" : "ghost"}
+                                variant={isActiveRoute("/dashboard/billing") ? "secondary" : "ghost"}
                                 className={cn(
                                     "w-full justify-start text-left p-2",
-                                    isActiveRoute("/dashboard/workspace/billing") && "bg-accent text-accent-foreground font-medium"
+                                    isActiveRoute("/dashboard/billing") && "bg-accent text-accent-foreground font-medium"
                                 )}
-                                onClick={() => router.push("/dashboard/workspace/billing")}
+                                onClick={() => router.push("/dashboard/billing")}
                             >
                                 <div className="flex items-center gap-2">
                                     <DollarSign className="w-4 h-4" />
