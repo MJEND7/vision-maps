@@ -2,11 +2,11 @@ import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
- * Get plan by owner (user or organization)
+ * Get plan by owner (user, org [legacy], or workspace)
  */
 export const getPlanByOwner = query({
   args: {
-    ownerType: v.union(v.literal("user"), v.literal("org")),
+    ownerType: v.union(v.literal("user"), v.literal("org"), v.literal("workspace")),
     ownerId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -66,7 +66,7 @@ export const getPlanByBillingOwnerId = query({
  */
 export const upsertPlan = internalMutation({
   args: {
-    ownerType: v.union(v.literal("user"), v.literal("org")),
+    ownerType: v.union(v.literal("user"), v.literal("org"), v.literal("workspace")),
     ownerId: v.string(),
     stripeCustomerId: v.string(),
     subscriptionId: v.optional(v.string()),
@@ -151,7 +151,7 @@ export const upsertPlan = internalMutation({
  */
 export const createPlanMapping = mutation({
   args: {
-    ownerType: v.union(v.literal("user"), v.literal("org")),
+    ownerType: v.union(v.literal("user"), v.literal("org"), v.literal("workspace")),
     ownerId: v.string(), 
     stripeCustomerId: v.string(),
     seats: v.optional(v.number()),

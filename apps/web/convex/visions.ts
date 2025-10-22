@@ -9,7 +9,7 @@ import { NotificationType } from "./tables/notifications";
 
 // Args schemas
 const createArgs = v.object({
-  organizationId: v.optional(v.string()),
+  workspaceId: v.string(), // REQUIRED - all visions must belong to a workspace
 });
 
 const updateArgs = v.object({
@@ -17,7 +17,7 @@ const updateArgs = v.object({
   title: v.optional(v.string()),
   banner: v.optional(v.string()),
   description: v.optional(v.string()),
-  organizationId: v.optional(v.string()),
+  workspaceId: v.optional(v.string()), // Can move between workspaces (user must be member of both)
 });
 
 const removeArgs = v.object({
@@ -29,7 +29,7 @@ const getArgs = v.object({
 });
 
 const listArgs = v.object({
-  organizationId: v.optional(v.union(v.string(), v.null())),
+  workspaceId: v.string(), // REQUIRED - filter by workspace
   search: v.optional(v.string()),
   sortBy: v.optional(v.union(v.literal("updatedAt"), v.literal("createdAt"), v.literal("title"))),
   sortOrder: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
@@ -97,27 +97,21 @@ export const create = mutation({
     // Check permissions
     const plan = await getUserPlan(ctx.auth, ctx.db);
 
-    // Validate organization membership - user can only create visions in orgs they belong to
-    if (args.organizationId) {
-      const membership = await ctx.db
-        .query("organization_members")
-        .withIndex("by_user", (q) => q.eq("userId", identity.userId!.toString()))
-        .filter((q) => q.eq(q.field("organizationId"), args.organizationId!))
-        .first();
+    // Validate workspace membership - user can only create visions in workspaces they belong to
+    const membership = await ctx.db
+      .query("workspace_members")
+      .withIndex("by_workspace_and_user", (q) =>
+        q.eq("workspaceId", args.workspaceId as any).eq("userId", identity.userId!.toString())
+      )
+      .first();
 
-      if (!membership) {
-        throw new PermissionError(
-          "You can only create visions in organizations you are a member of."
-        );
-      }
+    if (!membership) {
+      throw new PermissionError(
+        "You can only create visions in workspaces you are a member of."
+      );
     }
 
-    const organizationId = args.organizationId;
-
-    // Require Teams tier if creating vision in organization
-    requireTeamsForOrg(plan, organizationId);
-
-    // Check vision count limit
+    // Check vision count limit (based on plan)
     const existingVisions = await ctx.db
       .query("vision_users")
       .withIndex("by_userId", (q) => q.eq("userId", identity.userId!.toString()))
@@ -138,7 +132,7 @@ export const create = mutation({
       title: "Untitled",
       banner: "",
       description: "",
-      organization: organizationId || "",
+      workspace: args.workspaceId,
       updatedAt: now,
       createdWithPlan: plan.toLowerCase(),
     });
@@ -151,23 +145,21 @@ export const create = mutation({
       visionId,
     });
 
-    // If vision is created in an organization, add all org members
-    if (organizationId) {
-      const orgMembers = await ctx.db
-        .query("organization_members")
-        .withIndex("by_organization", (q) => q.eq("organizationId", organizationId as any))
-        .collect();
+    // Add all workspace members as editors (they already have access through workspace)
+    const workspaceMembers = await ctx.db
+      .query("workspace_members")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId as any))
+      .collect();
 
-      for (const member of orgMembers) {
-        // Skip the creator as they're already added as owner
-        if (member.userId !== identity.userId.toString()) {
-          await ctx.db.insert("vision_users", {
-            userId: member.userId,
-            role: VisionAccessRole.Editor,
-            status: VisionUserStatus.Approved,
-            visionId,
-          });
-        }
+    for (const member of workspaceMembers) {
+      // Skip the creator as they're already added as owner
+      if (member.userId !== identity.userId.toString()) {
+        await ctx.db.insert("vision_users", {
+          userId: member.userId,
+          role: VisionAccessRole.Editor,
+          status: VisionUserStatus.Approved,
+          visionId,
+        });
       }
     }
 
@@ -182,28 +174,25 @@ export const update = mutation({
   handler: async (ctx, args) => {
     await requireVisionAccess(ctx, args.id, VisionAccessRole.Editor);
 
-    // If organizationId is being changed, validate membership and Teams tier
-    if (args.organizationId !== undefined) {
-      const plan = await getUserPlan(ctx.auth, ctx.db);
+    // If workspaceId is being changed, validate membership
+    if (args.workspaceId !== undefined) {
       const identity = await ctx.auth.getUserIdentity();
 
-      // Validate organization membership - user can only move visions to orgs they belong to
-      if (args.organizationId && identity) {
+      // Validate workspace membership - user can only move visions to workspaces they belong to
+      if (args.workspaceId && identity) {
         const membership = await ctx.db
-          .query("organization_members")
-          .withIndex("by_user", (q) => q.eq("userId", identity.subject))
-          .filter((q) => q.eq(q.field("organizationId"), args.organizationId!))
+          .query("workspace_members")
+          .withIndex("by_workspace_and_user", (q) =>
+            q.eq("workspaceId", args.workspaceId as any).eq("userId", identity.subject)
+          )
           .first();
 
         if (!membership) {
           throw new PermissionError(
-            "You can only move visions to organizations you are a member of."
+            "You can only move visions to workspaces you are a member of."
           );
         }
       }
-
-      // Require Teams tier if moving to organization
-      requireTeamsForOrg(plan, args.organizationId);
     }
 
     const updates: any = {
@@ -213,7 +202,7 @@ export const update = mutation({
     if (args.title !== undefined) updates.title = args.title;
     if (args.banner !== undefined) updates.banner = args.banner;
     if (args.description !== undefined) updates.description = args.description;
-    if (args.organizationId !== undefined) updates.organization = args.organizationId;
+    if (args.workspaceId !== undefined) updates.workspace = args.workspaceId;
 
     await ctx.db.patch(args.id, updates);
   },
@@ -356,54 +345,30 @@ export const list = query({
     const sortBy = args.sortBy ?? "updatedAt";
     const sortOrder = args.sortOrder ?? "desc";
 
-    // Get visions where user has explicit access
-    const userVisions = await ctx.db
-      .query("vision_users")
-      .withIndex("by_userId", (q) => q.eq("userId", identity.userId?.toString() || ""))
-      .filter((q) => 
-        q.or(
-          q.eq(q.field("status"), VisionUserStatus.Approved),
-          q.eq(q.field("status"), undefined) // For backward compatibility with existing data
-        )
+    // Verify user is a member of the workspace
+    const membership = await ctx.db
+      .query("workspace_members")
+      .withIndex("by_workspace_and_user", (q) =>
+        q.eq("workspaceId", args.workspaceId as any).eq("userId", identity.userId?.toString() || "")
       )
+      .first();
+
+    if (!membership) {
+      throw new PermissionError(
+        "You are not a member of this workspace."
+      );
+    }
+
+    // Get all visions in the workspace
+    let visions = await ctx.db
+      .query("visions")
+      .filter((q) => q.eq(q.field("workspace"), args.workspaceId))
       .collect();
-
-    const explicitVisionIds = userVisions.map((uv) => uv.visionId);
-
-    // Get all visions and filter by organization
-    let allVisions = await ctx.db.query("visions").collect();
-
-    // Filter by organization - if organizationId is provided, only show that org's visions
-    // If organizationId is null, show personal visions (empty organization field)
-    if (args.organizationId !== undefined) {
-      if (args.organizationId === null) {
-        // Personal visions (no organization)
-        allVisions = allVisions.filter((vision) => !vision.organization || vision.organization === "");
-      } else {
-        // Organization visions
-        allVisions = allVisions.filter((vision) => vision.organization === args.organizationId);
-      }
-    }
-
-    // For organization visions, all organization members have access
-    // For personal visions, only explicitly granted users have access
-    let accessibleVisions: any[] = [];
-    
-    if (args.organizationId && args.organizationId !== null) {
-      // Organization visions - all org members have access
-      // Check if user is member of this organization through Clerk
-      // For now, we'll assume organization membership is verified by Clerk on the frontend
-      // and trust that the organizationId passed matches the user's current org
-      accessibleVisions = allVisions;
-    } else {
-      // Personal visions - only explicitly granted access
-      accessibleVisions = allVisions.filter((vision) => explicitVisionIds.includes(vision._id));
-    }
 
     // Apply search filter
     if (args.search) {
       const searchLower = args.search.toLowerCase();
-      accessibleVisions = accessibleVisions.filter(
+      visions = visions.filter(
         (vision) =>
           vision.title.toLowerCase().includes(searchLower) ||
           (vision.description && vision.description.toLowerCase().includes(searchLower))
@@ -411,9 +376,9 @@ export const list = query({
     }
 
     // Sort visions
-    accessibleVisions.sort((a, b) => {
+    visions.sort((a, b) => {
       let aValue: any, bValue: any;
-      
+
       switch (sortBy) {
         case "title":
           aValue = a.title.toLowerCase();
@@ -440,14 +405,14 @@ export const list = query({
     // Apply pagination
     let startIndex = 0;
     if (args.cursor) {
-      const cursorIndex = accessibleVisions.findIndex((v) => v._id === args.cursor);
+      const cursorIndex = visions.findIndex((v) => v._id === args.cursor);
       if (cursorIndex !== -1) {
         startIndex = cursorIndex + 1;
       }
     }
 
-    const paginatedVisions = accessibleVisions.slice(startIndex, startIndex + limit);
-    const hasMore = startIndex + limit < accessibleVisions.length;
+    const paginatedVisions = visions.slice(startIndex, startIndex + limit);
+    const hasMore = startIndex + limit < visions.length;
     const nextCursor = hasMore ? paginatedVisions[paginatedVisions.length - 1]._id : null;
 
     return {

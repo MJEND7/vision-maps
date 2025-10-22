@@ -66,12 +66,12 @@ export default function VisionsPage() {
     // Convex queries and mutations - only call when authenticated
     const visionsData = useQuery(
         api.visions.list,
-        {
+        organization?._id ? {
             search: debouncedSearch || undefined,
-            organizationId: organization?._id || null,
+            workspaceId: organization._id,
             sortBy: sortBy as "updatedAt" | "createdAt" | "title",
             limit: 50
-        },
+        } : "skip",
     );
 
     const createVision = useMutation(api.visions.create);
@@ -98,7 +98,7 @@ export default function VisionsPage() {
         }
 
         const id = await createVision({
-            organizationId: organization?._id
+            workspaceId: organization?._id!
         });
         router.push(`${ROUTES.PROFILE.VISIONS}/${id}`);
     };

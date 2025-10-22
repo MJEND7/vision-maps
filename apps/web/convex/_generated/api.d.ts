@@ -18,6 +18,7 @@ import type * as http from "../http.js";
 import type * as invoices from "../invoices.js";
 import type * as messageHelpers from "../messageHelpers.js";
 import type * as messages from "../messages.js";
+import type * as migrations_migrateOrganizationsToWorkspaces from "../migrations/migrateOrganizationsToWorkspaces.js";
 import type * as nodes from "../nodes.js";
 import type * as notifications from "../notifications.js";
 import type * as ogMetadata from "../ogMetadata.js";
@@ -47,6 +48,8 @@ import type * as tables_plans from "../tables/plans.js";
 import type * as tables_user from "../tables/user.js";
 import type * as tables_userPasteBin from "../tables/userPasteBin.js";
 import type * as tables_visions from "../tables/visions.js";
+import type * as tables_workspace from "../tables/workspace.js";
+import type * as tables_workspaceMember from "../tables/workspaceMember.js";
 import type * as user from "../user.js";
 import type * as userPasteBin from "../userPasteBin.js";
 import type * as utils_auth from "../utils/auth.js";
@@ -55,6 +58,7 @@ import type * as utils_context from "../utils/context.js";
 import type * as utils_frame from "../utils/frame.js";
 import type * as utils_youtube from "../utils/youtube.js";
 import type * as visions from "../visions.js";
+import type * as workspaces from "../workspaces.js";
 
 import type {
   ApiFromModules,
@@ -81,6 +85,7 @@ declare const fullApi: ApiFromModules<{
   invoices: typeof invoices;
   messageHelpers: typeof messageHelpers;
   messages: typeof messages;
+  "migrations/migrateOrganizationsToWorkspaces": typeof migrations_migrateOrganizationsToWorkspaces;
   nodes: typeof nodes;
   notifications: typeof notifications;
   ogMetadata: typeof ogMetadata;
@@ -110,6 +115,8 @@ declare const fullApi: ApiFromModules<{
   "tables/user": typeof tables_user;
   "tables/userPasteBin": typeof tables_userPasteBin;
   "tables/visions": typeof tables_visions;
+  "tables/workspace": typeof tables_workspace;
+  "tables/workspaceMember": typeof tables_workspaceMember;
   user: typeof user;
   userPasteBin: typeof userPasteBin;
   "utils/auth": typeof utils_auth;
@@ -118,6 +125,7 @@ declare const fullApi: ApiFromModules<{
   "utils/frame": typeof utils_frame;
   "utils/youtube": typeof utils_youtube;
   visions: typeof visions;
+  workspaces: typeof workspaces;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
 

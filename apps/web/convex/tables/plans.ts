@@ -3,10 +3,10 @@ import { v } from "convex/values";
 
 export const Plans = {
   Table: defineTable({
-    // Type of plan owner: "user" or "org"
-    ownerType: v.union(v.literal("user"), v.literal("org")),
+    // Type of plan owner: "user", "org" (legacy), or "workspace"
+    ownerType: v.union(v.literal("user"), v.literal("org"), v.literal("workspace")),
 
-    // Owner identifier (externalId for users, organizationId for orgs)
+    // Owner identifier (externalId for users, organizationId/workspaceId for orgs/workspaces)
     ownerId: v.string(),
 
     // Stripe customer ID

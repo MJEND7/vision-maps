@@ -126,11 +126,11 @@ export function CustomOrgPopup({ children, onOrgChange }: CustomOrgPopupProps) {
                         </div>
                     </DropdownMenuItem>
 
-                    {/* Organizations */}
+                    {/* Workspaces */}
                     {isLoaded && userMemberships.data?.map((membership) => (
                         <DropdownMenuItem
                             key={membership.organization.id}
-                            onClick={() => handleOrganizationSwitch(membership.organization.id)}
+                            onClick={() => handleOrganizationSwitch(membership.organization.id as unknown as Id<"organizations">)}
                             className="p-3"
                         >
                             <div className="flex items-center justify-between w-full">
@@ -156,7 +156,7 @@ export function CustomOrgPopup({ children, onOrgChange }: CustomOrgPopupProps) {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    {organization?._id === membership.organization.id && (
+                                    {organization?._id === (membership.organization.id as unknown as Id<"organizations">) && (
                                         <Check className="w-4 h-4 text-green-600" />
                                     )}
                                     {membership.role === "admin" && (
@@ -166,7 +166,7 @@ export function CustomOrgPopup({ children, onOrgChange }: CustomOrgPopupProps) {
                                             className="h-6 w-6 p-0"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleInviteUsers(membership.organization.id, membership.organization.name);
+                                                handleInviteUsers(membership.organization.id as unknown as Id<"organizations">, membership.organization.name);
                                             }}
                                         >
                                             <Users className="w-3 h-3" />

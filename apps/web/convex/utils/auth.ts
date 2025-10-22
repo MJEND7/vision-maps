@@ -67,7 +67,15 @@ export async function requireVisionAccess(
         return { identity, visionUser };
     }
 
-    if (vision.organization && vision.organization !== "") {
+    // User has implicit access if they're a member of the workspace
+    const workspaceMember = await ctx.db
+        .query("workspace_members")
+        .withIndex("by_workspace_and_user", (q) =>
+            q.eq("workspaceId", vision.workspace as Id<"workspaces">).eq("userId", identity.userId! as string)
+        )
+        .first();
+
+    if (workspaceMember) {
         const currentPlan = await getUserPlan(ctx.auth, ctx.db);
 
         if (currentPlan === Plan.FREE && vision.createdWithPlan && vision.createdWithPlan !== "free") {

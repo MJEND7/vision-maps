@@ -480,11 +480,15 @@ export const acceptOrgInvite = mutation({
       });
     }
 
-    // Add user to all visions in this organization
-    const orgVisions = await ctx.db
-      .query("visions")
-      .filter((q) => q.eq(q.field("organization"), orgId as any))
-      .collect();
+    // NOTE: Vision assignment to members is now handled at the workspace level
+    // This code is kept for reference during migration from organizations to workspaces
+    // Once migration is complete, this can be removed
+    const orgVisions: any[] = [];
+    // Legacy code commented out - organizations no longer have direct vision references
+    // const orgVisions = await ctx.db
+    //   .query("visions")
+    //   .filter((q) => q.eq(q.field("organization"), orgId as any))
+    //   .collect();
 
     for (const vision of orgVisions) {
       // Check if user is already a member of this vision

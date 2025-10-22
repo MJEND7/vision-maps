@@ -18,7 +18,7 @@ export interface Vision {
     title: string,
     banner?: string,
     description?: string,
-    organization?: string,
+    workspace: string, // workspaceId - REQUIRED, no longer optional
     updatedAt?: number,
     createdWithPlan?: string,
 }
@@ -31,7 +31,7 @@ export class Visions {
         banner: v.string(),
         description: v.optional(v.string()),
         updatedAt: v.number(),
-        organization: v.optional(v.string()),
+        workspace: v.string(), // workspaceId - REQUIRED
         createdWithPlan: v.optional(v.string()),
     });
     static TableConnectedUsers = defineTable({

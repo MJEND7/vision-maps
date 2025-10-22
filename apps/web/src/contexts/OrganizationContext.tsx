@@ -1,8 +1,14 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@/../convex/_generated/api";
+/**
+ * DEPRECATED: This context is now a wrapper around WorkspaceContext for backward compatibility.
+ * New code should use WorkspaceContext instead.
+ *
+ * This will be removed after all components are migrated to use workspaces.
+ */
+
+import React, { createContext, useContext, ReactNode } from "react";
+import { useWorkspace, useWorkspaceList } from "./WorkspaceContext";
 import { Id } from "@/../convex/_generated/dataModel";
 
 interface Organization {
@@ -25,67 +31,46 @@ interface Organization {
 }
 
 interface OrganizationContextType {
-    // Current selected organization
+    // Current selected organization (now workspace)
     organization: Organization | null;
 
-    // All user's organizations
+    // All user's organizations (now workspaces)
     userOrganizations: Organization[] | undefined;
 
     // Loading state
     isLoaded: boolean;
 
-    // Switch organization
+    // Switch organization (now workspace)
     setActiveOrganization: (orgId: Id<"organizations"> | null) => void;
 
-    // Helper to check if user is admin of current org
+    // Helper to check if user is admin of current org (now workspace)
     isAdmin: boolean;
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_KEY = "selectedOrganizationId";
-
 export function OrganizationProvider({ children }: { children: ReactNode }) {
-    const [selectedOrgId, setSelectedOrgId] = useState<Id<"organizations"> | null>(null);
-    const [hasHydrated, setHasHydrated] = useState(false);
-
-    // Fetch all user's organizations
-    const userOrganizations = useQuery(api.orgs.getUserOrganizations, {});
-
-    // Load selected org from localStorage on mount
-    useEffect(() => {
-        const savedOrgId = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (savedOrgId && savedOrgId !== "null") {
-            setSelectedOrgId(savedOrgId as Id<"organizations">);
-        }
-        setHasHydrated(true);
-    }, []);
-
-    // Auto-select first org if none selected and orgs are available
-    useEffect(() => {
-        if (hasHydrated && !selectedOrgId && userOrganizations && userOrganizations.length > 0) {
-            // Don't auto-select, let user choose or stay on personal
-        }
-    }, [hasHydrated, selectedOrgId, userOrganizations]);
+    // Use workspace context internally
+    const { workspace, isLoaded, isAdmin } = useWorkspace();
+    const { setActive } = useWorkspaceList();
 
     const setActiveOrganization = (orgId: Id<"organizations"> | null) => {
-        setSelectedOrgId(orgId);
-        if (orgId) {
-            localStorage.setItem(LOCAL_STORAGE_KEY, orgId);
-        } else {
-            localStorage.removeItem(LOCAL_STORAGE_KEY);
+        if (setActive) {
+            setActive({ workspace: orgId as Id<"workspaces"> | null });
         }
     };
 
-    const currentOrg = userOrganizations?.find(org => org._id === selectedOrgId);
-    const isAdmin = currentOrg?.role === "admin";
+    // Convert workspace to organization shape for backward compatibility
+    const organization = workspace ? {
+        ...(workspace as any),
+    } : null;
 
     return (
         <OrganizationContext.Provider
             value={{
-                organization: currentOrg || null,
-                userOrganizations,
-                isLoaded: userOrganizations !== undefined && hasHydrated,
+                organization,
+                userOrganizations: undefined,
+                isLoaded,
                 setActiveOrganization,
                 isAdmin,
             }}
@@ -108,36 +93,34 @@ export function useOrganization() {
 }
 
 export function useOrganizationList() {
-    const context = useContext(OrganizationContext);
-    if (context === undefined) {
-        throw new Error("useOrganizationList must be used within OrganizationProvider");
-    }
+    const { userMemberships, setActive, isLoaded } = useWorkspaceList();
+
     return {
         userMemberships: {
-            data: context.userOrganizations?.map(org => ({
-                id: org.membershipId,
+            data: userMemberships.data?.map(ws => ({
+                id: ws.id,
                 organization: {
-                    id: org._id,
-                    name: org.name,
-                    slug: org.slug,
-                    imageUrl: org.imageUrl,
-                    hasImage: org.hasImage,
-                    membersCount: org.membersCount,
+                    id: ws.workspace.id,
+                    name: ws.workspace.name,
+                    slug: ws.workspace.slug,
+                    imageUrl: ws.workspace.imageUrl,
+                    hasImage: ws.workspace.hasImage,
+                    membersCount: ws.workspace.membersCount,
                 },
-                role: org.role,
+                role: ws.role,
             })),
-            isLoaded: context.isLoaded,
+            isLoaded: userMemberships.isLoaded,
             revalidate: () => {
                 // Convex handles reactivity automatically
             },
         },
         userInvitations: {
-            data: [], // No invitations system yet
+            data: [],
             revalidate: () => {},
         },
-        isLoaded: context.isLoaded,
+        isLoaded,
         setActive: async ({ organization }: { organization: Id<"organizations"> | null }) => {
-            context.setActiveOrganization(organization);
+            return setActive({ workspace: organization as Id<"workspaces"> | null });
         },
     };
 }
