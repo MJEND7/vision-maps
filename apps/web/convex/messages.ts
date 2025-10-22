@@ -111,7 +111,18 @@ export const sendMessage = mutation({
             throw new Error("Failed to get the user Id")
         }
 
-        const plan = await getUserPlan(ctx);
+        // Get the chat to find its workspace through the vision
+        const chat = await ctx.db.get(args.chatId);
+        if (!chat) {
+            throw new Error("Chat not found");
+        }
+
+        const vision = await ctx.db.get(chat.visionId);
+        if (!vision) {
+            throw new Error("Vision not found");
+        }
+
+        const plan = await getUserPlan(ctx, vision.workspace);
         requirePermission(plan, Permission.AI_NODES);
 
         const existingMessages = await ctx.db

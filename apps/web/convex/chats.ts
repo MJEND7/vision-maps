@@ -9,7 +9,8 @@ const createChatArgs = v.object({
     title: v.string(),
     visionId: v.id("visions"),
     channelId: v.optional(v.id("channels")),
-    nodeId: v.optional(v.id("nodes"))
+    nodeId: v.optional(v.id("nodes")),
+    workspaceId: v.string()
 });
 
 const listUserChatsArgs = v.object({
@@ -53,6 +54,7 @@ const branchChatArgs = v.object({
 const createChatWithNodeArgs = v.object({
     title: v.string(),
     visionId: v.id("visions"),
+    workspaceId: v.string(),
     channelId: v.optional(v.id("channels")), // Optional - will use first channel if not provided
     frameId: v.optional(v.id("frames")), // Optional - if provided, node will be added to frame
     position: v.optional(v.object({
@@ -71,7 +73,7 @@ export const createChat = mutation({
             throw new Error("Failed to get the user Id")
         }
 
-        const plan = await getUserPlan(ctx);
+        const plan = await getUserPlan(ctx, args.workspaceId);
         requirePermission(plan, Permission.AI_NODES);
 
         const id = await ctx.db.insert("chats", {
@@ -274,7 +276,7 @@ export const createChatWithNode = mutation({
             throw new Error("Failed to get the user Id");
         }
 
-        const plan = await getUserPlan(ctx);
+        const plan = await getUserPlan(ctx, args.workspaceId);
         requirePermission(plan, Permission.AI_NODES);
 
         const userId = (await getUserByIdenityId(ctx, identity.userId as string))?._id;
@@ -481,18 +483,24 @@ export const branchChat = mutation({
             throw new Error("Failed to get the user Id");
         }
 
-        const plan = await getUserPlan(ctx);
+        // Get the source chat
+        const sourceChat = await ctx.db.get(args.sourceChatId);
+        if (!sourceChat) {
+            throw new Error("Source chat not found");
+        }
+
+        // Get the vision to find its workspace
+        const vision = await ctx.db.get(sourceChat.visionId);
+        if (!vision) {
+            throw new Error("Vision not found");
+        }
+
+        const plan = await getUserPlan(ctx, vision.workspace);
         requirePermission(plan, Permission.AI_NODES);
 
         const userId = (await getUserByIdenityId(ctx, identity.userId as string))?._id;
         if (!userId) {
             throw new Error("Failed to get userId from identity");
-        }
-
-        // Get the source chat
-        const sourceChat = await ctx.db.get(args.sourceChatId);
-        if (!sourceChat) {
-            throw new Error("Source chat not found");
         }
 
         // Get the specific message to branch from

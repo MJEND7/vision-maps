@@ -40,7 +40,7 @@ export async function requireVisionAccess(
         throw new Error("Vision not found");
     }
 
-    const currentPlan = await getUserPlan(ctx);
+    const currentPlan = await getUserPlan(ctx, vision.workspace);
 
     const visionUser = await ctx.db
         .query("vision_users")

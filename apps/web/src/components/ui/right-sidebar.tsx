@@ -11,6 +11,7 @@ import { useConvexMutation } from "@/hooks/convex/useConvexWithToast";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { usePermissions } from "@/contexts/PermissionsContext";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Permission } from "@/lib/permissions";
 import { PresenceFacePile } from "./face-pile";
 import { Button } from "./button";
@@ -40,6 +41,7 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
         const chatInputRef = useRef<ChatInputRef>(null);
 
         const { hasPermission } = usePermissions();
+        const { workspace } = useWorkspace();
         const canUseAI = hasPermission(Permission.AI_NODES);
         const canComment = hasPermission(Permission.COMMENTING);
 
@@ -54,7 +56,8 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
             try {
                 const result = await createChatWithNode({
                     title: "New Chat",
-                    visionId: visionId as Id<"visions">
+                    visionId: visionId as Id<"visions">,
+                    workspaceId: workspace?._id || ""
                 });
 
                 if (result?.chatId) {

@@ -13,6 +13,7 @@ import { CreateNodeArgs } from "@convex/nodes";
 import { NodeVariants } from "@convex/tables/nodes";
 import { useOGMetadataWithCache } from "@/utils/ogMetadata";
 import { usePermissions } from "@/contexts/PermissionsContext";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Permission } from "@/lib/permissions";
 import { useRealtimeTranscription } from "@/hooks/pastebin/useRealtimeTranscription";
 import { toast } from "sonner";
@@ -62,6 +63,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const { hasPermission } = usePermissions();
+    const { workspace } = useWorkspace();
     const canUseAI = hasPermission(Permission.AI_NODES);
 
     const createChat = useMutation(api.chats.createChat);
@@ -208,7 +210,8 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
         const chatId = await createChat({
             title,
             visionId: visionId as Id<"visions">,
-            channelId: channelId as Id<"channels">
+            channelId: channelId as Id<"channels">,
+            workspaceId: workspace?._id || ""
         });
 
         if (!chatId) {
@@ -219,7 +222,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
         updateChatId(chatId);
 
         return chatId
-    }, [createChat, updateChatId, visionId, channelId]);
+    }, [createChat, updateChatId, visionId, channelId, workspace]);
 
     const { startUpload, isUploading } = useUploadThing("mediaUploader", {
         onClientUploadComplete: (res) => {

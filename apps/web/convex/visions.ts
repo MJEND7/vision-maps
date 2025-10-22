@@ -94,8 +94,8 @@ export const create = mutation({
         throw new Error("Failed to get userId")
     }
 
-    // Check permissions
-    const plan = await getUserPlan(ctx);
+    // Check permissions based on current workspace
+    const plan = await getUserPlan(ctx, args.workspaceId);
 
     // Validate workspace membership - user can only create visions in workspaces they belong to
     const membership = await ctx.db
@@ -481,8 +481,14 @@ export const addMember = mutation({
       throw new Error("Invalid role");
     }
 
+    // Get the vision to find its workspace
+    const vision = await ctx.db.get(args.visionId);
+    if (!vision) {
+      throw new Error("Vision not found");
+    }
+
     // Check collaboration limit
-    const plan = await getUserPlan(ctx);
+    const plan = await getUserPlan(ctx, vision.workspace);
     const currentMembers = await ctx.db
       .query("vision_users")
       .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
@@ -702,8 +708,14 @@ export const approveJoinRequest = mutation({
       throw new Error("No pending request found for this user");
     }
 
+    // Get the vision to find its workspace
+    const visionForWorkspace = await ctx.db.get(args.visionId);
+    if (!visionForWorkspace) {
+      throw new Error("Vision not found");
+    }
+
     // Check collaboration limit before approving
-    const plan = await getUserPlan(ctx);
+    const plan = await getUserPlan(ctx, visionForWorkspace.workspace);
     const currentMembers = await ctx.db
       .query("vision_users")
       .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
