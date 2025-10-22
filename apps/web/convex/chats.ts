@@ -71,7 +71,7 @@ export const createChat = mutation({
             throw new Error("Failed to get the user Id")
         }
 
-        const plan = await getUserPlan(ctx.auth, ctx.db);
+        const plan = await getUserPlan(ctx);
         requirePermission(plan, Permission.AI_NODES);
 
         const id = await ctx.db.insert("chats", {
@@ -274,7 +274,7 @@ export const createChatWithNode = mutation({
             throw new Error("Failed to get the user Id");
         }
 
-        const plan = await getUserPlan(ctx.auth, ctx.db);
+        const plan = await getUserPlan(ctx);
         requirePermission(plan, Permission.AI_NODES);
 
         const userId = (await getUserByIdenityId(ctx, identity.userId as string))?._id;
@@ -481,7 +481,7 @@ export const branchChat = mutation({
             throw new Error("Failed to get the user Id");
         }
 
-        const plan = await getUserPlan(ctx.auth, ctx.db);
+        const plan = await getUserPlan(ctx);
         requirePermission(plan, Permission.AI_NODES);
 
         const userId = (await getUserByIdenityId(ctx, identity.userId as string))?._id;

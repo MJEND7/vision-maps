@@ -95,7 +95,7 @@ export const create = mutation({
     }
 
     // Check permissions
-    const plan = await getUserPlan(ctx.auth, ctx.db);
+    const plan = await getUserPlan(ctx);
 
     // Validate workspace membership - user can only create visions in workspaces they belong to
     const membership = await ctx.db
@@ -482,7 +482,7 @@ export const addMember = mutation({
     }
 
     // Check collaboration limit
-    const plan = await getUserPlan(ctx.auth, ctx.db);
+    const plan = await getUserPlan(ctx);
     const currentMembers = await ctx.db
       .query("vision_users")
       .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))
@@ -703,7 +703,7 @@ export const approveJoinRequest = mutation({
     }
 
     // Check collaboration limit before approving
-    const plan = await getUserPlan(ctx.auth, ctx.db);
+    const plan = await getUserPlan(ctx);
     const currentMembers = await ctx.db
       .query("vision_users")
       .withIndex("by_visionId", (q) => q.eq("visionId", args.visionId))

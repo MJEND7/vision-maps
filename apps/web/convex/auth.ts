@@ -1,6 +1,5 @@
-import { Auth } from "convex/server";
 import { Plan } from "./permissions";
-import { QueryCtx } from "./_generated/server";
+import { MutationCtx, QueryCtx } from "./_generated/server";
 
 /**
  * Get user's plan from auth context
@@ -8,35 +7,39 @@ import { QueryCtx } from "./_generated/server";
  * Default workspaces only support FREE (1 vision) or PRO (everything), not TEAMS
  * Plan hierarchy: Workspace TEAMS > Org TEAMS > User PRO > User FREE
  */
-export async function getUserPlan(auth: Auth, db: QueryCtx["db"]): Promise<Plan> {
-  const identity = await auth.getUserIdentity();
+export async function getUserPlan(ctx: QueryCtx | MutationCtx): Promise<Plan> {
+  const identity = await ctx.auth.getUserIdentity();
   if (!identity) {
     return Plan.FREE;
   }
 
-  const userId = identity.subject;
+  const userId = identity.userId;
+
+  if (!userId) {
+      throw new Error("Failed to get user")
+  }
 
   // Check workspace memberships for TEAMS plan (skip for default workspaces)
-  const workspaceMemberships = await db
+  const workspaceMemberships = await ctx.db
     .query("workspace_members")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .withIndex("by_user", (q) => q.eq("userId", userId.toString()))
     .collect();
 
   for (const membership of workspaceMemberships) {
-    const workspace = await db.get(membership.workspaceId);
+    const workspace = await ctx.db.get(membership.workspaceId);
 
     // Skip TEAMS plan check for default workspaces (they only support FREE or PRO)
     if (workspace?.isDefault) {
       continue;
     }
 
-    const workspacePlan = await db
+    const workspacePlan = await ctx.db
       .query("plans")
       .withIndex("by_owner", (q) => q.eq("ownerType", "workspace").eq("ownerId", membership.workspaceId))
       .first();
 
     if (workspacePlan && (workspacePlan.status === "active" || workspacePlan.status === "trialing")) {
-      if (workspacePlan.planType === "team") {
+      if (workspacePlan.planType === Plan.TEAMS) {
         return Plan.TEAMS;
       } else {
         return Plan.PRO;

@@ -6,7 +6,7 @@
 export enum Plan {
   FREE = "free",
   PRO = "pro",
-  TEAMS = "teams",
+  TEAMS = "team",
 }
 
 export enum Permission {

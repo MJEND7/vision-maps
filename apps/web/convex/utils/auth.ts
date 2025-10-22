@@ -40,7 +40,7 @@ export async function requireVisionAccess(
         throw new Error("Vision not found");
     }
 
-    const currentPlan = await getUserPlan(ctx.auth, ctx.db);
+    const currentPlan = await getUserPlan(ctx);
 
     const visionUser = await ctx.db
         .query("vision_users")
@@ -77,7 +77,7 @@ export async function requireVisionAccess(
 
     if (workspaceMember) {
         if (currentPlan === Plan.FREE && vision.createdWithPlan && vision.createdWithPlan !== "free") {
-            throw new Error("This vision was created with a paid plan. Please upgrade to access it.");
+            throw new Error("This vision was created with a paid plan. Please upgrade to access it. Current plain: "+currentPlan);
         }
 
         const implicitVisionUser = {

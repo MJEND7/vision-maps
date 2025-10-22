@@ -111,7 +111,7 @@ export const sendMessage = mutation({
             throw new Error("Failed to get the user Id")
         }
 
-        const plan = await getUserPlan(ctx.auth, ctx.db);
+        const plan = await getUserPlan(ctx);
         requirePermission(plan, Permission.AI_NODES);
 
         const existingMessages = await ctx.db

@@ -65,7 +65,7 @@ export const createComment = mutation({
             throw new Error("Failed to get the user Id");
         }
 
-        const plan = await getUserPlan(ctx.auth, ctx.db);
+        const plan = await getUserPlan(ctx);
         requirePermission(plan, Permission.COMMENTING);
 
         await requireVisionAccess(ctx, args.visionId);
@@ -217,7 +217,7 @@ export const createCommentChat = mutation({
             throw new Error("Failed to get the user Id");
         }
 
-        const plan = await getUserPlan(ctx.auth, ctx.db);
+        const plan = await getUserPlan(ctx);
         requirePermission(plan, Permission.COMMENTING);
 
         await requireVisionAccess(ctx, args.visionId);
