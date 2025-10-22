@@ -40,6 +40,8 @@ export async function requireVisionAccess(
         throw new Error("Vision not found");
     }
 
+    const currentPlan = await getUserPlan(ctx.auth, ctx.db);
+
     const visionUser = await ctx.db
         .query("vision_users")
         .withIndex("by_visionId", (q) => q.eq("visionId", visionId))
@@ -55,10 +57,8 @@ export async function requireVisionAccess(
         .first();
 
     if (visionUser) {
-        const currentPlan = await getUserPlan(ctx.auth, ctx.db);
-
         if (currentPlan === Plan.FREE && vision.createdWithPlan && vision.createdWithPlan !== "free") {
-            throw new Error("This vision was created with a paid plan. Please upgrade to access it.");
+            throw new Error("This vision was created with a paid plan. Please upgrade to access it. Current plain: "+currentPlan);
         }
 
         if (requiredRole && visionUser.role !== requiredRole && visionUser.role !== VisionAccessRole.Owner) {
@@ -76,8 +76,6 @@ export async function requireVisionAccess(
         .first();
 
     if (workspaceMember) {
-        const currentPlan = await getUserPlan(ctx.auth, ctx.db);
-
         if (currentPlan === Plan.FREE && vision.createdWithPlan && vision.createdWithPlan !== "free") {
             throw new Error("This vision was created with a paid plan. Please upgrade to access it.");
         }

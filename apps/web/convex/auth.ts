@@ -38,37 +38,10 @@ export async function getUserPlan(auth: Auth, db: QueryCtx["db"]): Promise<Plan>
     if (workspacePlan && (workspacePlan.status === "active" || workspacePlan.status === "trialing")) {
       if (workspacePlan.planType === "team") {
         return Plan.TEAMS;
+      } else {
+        return Plan.PRO;
       }
     }
-  }
-
-  // Legacy: Check organization memberships for TEAMS plan
-  const orgMemberships = await db
-    .query("organization_members")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
-    .collect();
-
-  for (const membership of orgMemberships) {
-    const orgPlan = await db
-      .query("plans")
-      .withIndex("by_owner", (q) => q.eq("ownerType", "org").eq("ownerId", membership.organizationId))
-      .first();
-
-    if (orgPlan && (orgPlan.status === "active" || orgPlan.status === "trialing")) {
-      if (orgPlan.planType === "team") {
-        return Plan.TEAMS;
-      }
-    }
-  }
-
-  // Check user's personal plan
-  const userPlan = await db
-    .query("plans")
-    .withIndex("by_owner", (q) => q.eq("ownerType", "user").eq("ownerId", userId))
-    .first();
-
-  if (userPlan && (userPlan.status === "active" || userPlan.status === "trialing")) {
-    return userPlan.planType === "pro" ? Plan.PRO : Plan.FREE;
   }
 
   return Plan.FREE;
