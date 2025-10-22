@@ -358,7 +358,7 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
                                     className={`flex-shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 text-left rounded-lg transition-colors ${
                                         activeTab === "danger"
                                             ? "bg-destructive text-white shadow-sm"
-                                            : "hover:bg-destructive/10 hover:text-destructive"
+                                            : "hover:bg-red-300/30 hover:text-red-400"
                                     }`}
                                 >
                                     <AlertTriangle className="w-4 h-4" />

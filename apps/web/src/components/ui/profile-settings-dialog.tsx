@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useUser, useAuth } from "@clerk/nextjs";
+import { useUser, useAuth, SignOutButton } from "@clerk/nextjs";
 import { OwnerType, useSubscription } from "@/hooks/users/useSubscription";
 import { toast } from "sonner";
 import { BillingTab as SharedBillingTab } from "@/components/billing/BillingTab";
@@ -36,6 +36,7 @@ import {
     ShieldOff,
     DollarSign,
     Trash2,
+    LogOut,
 } from "lucide-react";
 import { Google } from "@/icons/google";
 import { Github } from "lucide-react";
@@ -260,15 +261,14 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
 
                 <div className="flex flex-col sm:flex-row h-full overflow-hidden">
                     {/* Sidebar Navigation */}
-                    <div className="w-full sm:w-60 border-r sm:border-r border-b sm:border-b-0 bg-muted/30 p-4 sm:p-6 flex-shrink-0">
+                    <div className="w-full flex flex-col justify-between sm:w-60 border-r sm:border-r border-b sm:border-b-0 bg-muted/30 p-4 sm:p-6 flex-shrink-0">
                         <nav className="flex sm:flex-col gap-2 sm:space-y-2 overflow-x-auto sm:overflow-x-visible scrollbar-hide">
                             <button
                                 onClick={() => setActiveTab("profile")}
-                                className={`flex-shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 text-left rounded-lg transition-colors ${
-                                    activeTab === "profile"
-                                        ? "bg-primary text-primary-foreground shadow-sm"
-                                        : "hover:bg-accent hover:text-accent-foreground"
-                                }`}
+                                className={`flex-shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 text-left rounded-lg transition-colors ${activeTab === "profile"
+                                    ? "bg-primary text-primary-foreground shadow-sm"
+                                    : "hover:bg-accent hover:text-accent-foreground"
+                                    }`}
                             >
                                 <UserIcon className="w-4 h-4" />
                                 <span className="font-medium whitespace-nowrap">Profile</span>
@@ -276,11 +276,10 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
 
                             <button
                                 onClick={() => setActiveTab("security")}
-                                className={`flex-shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 text-left rounded-lg transition-colors ${
-                                    activeTab === "security"
-                                        ? "bg-primary text-primary-foreground shadow-sm"
-                                        : "hover:bg-accent hover:text-accent-foreground"
-                                }`}
+                                className={`flex-shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 text-left rounded-lg transition-colors ${activeTab === "security"
+                                    ? "bg-primary text-primary-foreground shadow-sm"
+                                    : "hover:bg-accent hover:text-accent-foreground"
+                                    }`}
                             >
                                 <Shield className="w-4 h-4" />
                                 <span className="font-medium whitespace-nowrap">Security</span>
@@ -288,16 +287,27 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
 
                             <button
                                 onClick={() => setActiveTab("billing")}
-                                className={`flex-shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 text-left rounded-lg transition-colors ${
-                                    activeTab === "billing"
-                                        ? "bg-primary text-primary-foreground shadow-sm"
-                                        : "hover:bg-accent hover:text-accent-foreground"
-                                }`}
+                                className={`flex-shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 text-left rounded-lg transition-colors ${activeTab === "billing"
+                                    ? "bg-primary text-primary-foreground shadow-sm"
+                                    : "hover:bg-accent hover:text-accent-foreground"
+                                    }`}
                             >
                                 <DollarSign className="w-4 h-4" />
                                 <span className="font-medium whitespace-nowrap">Billing</span>
                             </button>
                         </nav>
+
+                        <SignOutButton>
+                            <button
+                                className={`flex-shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 text-left rounded-lg transition-colors ${activeTab === "billing"
+                                    ? "bg-primary text-primary-foreground shadow-sm"
+                                    : "hover:bg-red-300/30 hover:text-red-400"
+                                    }`}
+                            >
+                                <LogOut className="w-4 h-4 " />
+                                <span className="font-medium whitespace-nowrap">Logout</span>
+                            </button>
+                        </SignOutButton>
                     </div>
 
                     {/* Main Content */}

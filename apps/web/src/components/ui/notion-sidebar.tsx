@@ -25,10 +25,6 @@ import { useRouter, usePathname } from "next/navigation"; // Added usePathname
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "convex/react";
 import { cn } from "@/lib/utils"; // Assuming you have this utility
-import { motion } from "motion/react"
-import Logo from "@/icons/logo";
-import Link from "next/link";
-import ThemeSwitcher from "../ThemeSwitcher";
 import { CustomOrgPopup } from "@/components/ui/custom-org-popup";
 import { OrgSettingsDialog } from "@/components/ui/org-settings-dialog";
 import { ProfileSettingsDialog } from "@/components/ui/profile-settings-dialog";
@@ -212,29 +208,6 @@ export function NotionSidebar() {
 
     return (
         <div className="w-64 h-full bg-transparent border-r border-border flex flex-col">
-            <div className="flex justify-between items-center gap-2 px-3 py-3 border-b">
-                <Link
-                    href={"/"}
-                    className="flex gap-2 items-center"
-                >
-                    <motion.div
-                        initial={{ rotate: -180, scale: 0 }}
-                        animate={{ rotate: 0, scale: 1 }}
-                        transition={{ duration: 0.8, delay: 0.3, type: "spring" }}
-                    >
-                        <Logo size={25} />
-                    </motion.div>
-                    <motion.p
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.6, delay: 0.5 }}
-                        className="font-light text-sm"
-                    >
-                        Vision Maps
-                    </motion.p>
-                </Link>
-                <ThemeSwitcher size="sm" />
-            </div>
             {/* Organization Selector */}
             <div className="flex items-center gap-2 p-3 border-b border-border">
                 <CustomOrgPopup onOrgChange={(orgId) => handleOrganizationSelect(orgId || "personal")}>
@@ -324,18 +297,6 @@ export function NotionSidebar() {
                             Support
                         </div>
                     </Button>
-
-                    <SignOutButton>
-                        <Button
-                            className="w-full justify-start text-left p-2"
-                            variant="ghost"
-                        >
-                            <div className="flex items-center gap-2">
-                                <LogOut className="w-4 h-4 " />
-                                Logout
-                            </div>
-                        </Button>
-                    </SignOutButton>
                 </div>
             </div>
 
