@@ -16,6 +16,7 @@ import {
     Zap,
     Star,
     DollarSign,
+    AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -44,6 +45,7 @@ export function NotionSidebar() {
     const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
     const [orgSettingsOpen, setOrgSettingsOpen] = useState(false);
     const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
+    const [workspaceSettingsTab, setWorkspaceSettingsTab] = useState<"members" | "profile" | "billing" | "danger">("members");
 
     const notificationCount = useQuery(
         api.notifications.getUnreadCount,
@@ -73,6 +75,11 @@ export function NotionSidebar() {
     };
 
     const handleSettingsClick = () => {
+        setOrgSettingsOpen(true);
+    };
+
+    const handleWorkspaceSettingsClick = (tab: "members" | "profile" | "billing" | "danger") => {
+        setWorkspaceSettingsTab(tab);
         setOrgSettingsOpen(true);
     };
 
@@ -278,6 +285,63 @@ export function NotionSidebar() {
                         </div>
                     </Button>
 
+                    {/* Workspace Settings Section - Show only if in a workspace */}
+                    {workspace && (
+                        <>
+                            <div className="mt-4 pt-4 border-t border-border">
+                                <p className="text-xs font-semibold text-muted-foreground px-2 mb-2">Workspace</p>
+                            </div>
+
+                            {/* Members & Invites */}
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start text-left p-2"
+                                onClick={() => handleWorkspaceSettingsClick("members")}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Users className="w-4 h-4" />
+                                    <span className="text-sm">Members</span>
+                                </div>
+                            </Button>
+
+                            {/* Workspace Profile */}
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start text-left p-2"
+                                onClick={() => handleWorkspaceSettingsClick("profile")}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Settings className="w-4 h-4" />
+                                    <span className="text-sm">Settings</span>
+                                </div>
+                            </Button>
+
+                            {/* Billing */}
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start text-left p-2"
+                                onClick={() => handleWorkspaceSettingsClick("billing")}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <DollarSign className="w-4 h-4" />
+                                    <span className="text-sm">Billing</span>
+                                </div>
+                            </Button>
+
+                            {/* Danger Zone */}
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start text-left p-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => handleWorkspaceSettingsClick("danger")}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <AlertTriangle className="w-4 h-4" />
+                                    <span className="text-sm">Danger Zone</span>
+                                </div>
+                            </Button>
+                        </>
+                    )}
+
                 </div>
 
                 {/* Bottom Actions */}
@@ -328,6 +392,7 @@ export function NotionSidebar() {
                 <OrgSettingsDialog
                     open={orgSettingsOpen}
                     onOpenChange={setOrgSettingsOpen}
+                    defaultTab={workspaceSettingsTab}
                 />
             )}
 

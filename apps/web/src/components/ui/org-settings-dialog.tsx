@@ -58,6 +58,7 @@ import { BillingTab as SharedBillingTab } from "@/components/billing/BillingTab"
 interface OrgSettingsDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    defaultTab?: "members" | "invites" | "profile" | "billing" | "danger";
 }
 
 interface MembersTabProps {
@@ -88,7 +89,7 @@ interface DangerTabProps {
 }
 
 
-export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps) {
+export function OrgSettingsDialog({ open, onOpenChange, defaultTab = "members" }: OrgSettingsDialogProps) {
     const { user } = useUser();
     const { workspace, isAdmin } = useWorkspace();
     const { setActive } = useWorkspaceList();
@@ -105,7 +106,7 @@ export function OrgSettingsDialog({ open, onOpenChange }: OrgSettingsDialogProps
         workspace ? { organizationId: workspace._id } : "skip"
     );
 
-    const [activeTab, setActiveTab] = useState("members");
+    const [activeTab, setActiveTab] = useState(defaultTab);
     const [showLeaveDialog, setShowLeaveDialog] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showInviteDialog, setShowInviteDialog] = useState(false);
