@@ -1,8 +1,13 @@
+import { NodeVariants } from '@convex/tables/nodes'
 import { NextRequest, NextResponse } from 'next/server'
 import ogs from 'open-graph-scraper'
+import { getTweet } from 'react-tweet/api'
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY
 
+// ---------------------------------------------------------------------------
+// ENUMS & TYPES
+// ---------------------------------------------------------------------------
 interface BaseMetadata {
   title: string
   description: string
@@ -49,25 +54,40 @@ interface NotionMetadata extends BaseMetadata {
   pageType?: string
 }
 
-type PlatformMetadata =
-  | BaseMetadata
-  | GitHubMetadata
-  | YouTubeMetadata
-  | FigmaMetadata
-  | NotionMetadata
+interface PlatformMetadataMap {
+  [NodeVariants.Link]: BaseMetadata
+  [NodeVariants.GitHub]: GitHubMetadata
+  [NodeVariants.Figma]: FigmaMetadata
+  [NodeVariants.YouTube]: YouTubeMetadata
+  [NodeVariants.Notion]: NotionMetadata
+  [NodeVariants.Instagram]: BaseMetadata
+  [NodeVariants.TikTok]: BaseMetadata
+  [NodeVariants.Spotify]: BaseMetadata
+  [NodeVariants.Twitter]: BaseMetadata
+}
 
-function detectPlatformType(url: string): string {
+type PlatformMetadata = PlatformMetadataMap[keyof PlatformMetadataMap]
+
+// ---------------------------------------------------------------------------
+// PLATFORM DETECTION
+// ---------------------------------------------------------------------------
+
+function detectNodeVariant(url: string): NodeVariants {
   const hostname = new URL(url).hostname.toLowerCase()
-  if (hostname.includes('github.com')) return 'github'
-  if (hostname.includes('figma.com')) return 'figma'
+
+  if (hostname.includes('github.com')) return NodeVariants.GitHub
+  if (hostname.includes('figma.com')) return NodeVariants.Figma
   if (hostname.includes('youtube.com') || hostname.includes('youtu.be'))
-    return 'youtube'
+    return NodeVariants.YouTube
   if (hostname.includes('notion.so') || hostname.includes('notion.com'))
-    return 'notion'
-  if (hostname.includes('instagram.com')) return 'instagram'
-  if (hostname.includes('tiktok.com')) return 'tiktok'
-  if (hostname.includes('spotify.com')) return 'spotify'
-  return 'website'
+    return NodeVariants.Notion
+  if (hostname.includes('instagram.com')) return NodeVariants.Instagram
+  if (hostname.includes('tiktok.com')) return NodeVariants.TikTok
+  if (hostname.includes('spotify.com')) return NodeVariants.Spotify
+  if (hostname.includes('twitter.com') || hostname.includes('x.com'))
+    return NodeVariants.Twitter
+
+  return NodeVariants.Link
 }
 
 function extractBaseMetadata(result: any, url: string): BaseMetadata {
@@ -101,30 +121,13 @@ function extractGitHubMetadata(result: any, base: BaseMetadata): GitHubMetadata 
   }
 }
 
-function extractYouTubeMetadataOG(result: any, base: BaseMetadata): YouTubeMetadata {
+function extractFigmaMetadata(result: any, base: BaseMetadata): FigmaMetadata {
   const json = result.jsonLD?.[0] || {}
   return {
     ...base,
-    thumbnail: json?.thumbnailUrl || result.ogImage?.[0]?.url || '',
-    channelName: json.author?.name || result.twitterCreator || '',
-    duration: json.duration || '',
-    views: json.interactionStatistic?.find((s: any) =>
-      s.interactionType?.includes('WatchAction')
-    )?.userInteractionCount,
-    likes: json.interactionStatistic?.find((s: any) =>
-      s.interactionType?.includes('LikeAction')
-    )?.userInteractionCount,
-    publishedAt: json.uploadDate || json.datePublished || '',
-    videoUrl: result.ogVideo?.[0]?.url || '',
-    videoDuration: result.ogVideo?.[0]?.duration || '',
-    videoWidth: result.ogVideo?.[0]?.width || '',
-    videoHeight: result.ogVideo?.[0]?.height || '',
+    team: json.creator?.name || '',
+    fileType: json.fileFormat || 'design',
   }
-}
-
-function extractFigmaMetadata(result: any, base: BaseMetadata): FigmaMetadata {
-  const json = result.jsonLD?.[0] || {}
-  return { ...base, team: json.creator?.name || '', fileType: json.fileFormat || 'design' }
 }
 
 function extractNotionMetadata(result: any, base: BaseMetadata): NotionMetadata {
@@ -138,74 +141,96 @@ function extractNotionMetadata(result: any, base: BaseMetadata): NotionMetadata 
   }
 }
 
+async function fetchTwitterAPI(url: string) {
+  const match = url.match(/\/status\/(\d+)/)
+  const id = match ? match[1] : undefined
+
+  if (!id) throw new Error('Failed to find tweet id')
+
+  const tweet = await getTweet(id)
+  if (!tweet) throw new Error('Failed to find tweet')
+
+  return tweet
+}
+
 async function fetchYouTubeAPI(url: string) {
   const idMatch = url.match(/[?&]v=([^&]+)/) || url.match(/youtu\.be\/([^?]+)/)
   const videoId = idMatch?.[1]
+
   if (!videoId || !YOUTUBE_API_KEY)
     throw new Error('Missing video ID or YouTube API key')
+
   const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoId}&key=${YOUTUBE_API_KEY}`
   const res = await fetch(apiUrl)
   if (!res.ok) throw new Error(`YouTube API error: ${res.status}`)
+
   const data = await res.json()
   const video = data.items?.[0]
   if (!video) throw new Error('No video found')
+
   const s = video.snippet
   const st = video.statistics
   const c = video.contentDetails
+
   const durISO = c.duration || ''
   const match = durISO.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
   const [, h, m, sec] = match || []
-  const d = [h ? `${h}h` : '', m ? `${m}m` : '', sec ? `${sec}s` : '']
+  const durationFmt = [h ? `${h}h` : '', m ? `${m}m` : '', sec ? `${sec}s` : '']
     .filter(Boolean)
     .join(' ')
-  return {
-    success: true,
-    metadata: {
-      title: s.title,
-      description: s.description,
-      image: s.thumbnails?.maxres?.url || s.thumbnails?.high?.url || '',
-      siteName: 'YouTube',
-      favicon: 'https://www.youtube.com/s/desktop/a192c735/img/favicon.ico',
-      url: `https://www.youtube.com/watch?v=${videoId}`,
-      type: 'video.other',
-      author: s.channelTitle,
-      publishedTime: s.publishedAt,
-      modifiedTime: '',
-      jsonLD: [],
-      thumbnail: s.thumbnails?.high?.url || '',
-      channelName: s.channelTitle,
-      duration: d,
-      views: Number(st.viewCount) || 0,
-      likes: Number(st.likeCount) || 0,
-      publishedAt: s.publishedAt,
-      videoUrl: `https://www.youtube.com/embed/${videoId}`,
-      videoDuration: c.duration,
-      videoWidth: '',
-      videoHeight: '',
-    },
-    platformType: 'youtube',
+
+  const metadata: YouTubeMetadata = {
+    title: s.title,
+    description: s.description,
+    image: s.thumbnails?.maxres?.url || s.thumbnails?.high?.url || '',
+    siteName: 'YouTube',
+    favicon: 'https://www.youtube.com/s/desktop/a192c735/img/favicon.ico',
+    url: `https://www.youtube.com/watch?v=${videoId}`,
+    type: 'video.other',
+    author: s.channelTitle,
+    publishedTime: s.publishedAt,
+    modifiedTime: '',
+    jsonLD: [],
+    thumbnail: s.thumbnails?.high?.url || '',
+    channelName: s.channelTitle,
+    duration: durationFmt,
+    views: Number(st.viewCount) || 0,
+    likes: Number(st.likeCount) || 0,
+    publishedAt: s.publishedAt,
+    videoUrl: `https://www.youtube.com/embed/${videoId}`,
+    videoDuration: c.duration,
+    videoWidth: '',
+    videoHeight: '',
   }
+
+  return { success: true, metadata, nodeVariant: NodeVariants.YouTube }
 }
 
-async function extractPlatformMetadata(
+// ---------------------------------------------------------------------------
+// MAIN EXTRACTOR
+// ---------------------------------------------------------------------------
+
+async function extractNodeVariantMetadata(
   result: any,
   url: string,
-  platform: string
+  nodeVariant: NodeVariants
 ): Promise<PlatformMetadata> {
   const base = extractBaseMetadata(result, url)
-  switch (platform) {
-    case 'github':
+  switch (nodeVariant) {
+    case NodeVariants.GitHub:
       return extractGitHubMetadata(result, base)
-    case 'youtube':
-      return extractYouTubeMetadataOG(result, base)
-    case 'figma':
+    case NodeVariants.Figma:
       return extractFigmaMetadata(result, base)
-    case 'notion':
+    case NodeVariants.Notion:
       return extractNotionMetadata(result, base)
     default:
       return base
   }
 }
+
+// ---------------------------------------------------------------------------
+// API ROUTES
+// ---------------------------------------------------------------------------
 
 export const runtime = 'nodejs'
 
@@ -213,16 +238,20 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { url } = body
-    if (!url) return NextResponse.json({ error: 'URL is required' }, { status: 400 })
+
+    if (!url)
+      return NextResponse.json({ error: 'URL is required' }, { status: 400 })
+
     try {
       new URL(url)
     } catch {
       return NextResponse.json({ error: 'Invalid URL' }, { status: 400 })
     }
 
-    const platformType = detectPlatformType(url)
+    const nodeVariant = detectNodeVariant(url)
 
-    if (platformType === 'youtube') {
+    // Handle YouTube separately with API
+    if (nodeVariant === NodeVariants.YouTube) {
       try {
         const yt = await fetchYouTubeAPI(url)
         return NextResponse.json(yt)
@@ -231,7 +260,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const options = {
+    // Handle Twitter separately with react-tweet/api
+    if (nodeVariant === NodeVariants.Twitter) {
+      try {
+        const tweet = await fetchTwitterAPI(url)
+        return NextResponse.json({
+          success: true,
+          metadata: tweet,
+          nodeVariant,
+        })
+      } catch (err: any) {
+        console.error('Twitter API failed:', err)
+        throw err
+      }
+    }
+
+    // Fallback to Open Graph Scraper
+    const ogOptions = {
       url,
       timeout: 5000,
       retry: 2,
@@ -241,7 +286,7 @@ export async function POST(request: NextRequest) {
       },
     }
 
-    const { error, result } = await ogs(options)
+    const { error, result } = await ogs(ogOptions)
 
     if (error) {
       const fallback = extractBaseMetadata({}, url)
@@ -250,16 +295,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         metadata: fallback,
-        platformType,
+        nodeVariant,
         fallback: true,
       })
     }
 
-    const metadata = await extractPlatformMetadata(result, url, platformType)
-    return NextResponse.json({ success: true, metadata, platformType })
+    const metadata = await extractNodeVariantMetadata(result, url, nodeVariant)
+
+    return NextResponse.json({
+      success: true,
+      metadata,
+      nodeVariant,
+    })
   } catch (err: any) {
     console.error('API route error:', err)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
 

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, memo } from "react";
 import { motion } from "motion/react";
 import { ExternalLink, Loader2, Eye, ThumbsUp } from "lucide-react";
-import { YouTubeMetadata } from "./index";
+import type { YouTubeMetadata } from "@/types/metadata";
 
 interface YouTubeCardProps {
   metadata: YouTubeMetadata;

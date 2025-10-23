@@ -1,39 +1,14 @@
 import { motion } from "motion/react";
-import { TwitterMetadata } from "./index";
+import { Tweet as TweetType } from "@/components/socials/tweet";
 import { Tweet } from "@/components/socials/tweet";
 
 interface TwitterCardProps {
-    metadata: TwitterMetadata;
+    metadata: TweetType;
 }
 
 export function TwitterCard({ metadata }: TwitterCardProps) {
-    // Extract tweet ID from various Twitter URL formats
-    const extractTweetId = (url: string): string | null => {
-        try {
-            const urlObj = new URL(url);
-            const pathname = urlObj.pathname;
-
-            // Handle different Twitter URL formats:
-            // https://twitter.com/user/status/1234567890
-            // https://x.com/user/status/1234567890
-            // https://twitter.com/i/web/status/1234567890
-            const tweetMatch = pathname.match(/\/status\/(\d+)/);
-            if (tweetMatch) {
-                return tweetMatch[1];
-            }
-
-            return null;
-        } catch (error) {
-            console.error('Error extracting tweet ID:', error);
-            return null;
-        }
-    };
-
-
-    const tweetId = extractTweetId(metadata.url);
-
-    if (!tweetId) {
-        // Fallback to original card if we can't extract tweet ID
+    // Fallback card if metadata is missing or invalid
+    if (!metadata || !metadata.id_str) {
         return (
             <motion.div
                 className="bg-gradient-to-br from-gray-50 to-gray-100 border-gray-300 rounded-lg overflow-hidden border"
@@ -49,10 +24,10 @@ export function TwitterCard({ metadata }: TwitterCardProps) {
                         <span className="text-sm font-medium text-gray-900">Twitter/X</span>
                     </div>
                     <h3 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">
-                        {metadata.title || metadata.description || 'Twitter Post'}
+                        {metadata?.text || 'Twitter Post'}
                     </h3>
                     <a
-                        href={metadata.url}
+                        href={`https://x.com/${metadata?.user?.screen_name}/status/${metadata?.id_str}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:text-blue-700 text-xs font-medium"
@@ -71,7 +46,7 @@ export function TwitterCard({ metadata }: TwitterCardProps) {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
         >
-            <Tweet id={tweetId} />
+            <Tweet tweet={metadata} />
         </motion.div>
     );
 }

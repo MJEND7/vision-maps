@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { ExternalLink, Loader2 } from "lucide-react";
-import { SpotifyMetadata } from "./index";
+import type { SpotifyMetadata } from "@/types/metadata";
 
 interface SpotifyCardProps {
     metadata: SpotifyMetadata;

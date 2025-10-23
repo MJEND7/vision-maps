@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { ExternalLink, Loader2 } from "lucide-react";
-import { LoomMetadata } from "./index";
+import type { LoomMetadata } from "@/types/metadata";
 
 interface LoomCardProps {
     metadata: LoomMetadata;

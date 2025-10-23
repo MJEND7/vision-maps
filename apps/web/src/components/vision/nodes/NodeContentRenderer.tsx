@@ -5,7 +5,19 @@ import Image from "next/image";
 import { Brain, Check, ExternalLink, Expand, Minimize2 } from 'lucide-react';
 import { AudioPlayer } from "../../channel/audio-player";
 import { VideoPlayer } from "../../channel/video-player";
-import { TranscriptionCard, GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard } from "../../channel/metadata";
+import {
+    TranscriptionCard,
+    GitHubCard,
+    FigmaCard,
+    YouTubeCard,
+    TwitterCard,
+    NotionCard,
+    WebsiteCard,
+    LoomCard,
+    SpotifyCard,
+    AppleMusicCard,
+    type OGMetadata,
+} from "../../channel/metadata";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useOGMetadataWithCache } from "@/utils/ogMetadata";
 import Markdown, { Components } from "react-markdown";
@@ -99,14 +111,17 @@ const textNodeMarkdownComponents: Components = {
     p: ({ ...props }) => (
         <p className="text-sm text-card-foreground leading-tight pb-2" {...props} />
     ),
+    a: ({ ...props }) => (
+        <a className="text-sm text-blue-600 hover:underline leading-tight pb-2" {...props} />
+    ),
     ul: ({ ...props }) => (
-        <ul className="list-disc list-inside space-y-0.5 text-card-foreground my-2 text-xs" {...props} />
+        <ul className="list-disc list-inside space-y-0.5 text-card-foreground text-xs" {...props} />
     ),
     ol: ({ ...props }) => (
-        <ol className="list-decimal list-inside space-y-0.5 text-card-foreground my-2 text-xs" {...props} />
+        <ol className="list-decimal list-inside space-y-0.5 text-card-foreground text-xs" {...props} />
     ),
     li: ({ ...props }) => (
-        <li className="ml-1 text-card-foreground text-xs pb-2" {...props} />
+        <li className="ml-1 text-sm text-card-foreground leading-tight pb-2" {...props} />
     ),
     blockquote: ({ ...props }) => (
         <blockquote
@@ -184,7 +199,7 @@ function NodeWithMetadata({
   variant: NodeVariants;
 }) {
   const { fetchWithCache } = useOGMetadataWithCache();
-  const [metadata, setMetadata] = React.useState<any>(null);
+  const [metadata, setMetadata] = React.useState<OGMetadata | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
   // Memoize stable URL based on node value
@@ -212,10 +227,7 @@ function NodeWithMetadata({
         const result = await fetchWithCache(stableUrl);
 
         if (!cancelled) {
-          setMetadata({
-            ...result.metadata,
-            type: variant,
-          });
+          setMetadata(result.metadata);
         }
       } catch (error) {
         console.error("Error fetching metadata:", error);
@@ -244,23 +256,23 @@ function NodeWithMetadata({
 
     switch (variant) {
       case NodeVariants.GitHub:
-        return <GitHubCard metadata={metadata} />;
+        return <GitHubCard metadata={metadata as any} />;
       case NodeVariants.Figma:
-        return <FigmaCard metadata={metadata} />;
+        return <FigmaCard metadata={metadata as any} />;
       case NodeVariants.YouTube:
-        return <YouTubeCard metadata={metadata} />;
+        return <YouTubeCard metadata={metadata as any} />;
       case NodeVariants.Twitter:
-        return <TwitterCard metadata={metadata} />;
+        return <TwitterCard metadata={metadata as any} />;
       case NodeVariants.Notion:
-        return <NotionCard metadata={metadata} />;
+        return <NotionCard metadata={metadata as any} />;
       case NodeVariants.Loom:
-        return <LoomCard metadata={metadata} />;
+        return <LoomCard metadata={metadata as any} />;
       case NodeVariants.Spotify:
-        return <SpotifyCard metadata={metadata} />;
+        return <SpotifyCard metadata={metadata as any} />;
       case NodeVariants.AppleMusic:
-        return <AppleMusicCard metadata={metadata} />;
+        return <AppleMusicCard metadata={metadata as any} />;
       default:
-        return <WebsiteCard metadata={metadata} />;
+        return <WebsiteCard metadata={metadata as any} />;
     }
   }, [variant, metadata]);
 

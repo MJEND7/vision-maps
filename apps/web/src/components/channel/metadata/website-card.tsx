@@ -1,6 +1,6 @@
 import { Globe } from "lucide-react";
 import { BaseCard } from "./base-card";
-import { WebsiteMetadata } from "./index";
+import type { WebsiteMetadata } from "@/types/metadata";
 import Image from "next/image";
 
 interface WebsiteCardProps {

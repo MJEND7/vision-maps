@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import {
     AlertTriangle,
@@ -8,12 +7,11 @@ import {
 } from 'lucide-react'
 import { XLogo } from '@/icons/Xlogo'
 
-// ---------------- TYPES ----------------
 export interface TweetUser {
     name: string
     screen_name: string
     profile_image_url_https: string
-    verified?: boolean // ✅ Added
+    verified?: boolean 
 }
 
 export interface MediaDetail {
@@ -40,41 +38,6 @@ export interface Tweet {
         user_mentions?: { screen_name: string }[]
         urls?: { url: string; expanded_url: string }[]
     }
-}
-
-// --------------- GLOBAL CACHE ---------------
-const tweetCache = new Map<
-    string,
-    {
-        data: Tweet | null
-        error: Error | null
-        loading: boolean
-        promise?: Promise<Tweet>
-    }
->()
-
-const fetchTweetCached = async (id: string): Promise<Tweet> => {
-    const cached = tweetCache.get(id)
-    if (cached && !cached.loading && cached.data) return cached.data
-    if (cached && !cached.loading && cached.error) throw cached.error
-    if (cached && cached.loading && cached.promise) return cached.promise
-
-    const promise = fetch(`/api/tweet/${id}`)
-        .then((res) => {
-            if (!res.ok) throw new Error('Failed to fetch tweet')
-            return res.json()
-        })
-        .then((data: Tweet) => {
-            tweetCache.set(id, { data, error: null, loading: false })
-            return data
-        })
-        .catch((err: Error) => {
-            tweetCache.set(id, { data: null, error: err, loading: false })
-            throw err
-        })
-
-    tweetCache.set(id, { data: null, error: null, loading: true, promise })
-    return promise
 }
 
 // --------------- LINKIFY TWEET TEXT ----------------
@@ -221,7 +184,7 @@ const TweetMedia = ({ media }: { media?: MediaDetail[] }) => {
     )
 }
 
-const TweetSkeleton = () => (
+export const TweetSkeleton = () => (
     <div className="border border-gray-300 dark:border-gray-700 rounded-xl p-4 bg-gray-50 dark:bg-gray-800 animate-pulse max-w-lg w-full space-y-3">
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -254,47 +217,14 @@ const TweetError = () => (
 
 // ---------------- TWEET MAIN ----------------
 interface TweetProps {
-    id: string
+    tweet?: Tweet;
 }
 
-export const Tweet = ({ id }: TweetProps) => {
-    const [tweet, setTweet] = useState<Tweet | null>(null)
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState<Error | null>(null)
-
-    useEffect(() => {
-        if (!id) return
-        const cached = tweetCache.get(id)
-        if (cached && !cached.loading) {
-            if (cached.data) {
-                setTweet(cached.data)
-                setLoading(false)
-                return
-            }
-            if (cached.error) {
-                setError(cached.error)
-                setLoading(false)
-                return
-            }
-        }
-
-        fetchTweetCached(id)
-            .then((data) => {
-                setTweet(data)
-                setLoading(false)
-            })
-            .catch((err) => {
-                setError(err)
-                setLoading(false)
-            })
-    }, [id])
-
-    if (loading)
-        return (
-            <TweetSkeleton />
-        )
-
-    if (error || !tweet) return <TweetError />
+export const Tweet = ({ tweet }: TweetProps) => {
+    
+    if(!tweet) {
+        return <TweetError/>
+    }
 
     const permalink = `https://x.com/${tweet.user.screen_name}/status/${tweet.id_str}`
 

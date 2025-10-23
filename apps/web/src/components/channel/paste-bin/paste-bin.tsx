@@ -123,6 +123,13 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
 
     // Helper function to convert Media to LinkMetadata for card components
     const mediaToLinkMetadata = useCallback((media: Media): LinkMetadata => {
+        // If we have the full metadata object stored, return it directly
+        // This preserves Twitter Tweet objects and other complex metadata structures
+        if (media.metadata) {
+            return media.metadata as LinkMetadata;
+        }
+
+        // Fallback: reconstruct from individual fields (for backward compatibility)
         return {
             type: media.type,
             title: media.title || media.fileName || 'Untitled',
@@ -360,13 +367,18 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
 
         try {
             const meta = await fetchLinkMetadata(url);
+            // Store the full metadata object (preserves Twitter Tweet, YouTube data, etc.)
             updateMedia({
                 type: meta.type as NodeVariants,
+                url: url,  // Use the original URL, not meta.url
+                metadata: meta,  // Store the complete metadata object
+                // Also spread individual fields for backward compatibility
                 title: meta.title,
                 description: meta.description,
-                url: url,  // Use the original URL, not meta.url
                 image: meta.image,
                 siteName: meta.siteName,
+                favicon: meta.favicon,
+                author: meta.author,
             });
         } catch (error) {
             console.error('Failed to fetch link metadata:', error);
@@ -399,12 +411,6 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             setMode(PasteBinMode.TEXT)
         }
     }, [updateTextContent, mode, setMode]);
-
-    const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        if (e.key === 'Enter' && pasteBinData.text) {
-            updateTextContent("\n")
-        }
-    }, [pasteBinData.text, updateTextContent]);
 
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -813,25 +819,24 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                                 : "Enter media..."
                         }
                         onChange={(e) => {
-                            if (e.target.value === "") {
+                            if (e.target.value === "" && mode === PasteBinMode.TEXT) {
                                 clearPasteBin()
                             } else {
                                 handleInputChange(e);
                             }
                         }}
                         onKeyDown={async (e) => {
-                            if (!pasteBinData.text) return
-                            if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                if (mode === PasteBinMode.AI && pasteBinData.chatId) {
-                                    handleSendMessage(pasteBinData.chatId);
-                                } else if (mode === PasteBinMode.TEXT) {
-                                    handleCreate();
-                                }
-                            } else if (e.key === "Enter" && e.shiftKey) {
-                                e.preventDefault();
-                                handleInputKeyDown(e)
+                            if (!pasteBinData.text && pasteBinData.text !== "") return
+                            if (e.key !== "Enter") return
+                            if (e.shiftKey) return
+
+                            e.preventDefault();
+                            if (mode === PasteBinMode.AI && pasteBinData.chatId) {
+                                handleSendMessage(pasteBinData.chatId);
+                                return
                             }
+
+                            handleCreate();
                         }}
                         onPaste={mode === PasteBinMode.IDLE ? handlePaste : undefined}
                         onMicrophoneSelect={async () => {

@@ -1,6 +1,6 @@
 import { FileText } from "lucide-react";
 import { BaseCard } from "./base-card";
-import { NotionMetadata } from "./index";
+import type { NotionMetadata } from "@/types/metadata";
 
 interface NotionCardProps {
     metadata: NotionMetadata;

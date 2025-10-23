@@ -1,4 +1,5 @@
 import { NodeVariants } from "@convex/tables/nodes";
+import type { OGMetadata } from "./metadata";
 
 export enum PasteBinMode {
     IDLE = 'idle',
@@ -40,8 +41,13 @@ export interface Media {
     uploadedUrl?: string;
     customName?: string;
 
-    // Link/Embed properties (for external content) - matching LinkMetadata structure
+    // Link/Embed properties (for external content)
     url?: string;
+
+    // Store the full metadata object (includes Twitter Tweet, YouTube metadata, etc.)
+    metadata?: OGMetadata;
+
+    // Fallback basic fields for backward compatibility
     title?: string;
     description?: string;
     image?: string;

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { ExternalLink, Loader2 } from "lucide-react";
-import { FigmaMetadata } from "./index";
+import type { FigmaMetadata } from "@/types/metadata";
 import Image from "next/image";
 
 interface FigmaCardProps {

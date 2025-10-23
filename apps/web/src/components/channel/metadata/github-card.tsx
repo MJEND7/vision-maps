@@ -1,6 +1,6 @@
 import { Star, GitFork } from "lucide-react";
 import { BaseCard } from "./base-card";
-import { GitHubMetadata } from "./index";
+import type { GitHubMetadata } from "@/types/metadata";
 
 interface GitHubCardProps {
     metadata: GitHubMetadata;

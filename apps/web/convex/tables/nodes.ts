@@ -17,6 +17,8 @@ export enum NodeVariants {
     Figma = "Figma",
     GitHub = "GitHub",
     Twitter = "Twitter",
+    Instagram = "Instagram",
+    TikTok = "TicTok",
     AI = "AI",
     Loom = "Loom",
     Excalidraw = "Excalidraw",

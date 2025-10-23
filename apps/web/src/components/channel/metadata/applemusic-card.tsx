@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { ExternalLink, Loader2 } from "lucide-react";
-import { AppleMusicMetadata } from "./index";
+import type { AppleMusicMetadata } from "@/types/metadata";
 
 interface AppleMusicCardProps {
     metadata: AppleMusicMetadata;
