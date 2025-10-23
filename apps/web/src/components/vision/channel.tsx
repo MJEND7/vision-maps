@@ -150,480 +150,480 @@ export default function Channel({
         clearChannel,
     } = useNodeStore();
 
-    const createNode = useCreateNode({ visionId, onPostCreation: (node) => {
-        setSortBy("latest");
-        addNewNode(channelId, node);
-        requestAnimationFrame(() => {
-            if (scrollContainerRef.current) {
-                scrollContainerRef.current.scrollTo({
-                    top: scrollContainerRef.current.scrollHeight,
-                    behavior: "smooth",
-                });
-            }
-        });
-    }
-})
+    const createNode = useCreateNode({
+        visionId, onPostCreation: (node) => {
+            setSortBy("latest");
+            addNewNode(channelId, node);
+            requestAnimationFrame(() => {
+                if (scrollContainerRef.current) {
+                    scrollContainerRef.current.scrollTo({
+                        top: scrollContainerRef.current.scrollHeight,
+                        behavior: "smooth",
+                    });
+                }
+            });
+        }
+    })
 
-// Debounce search query
-useEffect(() => {
-    const timer = setTimeout(() => {
-        setDebouncedSearch(searchQuery);
-    }, 300);
-    return () => clearTimeout(timer);
-}, [searchQuery]);
+    // Debounce search query
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
-// Clear local store when filters change to force re-fetch
-useEffect(() => {
-    clearChannel(channelId);
-}, [debouncedSearch, selectedVariant, selectedUsers, sortBy, channelId, clearChannel]);
+    // Clear local store when filters change to force re-fetch
+    useEffect(() => {
+        clearChannel(channelId);
+    }, [debouncedSearch, selectedVariant, selectedUsers, sortBy, channelId, clearChannel]);
 
-const storedNodes = useMemo(() => nodesByChannel[channelId] || [], [nodesByChannel, channelId]);
-const isLoadingNodes = loading[channelId] || false;
-const isDone = !hasMore[channelId];
+    const storedNodes = useMemo(() => nodesByChannel[channelId] || [], [nodesByChannel, channelId]);
+    const isLoadingNodes = loading[channelId] || false;
+    const isDone = !hasMore[channelId];
 
-useEffect(() => {
-    if (channel?.title) {
-        setTitleValue(channel?.title);
-    }
+    useEffect(() => {
+        if (channel?.title) {
+            setTitleValue(channel?.title);
+        }
 
-    if (channel?.description) {
-        setDescriptionValue(channel?.description || "");
-    }
-}, [channel?.title, channel?.description]);
+        if (channel?.description) {
+            setDescriptionValue(channel?.description || "");
+        }
+    }, [channel?.title, channel?.description]);
 
-// Use regular query to sync with server data
-const {
-    results: serverNodes,
-    status,
-    loadMore: loadMoreFromServer,
-} = usePaginatedQuery(
-    api.nodes.listByChannel,
-    {
-        channelId: channelId as Id<"channels">,
-        filters: {
-            search: debouncedSearch || undefined,
-            variant: selectedVariant === "all" ? undefined : selectedVariant,
-            userIds: selectedUsers.includes("all")
-                ? undefined
-                : (selectedUsers as Id<"users">[]),
-            sortBy: sortBy === "latest" ? "oldest" : "latest", // Flip the sort to get newest at bottom
+    // Use regular query to sync with server data
+    const {
+        results: serverNodes,
+        status,
+        loadMore: loadMoreFromServer,
+    } = usePaginatedQuery(
+        api.nodes.listByChannel,
+        {
+            channelId: channelId as Id<"channels">,
+            filters: {
+                search: debouncedSearch || undefined,
+                variant: selectedVariant === "all" ? undefined : selectedVariant,
+                userIds: selectedUsers.includes("all")
+                    ? undefined
+                    : (selectedUsers as Id<"users">[]),
+                sortBy: sortBy === "latest" ? "oldest" : "latest", // Flip the sort to get newest at bottom
+            },
         },
-    },
-    { initialNumItems: 10 }
-);
+        { initialNumItems: 10 }
+    );
 
-// Sync server data with local store
-useEffect(() => {
-    if (serverNodes && serverNodes.length > 0) {
-        syncWithServerData(channelId, serverNodes);
+    // Sync server data with local store
+    useEffect(() => {
+        if (serverNodes && serverNodes.length > 0) {
+            syncWithServerData(channelId, serverNodes);
+        }
+        setHasMore(channelId, status !== "Exhausted");
+        setLoading(channelId, status === "LoadingMore" || status === "LoadingFirstPage");
+    }, [serverNodes, status, channelId, syncWithServerData, setHasMore, setLoading]);
+
+    const loadMore = () => {
+        setLoading(channelId, true);
+        loadMoreFromServer(10);
+    };
+
+    // Pre-fetch unique users from nodes when data changes
+    useEffect(() => {
+        if (storedNodes && storedNodes.length > 0) {
+            const userMap: Set<Id<"users">> = new Set();
+            storedNodes.map((node) => {
+                if (!userMap.has(node.userId)) {
+                    userMap.add(node.userId);
+                }
+            });
+            prefetchUsers(Array.from(userMap));
+        }
+    }, [storedNodes, prefetchUsers]);
+
+    if (isChannelLoading) {
+        return <ChannelSkeleton />;
     }
-    setHasMore(channelId, status !== "Exhausted");
-    setLoading(channelId, status === "LoadingMore" || status === "LoadingFirstPage");
-}, [serverNodes, status, channelId, syncWithServerData, setHasMore, setLoading]);
 
-const loadMore = () => {
-    setLoading(channelId, true);
-    loadMoreFromServer(10);
-};
-
-// Pre-fetch unique users from nodes when data changes
-useEffect(() => {
-    if (storedNodes && storedNodes.length > 0) {
-        const userMap: Set<Id<"users">> = new Set();
-        storedNodes.map((node) => {
-            if (!userMap.has(node.userId)) {
-                userMap.add(node.userId);
-            }
-        });
-        prefetchUsers(Array.from(userMap));
-    }
-}, [storedNodes, prefetchUsers]);
-
-if (isChannelLoading) {
-    return <ChannelSkeleton />;
-}
-
-const handleTitleSave = async () => {
-    setIsEditingTitle(false);
-    if (titleValue.trim() !== channel.title) {
-        await updateChannel({
-            id: channelId as Id<"channels">,
-            title: titleValue.trim(),
-        });
-    }
-};
-
-const handleDescriptionSave = async () => {
-    setIsEditingDescription(false);
-    if (
-        descriptionValue &&
-        descriptionValue.trim() !== (channel.description || "")
-    ) {
-        await updateChannel({
-            id: channelId as Id<"channels">,
-            description: descriptionValue.trim(),
-        });
-    }
-};
-
-const handleTitleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-        handleTitleSave();
-    } else if (e.key === "Escape") {
-        setTitleValue(channel.title);
+    const handleTitleSave = async () => {
         setIsEditingTitle(false);
-    }
-};
+        if (titleValue.trim() !== channel.title) {
+            await updateChannel({
+                id: channelId as Id<"channels">,
+                title: titleValue.trim(),
+            });
+        }
+    };
 
-const handleDescriptionKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && e.metaKey) {
-        handleDescriptionSave();
-    } else if (e.key === "Escape") {
-        setDescriptionValue(channel.description || "");
+    const handleDescriptionSave = async () => {
         setIsEditingDescription(false);
-    }
-};
+        if (
+            descriptionValue &&
+            descriptionValue.trim() !== (channel.description || "")
+        ) {
+            await updateChannel({
+                id: channelId as Id<"channels">,
+                description: descriptionValue.trim(),
+            });
+        }
+    };
 
-const confirmDelete = async () => {
-    if (!nodeToDelete) return;
-    setIsDeleting(true);
+    const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === "Enter") {
+            handleTitleSave();
+        } else if (e.key === "Escape") {
+            setTitleValue(channel.title);
+            setIsEditingTitle(false);
+        }
+    };
 
-    // Optimistic update: remove from local store immediately
-    const nodeId = nodeToDelete._id as Id<"nodes">;
-    const nodeBackup = nodeToDelete; // Keep backup for rollback
-    removeNode(channelId, nodeId);
+    const handleDescriptionKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === "Enter" && e.metaKey) {
+            handleDescriptionSave();
+        } else if (e.key === "Escape") {
+            setDescriptionValue(channel.description || "");
+            setIsEditingDescription(false);
+        }
+    };
 
-    try {
-        await deleteNode({ id: nodeId });
+    const confirmDelete = async () => {
+        if (!nodeToDelete) return;
+        setIsDeleting(true);
+
+        // Optimistic update: remove from local store immediately
+        const nodeId = nodeToDelete._id as Id<"nodes">;
+        const nodeBackup = nodeToDelete; // Keep backup for rollback
+        removeNode(channelId, nodeId);
+
+        try {
+            await deleteNode({ id: nodeId });
+            setShowDeleteDialog(false);
+            setNodeToDelete(null);
+        } catch (error) {
+            // Rollback: re-add the node on error
+            addNewNode(channelId, nodeBackup);
+            console.error('Failed to delete node:', error);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const cancelDelete = () => {
         setShowDeleteDialog(false);
         setNodeToDelete(null);
-    } catch (error) {
-        // Rollback: re-add the node on error
-        addNewNode(channelId, nodeBackup);
-        console.error('Failed to delete node:', error);
-    } finally {
         setIsDeleting(false);
-    }
-};
-
-const cancelDelete = () => {
-    setShowDeleteDialog(false);
-    setNodeToDelete(null);
-    setIsDeleting(false);
-};
+    };
 
 
-const hideMobileDrawer = () => {
-    setShowMobileDrawer(false);
-    setNodeToDelete(null);
-};
+    const hideMobileDrawer = () => {
+        setShowMobileDrawer(false);
+        setNodeToDelete(null);
+    };
 
-return (
-    <div className="h-full flex flex-col">
-        {/* Header Section - Fixed, no scroll */}
-        <div className={cn(
-            "flex-shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
-            isMobile ? "px-3 py-3 space-y-3" : "px-8 py-4 space-y-4"
-        )}>
-            {/* Title and Description - Desktop Only */}
-            {!isMobile && (
-                <div className="space-y-1">
-                    {isEditingTitle ? (
-                        <input
-                            ref={titleRef}
-                            value={titleValue}
-                            onChange={(e) => setTitleValue(e.target.value)}
-                            onBlur={handleTitleSave}
-                            onKeyDown={handleTitleKeyDown}
-                            className="bg-transparent border-none outline-none w-full p-0 m-0 font-semibold text-3xl"
-                        />
-                    ) : (
-                        <div
-                            className="group cursor-pointer flex items-center gap-2"
-                            onClick={() => setIsEditingTitle(true)}
-                        >
-                            <h1 className="font-semibold text-3xl">{titleValue}</h1>
-                            <svg
-                                className="opacity-0 group-hover:opacity-50 transition-opacity w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                                />
-                            </svg>
-                        </div>
-                    )}
-
-                    {isEditingDescription ? (
-                        <textarea
-                            ref={descriptionRef}
-                            value={descriptionValue}
-                            onChange={(e) => setDescriptionValue(e.target.value)}
-                            onBlur={handleDescriptionSave}
-                            onKeyDown={handleDescriptionKeyDown}
-                            className="text-muted-foreground bg-transparent border-none outline-none w-full p-0 m-0 resize-none text-sm h-12"
-                            rows={2}
-                        />
-                    ) : (
-                        <div className="group flex items-start">
-                            <button
-                                className="text-left cursor-pointer flex items-start w-full h-12"
-                                onClick={() => setIsEditingDescription(true)}
-                            >
-                                <h2 className="text-muted-foreground text-sm">
-                                    {descriptionValue || "Add description..."}
-                                </h2>
-                            </button>
-                            <svg
-                                className="opacity-0 group-hover:opacity-50 transition-opacity ml-2 flex-shrink-0 w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                                />
-                            </svg>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Search and Filter Controls */}
-            {isMobile ? (
-                // Mobile: Info button + Filter button + Search
-                <div className="flex gap-2 items-center">
-                    {/* Search */}
-                    <div className="relative flex-1">
-                        <Search
-                            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
-                            size={14}
-                        />
-                        <Input
-                            type="text"
-                            placeholder="Search nodes..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-8 h-9 rounded-md"
-                        />
-                    </div>
-
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-9 px-3 text-xs"
-                            >
-                                <Filter size={14} />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80 p-4" align="end" alignOffset={-45}>
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">Content Type</label>
-                                    <Select
-                                        value={selectedVariant}
-                                        onValueChange={setSelectedVariant}
-                                    >
-                                        <SelectTrigger className="h-8 text-xs">
-                                            <SelectValue placeholder="All types" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">All types</SelectItem>
-                                            {NODE_VARIANTS.map((variant) => (
-                                                <SelectItem
-                                                    key={variant.value}
-                                                    value={variant.value}
-                                                >
-                                                    {variant.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">Sort By</label>
-                                    <Select value={sortBy} onValueChange={setSortBy}>
-                                        <SelectTrigger className="h-8 text-xs">
-                                            <SelectValue placeholder="Sort by" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="latest">Latest first</SelectItem>
-                                            <SelectItem value="oldest">Oldest first</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {channel?.vision && (
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium">Users</label>
-                                        <MultiUserSelector
-                                            visionId={visionId as Id<"visions">}
-                                            value={selectedUsers}
-                                            onValueChange={setSelectedUsers}
-                                            placeholder="All users"
-                                            className="h-8 text-xs"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-
-                    {/* Channel Info Button - Mobile Only */}
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-9 px-3 text-xs"
-                            >
-                                <Info size={14} />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80 p-4" align="end">
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">Channel Title</label>
-                                    <Input
-                                        ref={titleRef}
-                                        value={titleValue}
-                                        onChange={(e) => setTitleValue(e.target.value)}
-                                        onBlur={handleTitleSave}
-                                        className="w-full px-3 py-2 rounded-md"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">Description</label>
-                                    <Textarea
-                                        ref={descriptionRef}
-                                        value={descriptionValue}
-                                        onChange={(e) => setDescriptionValue(e.target.value)}
-                                        onBlur={handleDescriptionSave}
-                                        className="w-full px-3 py-2 border rounded-md resize-none"
-                                        rows={5}
-                                    />
-                                </div>
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-
-                </div>
-            ) : (
-                // Desktop: Original layout
-                <div className="flex gap-2 items-center justify-between">
-                    {/* Filters Row */}
-                    <div className="flex gap-2 items-center">
-                        <div className="flex gap-2">
-                            <Select
-                                value={selectedVariant}
-                                onValueChange={setSelectedVariant}
-                            >
-                                <SelectTrigger className="h-8 w-auto text-xs">
-                                    <SelectValue placeholder="All types" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All types</SelectItem>
-                                    {NODE_VARIANTS.map((variant) => (
-                                        <SelectItem
-                                            key={variant.value}
-                                            value={variant.value}
-                                        >
-                                            {variant.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-
-                            <Select value={sortBy} onValueChange={setSortBy}>
-                                <SelectTrigger className="h-8 w-auto text-xs">
-                                    <SelectValue placeholder="Sort by" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="latest">Latest first</SelectItem>
-                                    <SelectItem value="oldest">Oldest first</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {channel?.vision && (
-                            <MultiUserSelector
-                                visionId={visionId as Id<"visions">}
-                                value={selectedUsers}
-                                onValueChange={setSelectedUsers}
-                                placeholder="All users"
-                                className="h-8 w-auto text-xs"
+    return (
+        <div className="h-full flex flex-col">
+            {/* Header Section - Fixed, no scroll */}
+            <div className={cn(
+                "flex-shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+                isMobile ? "px-3 py-3 space-y-3" : "px-8 py-4 space-y-4"
+            )}>
+                {/* Title and Description - Desktop Only */}
+                {!isMobile && (
+                    <div className="space-y-1">
+                        {isEditingTitle ? (
+                            <input
+                                ref={titleRef}
+                                value={titleValue}
+                                onChange={(e) => setTitleValue(e.target.value)}
+                                onBlur={handleTitleSave}
+                                onKeyDown={handleTitleKeyDown}
+                                className="bg-transparent border-none outline-none w-full p-0 m-0 font-semibold text-3xl"
                             />
+                        ) : (
+                            <div
+                                className="group cursor-pointer flex items-center gap-2"
+                                onClick={() => setIsEditingTitle(true)}
+                            >
+                                <h1 className="font-semibold text-3xl">{titleValue}</h1>
+                                <svg
+                                    className="opacity-0 group-hover:opacity-50 transition-opacity w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                    />
+                                </svg>
+                            </div>
+                        )}
+
+                        {isEditingDescription ? (
+                            <textarea
+                                ref={descriptionRef}
+                                value={descriptionValue}
+                                onChange={(e) => setDescriptionValue(e.target.value)}
+                                onBlur={handleDescriptionSave}
+                                onKeyDown={handleDescriptionKeyDown}
+                                className="text-muted-foreground bg-transparent border-none outline-none w-full p-0 m-0 resize-none text-sm h-12"
+                                rows={2}
+                            />
+                        ) : (
+                            <div className="group flex items-start">
+                                <button
+                                    className="text-left cursor-pointer flex items-start w-full h-12"
+                                    onClick={() => setIsEditingDescription(true)}
+                                >
+                                    <h2 className="text-muted-foreground text-sm">
+                                        {descriptionValue || "Add description..."}
+                                    </h2>
+                                </button>
+                                <svg
+                                    className="opacity-0 group-hover:opacity-50 transition-opacity ml-2 flex-shrink-0 w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                    />
+                                </svg>
+                            </div>
                         )}
                     </div>
-
-                    {/* Search */}
-                    <div className="relative w-64">
-                        <Search
-                            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
-                            size={14}
-                        />
-                        <Input
-                            type="text"
-                            placeholder="Search nodes..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-8 h-8 rounded-md"
-                        />
-                    </div>
-                </div>
-            )}
-        </div>
-
-        {/* Scrollable Nodes Content - This is the ONLY scrolling area */}
-        <div className="overflow-hidden">
-            <div
-                id={channelId}
-                ref={scrollContainerRef}
-                className={cn(
-                    "flex h-full overflow-y-auto",
-                    sortBy === "latest" ? "flex-col-reverse" : "flex-col",
-                    isMobile ? "px-3" : "px-8"
                 )}
-            >
-                <InfiniteScroll
-                    dataLength={storedNodes.length}
-                    next={() => loadMore()}
-                    className={cn(
-                        "flex scroll-smooth",
-                        sortBy === "latest" ? "flex-col-reverse" : "flex-col",
-                        isMobile ? "gap-4 py-4" : "gap-6 py-6"
-                    )}
-                    inverse={sortBy === "latest"}
-                    hasMore={!isDone}
-                    loader={<NodeListSkeleton count={1} />}
-                    scrollableTarget={channelId}
-                >
-                    {storedNodes.length === 0 && !isLoadingNodes ? (
-                        <div className={cn(
-                            "text-center text-muted-foreground/70",
-                            isMobile ? "text-xs py-8" : "text-sm py-12"
-                        )}>
-                            No nodes found.
+
+                {/* Search and Filter Controls */}
+                {isMobile ? (
+                    // Mobile: Info button + Filter button + Search
+                    <div className="flex gap-2 items-center">
+                        {/* Search */}
+                        <div className="relative flex-1">
+                            <Search
+                                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
+                                size={14}
+                            />
+                            <Input
+                                type="text"
+                                placeholder="Search nodes..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-8 h-9 rounded-md"
+                            />
                         </div>
-                    ) : (
-                        <>
-                            <div className={`${sortBy === "latest" ? "inline" : "hidden"} ${isMobile ? "h-25" : "h-20"} shrink-0`} />
-                            {storedNodes.map((node, i) => {
-                                const nodeUser = getUserForNode(node.userId);
-                                return (
-                                    <div key={`node-${i}`}>
+
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 px-3 text-xs"
+                                >
+                                    <Filter size={14} />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 p-4" align="end" alignOffset={-45}>
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Content Type</label>
+                                        <Select
+                                            value={selectedVariant}
+                                            onValueChange={setSelectedVariant}
+                                        >
+                                            <SelectTrigger className="h-8 text-xs">
+                                                <SelectValue placeholder="All types" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">All types</SelectItem>
+                                                {NODE_VARIANTS.map((variant) => (
+                                                    <SelectItem
+                                                        key={variant.value}
+                                                        value={variant.value}
+                                                    >
+                                                        {variant.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Sort By</label>
+                                        <Select value={sortBy} onValueChange={setSortBy}>
+                                            <SelectTrigger className="h-8 text-xs">
+                                                <SelectValue placeholder="Sort by" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="latest">Latest first</SelectItem>
+                                                <SelectItem value="oldest">Oldest first</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {channel?.vision && (
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Users</label>
+                                            <MultiUserSelector
+                                                visionId={visionId as Id<"visions">}
+                                                value={selectedUsers}
+                                                onValueChange={setSelectedUsers}
+                                                placeholder="All users"
+                                                className="h-8 text-xs"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+
+                        {/* Channel Info Button - Mobile Only */}
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 px-3 text-xs"
+                                >
+                                    <Info size={14} />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 p-4" align="end">
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Channel Title</label>
+                                        <Input
+                                            ref={titleRef}
+                                            value={titleValue}
+                                            onChange={(e) => setTitleValue(e.target.value)}
+                                            onBlur={handleTitleSave}
+                                            className="w-full px-3 py-2 rounded-md"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Description</label>
+                                        <Textarea
+                                            ref={descriptionRef}
+                                            value={descriptionValue}
+                                            onChange={(e) => setDescriptionValue(e.target.value)}
+                                            onBlur={handleDescriptionSave}
+                                            className="w-full px-3 py-2 border rounded-md resize-none"
+                                            rows={5}
+                                        />
+                                    </div>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+
+                    </div>
+                ) : (
+                    // Desktop: Original layout
+                    <div className="flex gap-2 items-center justify-between">
+                        {/* Filters Row */}
+                        <div className="flex gap-2 items-center">
+                            <div className="flex gap-2">
+                                <Select
+                                    value={selectedVariant}
+                                    onValueChange={setSelectedVariant}
+                                >
+                                    <SelectTrigger className="h-8 w-auto text-xs">
+                                        <SelectValue placeholder="All types" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All types</SelectItem>
+                                        {NODE_VARIANTS.map((variant) => (
+                                            <SelectItem
+                                                key={variant.value}
+                                                value={variant.value}
+                                            >
+                                                {variant.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                <Select value={sortBy} onValueChange={setSortBy}>
+                                    <SelectTrigger className="h-8 w-auto text-xs">
+                                        <SelectValue placeholder="Sort by" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="latest">Latest first</SelectItem>
+                                        <SelectItem value="oldest">Oldest first</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {channel?.vision && (
+                                <MultiUserSelector
+                                    visionId={visionId as Id<"visions">}
+                                    value={selectedUsers}
+                                    onValueChange={setSelectedUsers}
+                                    placeholder="All users"
+                                    className="h-8 w-auto text-xs"
+                                />
+                            )}
+                        </div>
+
+                        {/* Search */}
+                        <div className="relative w-64">
+                            <Search
+                                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
+                                size={14}
+                            />
+                            <Input
+                                type="text"
+                                placeholder="Search nodes..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-8 h-8 rounded-md"
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Scrollable Nodes Content - This is the ONLY scrolling area */}
+            <div className="overflow-hidden">
+                <div
+                    id={channelId}
+                    ref={scrollContainerRef}
+                    className={cn(
+                        "flex h-full overflow-y-auto",
+                        sortBy === "latest" ? "flex-col-reverse" : "flex-col",
+                        isMobile ? "px-3" : "px-8"
+                    )}
+                >
+                    <InfiniteScroll
+                        dataLength={storedNodes.length}
+                        next={() => loadMore()}
+                        className={cn(
+                            "flex scroll-smooth",
+                            sortBy === "latest" ? "flex-col-reverse" : "flex-col",
+                            isMobile ? "gap-4 py-4" : "gap-6 py-6"
+                        )}
+                        inverse={sortBy === "latest"}
+                        hasMore={!isDone}
+                        loader={<NodeListSkeleton count={1} />}
+                        scrollableTarget={channelId}
+                    >
+                        {storedNodes.length === 0 && !isLoadingNodes ? (
+                            <div className={cn(
+                                "text-center text-muted-foreground/70",
+                                isMobile ? "text-xs py-8" : "text-sm py-12"
+                            )}>
+                                No nodes found.
+                            </div>
+                        ) : (
+                            <>
+                                <div className={`${sortBy === "latest" ? "inline" : "hidden"} ${isMobile ? "h-25" : "h-20"} shrink-0`} />
+                                {storedNodes.map((node, i) => {
+                                    const nodeUser = getUserForNode(node.userId);
+                                    return (
                                         <ChannelNode
                                             node={node}
                                             nodeUser={nodeUser}
@@ -634,114 +634,113 @@ return (
                                             onCommentOnNode={handleCommentOnNode}
                                             isMobile={isMobile}
                                         />
-                                    </div>
-                                );
-                            })}
-                            <div className={`${sortBy === "latest" ? "hidden" : "inline"} ${isMobile ? "h-25" : "h-20"} shrink-0`} />
-                        </>
-                    )}
-                </InfiniteScroll>
+                                    );
+                                })}
+                                <div className={`${sortBy === "latest" ? "hidden" : "inline"} ${isMobile ? "h-25" : "h-20"} shrink-0`} />
+                            </>
+                        )}
+                    </InfiniteScroll>
+                </div>
             </div>
-        </div>
 
-        <PasteBin
-            onCreateNode={createNode}
-            onShowUpgradeDialog={onShowUpgradeDialog}
-            channelId={channelId}
-            visionId={visionId}
-        />
+            <PasteBin
+                onCreateNode={createNode}
+                onShowUpgradeDialog={onShowUpgradeDialog}
+                channelId={channelId}
+                visionId={visionId}
+            />
 
-        {/* Delete Confirmation Dialog */}
-        <Dialog open={showDeleteDialog} onOpenChange={(open) => {
-            if (!open) cancelDelete();
-        }}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <AlertTriangle className="w-5 h-5 text-red-500" />
-                        Delete Node
-                    </DialogTitle>
-                    <DialogDescription>
-                        Are you sure you want to delete this node?
-                    </DialogDescription>
-                </DialogHeader>
-                <Alert className="border-red-200 bg-red-50">
-                    <AlertTriangle className="h-4 w-4 text-red-600" />
-                    <AlertDescription className="text-red-800">
-                        <strong>Warning:</strong> This action cannot be undone. Deleting this node will permanently remove:
-                        <ul className="list-disc list-inside mt-2 space-y-1">
-                            <li>The node content and metadata</li>
-                            <li>All associated data</li>
-                        </ul>
-                    </AlertDescription>
-                </Alert>
-                <DialogFooter className="gap-2">
-                    <Button
-                        variant="outline"
-                        onClick={cancelDelete}
-                        disabled={isDeleting}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="destructive"
-                        onClick={confirmDelete}
-                        disabled={isDeleting}
-                    >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        {isDeleting ? 'Deleting...' : 'Delete Node'}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={showDeleteDialog} onOpenChange={(open) => {
+                if (!open) cancelDelete();
+            }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="w-5 h-5 text-red-500" />
+                            Delete Node
+                        </DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete this node?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Alert className="border-red-200 bg-red-50">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <AlertDescription className="text-red-800">
+                            <strong>Warning:</strong> This action cannot be undone. Deleting this node will permanently remove:
+                            <ul className="list-disc list-inside mt-2 space-y-1">
+                                <li>The node content and metadata</li>
+                                <li>All associated data</li>
+                            </ul>
+                        </AlertDescription>
+                    </Alert>
+                    <DialogFooter className="gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={cancelDelete}
+                            disabled={isDeleting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={confirmDelete}
+                            disabled={isDeleting}
+                        >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            {isDeleting ? 'Deleting...' : 'Delete Node'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
-        {/* Mobile Action Drawer */}
-        <Drawer open={showMobileDrawer} onOpenChange={hideMobileDrawer}>
-            <DrawerContent>
-                <DrawerHeader>
-                    <DrawerTitle>Node Actions</DrawerTitle>
-                    <DrawerDescription className="text-sm truncate">
-                        {nodeToDelete?.value && nodeToDelete.value.length > 50
-                            ? `${nodeToDelete.value.substring(0, 50)}...`
-                            : nodeToDelete?.value || ''}
-                    </DrawerDescription>
-                </DrawerHeader>
+            {/* Mobile Action Drawer */}
+            <Drawer open={showMobileDrawer} onOpenChange={hideMobileDrawer}>
+                <DrawerContent>
+                    <DrawerHeader>
+                        <DrawerTitle>Node Actions</DrawerTitle>
+                        <DrawerDescription className="text-sm truncate">
+                            {nodeToDelete?.value && nodeToDelete.value.length > 50
+                                ? `${nodeToDelete.value.substring(0, 50)}...`
+                                : nodeToDelete?.value || ''}
+                        </DrawerDescription>
+                    </DrawerHeader>
 
-                <div className="p-4">
-                    <div className="flex gap-3">
-                        {nodeToDelete?.variant === 'text' && (
+                    <div className="p-4">
+                        <div className="flex gap-3">
+                            {nodeToDelete?.variant === 'text' && (
+                                <Button
+                                    variant="outline"
+                                    className="flex-1 flex items-center gap-2 h-12"
+                                    onClick={() => {
+                                        // TODO: Need to implement edit mode trigger
+                                        hideMobileDrawer();
+                                    }}
+                                    disabled
+                                >
+                                    <Edit2 size={16} />
+                                    Edit (Coming Soon)
+                                </Button>
+                            )}
+
                             <Button
                                 variant="outline"
                                 className="flex-1 flex items-center gap-2 h-12"
-                                onClick={() => {
-                                    // TODO: Need to implement edit mode trigger
-                                    hideMobileDrawer();
-                                }}
-                                disabled
+                                onClick={() => showDeleteConfirmation(nodeToDelete)}
                             >
-                                <Edit2 size={16} />
-                                Edit (Coming Soon)
+                                <Trash2 size={16} />
+                                Delete
                             </Button>
-                        )}
-
-                        <Button
-                            variant="outline"
-                            className="flex-1 flex items-center gap-2 h-12"
-                            onClick={() => showDeleteConfirmation(nodeToDelete)}
-                        >
-                            <Trash2 size={16} />
-                            Delete
-                        </Button>
+                        </div>
                     </div>
-                </div>
 
-                <DrawerFooter>
-                    <Button variant="outline" onClick={hideMobileDrawer}>
-                        Cancel
-                    </Button>
-                </DrawerFooter>
-            </DrawerContent>
-        </Drawer>
-    </div>
-);
+                    <DrawerFooter>
+                        <Button variant="outline" onClick={hideMobileDrawer}>
+                            Cancel
+                        </Button>
+                    </DrawerFooter>
+                </DrawerContent>
+            </Drawer>
+        </div>
+    );
 }

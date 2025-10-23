@@ -284,6 +284,8 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             if (hostname.includes('loom.com')) return NodeVariants.Loom;
             if (hostname.includes('spotify.com')) return NodeVariants.Spotify;
             if (hostname.includes('music.apple.com')) return NodeVariants.AppleMusic;
+            if (hostname.includes('excalidraw.com')) return NodeVariants.Excalidraw;
+            if (hostname.includes('tiktok.com') || hostname.includes('vm.tiktok.com') || hostname.includes('vt.tiktok.com')) return NodeVariants.TikTok;
 
             return NodeVariants.Link; // Default to generic website
         } catch (error) {
@@ -297,6 +299,32 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
         try {
             if (!url || typeof url !== 'string' || url.trim() === '') {
                 throw new Error('Invalid URL provided to fetchLinkMetadata');
+            }
+
+            // Detect type first for special cases like Excalidraw and TikTok that don't need OG metadata
+            const detectedType = detectLinkType(url);
+
+            // For Excalidraw and other special embedded content, return early with basic metadata
+            if (detectedType === NodeVariants.Excalidraw) {
+                try {
+                    const hostname = new URL(url).hostname;
+                    return {
+                        type: NodeVariants.Excalidraw,
+                        title: "Excalidraw Drawing",
+                        description: "",
+                        url: url,
+                        siteName: "Excalidraw"
+                    };
+                } catch (urlError) {
+                    console.error(urlError);
+                    return {
+                        type: NodeVariants.Excalidraw,
+                        title: "Excalidraw Drawing",
+                        description: "",
+                        url: url,
+                        siteName: "Excalidraw"
+                    };
+                }
             }
 
             const result = await fetchWithCache(url);

@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { Media } from "@/types/pastebin-component";
 import { NodeVariants } from "@convex/tables/nodes";
-import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard, LinkMetadata, GitHubMetadata, FigmaMetadata, YouTubeMetadata, TwitterMetadata, NotionMetadata, LoomMetadata, SpotifyMetadata, AppleMusicMetadata, WebsiteMetadata } from "../metadata";
+import { GitHubCard, FigmaCard, YouTubeCard, TwitterCard, NotionCard, WebsiteCard, LoomCard, SpotifyCard, AppleMusicCard, ExcalidrawCard, TikTokCard, LinkMetadata, GitHubMetadata, FigmaMetadata, YouTubeMetadata, TwitterMetadata, NotionMetadata, LoomMetadata, SpotifyMetadata, AppleMusicMetadata, WebsiteMetadata, BaseMetadata } from "../metadata";
 
 interface EmbedPreviewProps {
     media: Media;
@@ -43,6 +43,8 @@ export function EmbedPreview({ media, mediaToLinkMetadata }: EmbedPreviewProps) 
                     {media.type === NodeVariants.Loom && <LoomCard metadata={mediaToLinkMetadata(media) as LoomMetadata} />}
                     {media.type === NodeVariants.Spotify && <SpotifyCard metadata={mediaToLinkMetadata(media) as SpotifyMetadata} />}
                     {media.type === NodeVariants.AppleMusic && <AppleMusicCard metadata={mediaToLinkMetadata(media) as AppleMusicMetadata} />}
+                    {media.type === NodeVariants.Excalidraw && <ExcalidrawCard metadata={mediaToLinkMetadata(media) as BaseMetadata} />}
+                    {media.type === NodeVariants.TikTok && <TikTokCard metadata={mediaToLinkMetadata(media) as BaseMetadata} />}
                     {media.type === NodeVariants.Link && <WebsiteCard metadata={mediaToLinkMetadata(media) as WebsiteMetadata} />}
                 </div>
             </motion.div>

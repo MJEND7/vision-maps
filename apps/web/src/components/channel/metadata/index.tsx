@@ -46,6 +46,8 @@ export { WebsiteCard } from './website-card';
 export { LoomCard } from './loom-card';
 export { SpotifyCard } from './spotify-card';
 export { AppleMusicCard } from './applemusic-card';
+export { ExcalidrawCard } from './excalidraw-card';
+export { TikTokCard } from './tiktok-card';
 export { SkeletonCard } from './skeleton-card';
 export { ChatCard } from './ai/card';
 export { TranscriptionCard } from './transcription-card';

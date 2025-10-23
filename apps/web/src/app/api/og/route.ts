@@ -54,6 +54,15 @@ interface NotionMetadata extends BaseMetadata {
   pageType?: string
 }
 
+interface TikTokMetadata extends BaseMetadata {
+  author?: string
+  authorUrl?: string
+  videoId?: string
+  thumbnailUrl?: string
+  thumbnailWidth?: number
+  thumbnailHeight?: number
+}
+
 interface PlatformMetadataMap {
   [NodeVariants.Link]: BaseMetadata
   [NodeVariants.GitHub]: GitHubMetadata
@@ -61,7 +70,7 @@ interface PlatformMetadataMap {
   [NodeVariants.YouTube]: YouTubeMetadata
   [NodeVariants.Notion]: NotionMetadata
   [NodeVariants.Instagram]: BaseMetadata
-  [NodeVariants.TikTok]: BaseMetadata
+  [NodeVariants.TikTok]: TikTokMetadata
   [NodeVariants.Spotify]: BaseMetadata
   [NodeVariants.Twitter]: BaseMetadata
 }
@@ -206,6 +215,39 @@ async function fetchYouTubeAPI(url: string) {
   return { success: true, metadata, nodeVariant: NodeVariants.YouTube }
 }
 
+async function fetchTikTokOEmbed(url: string) {
+  const oEmbedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`
+  const res = await fetch(oEmbedUrl)
+  if (!res.ok) throw new Error(`TikTok oEmbed error: ${res.status}`)
+
+  const data = await res.json()
+
+  // Extract video ID from the URL
+  const videoIdMatch = url.match(/\/video\/(\d+)/)
+  const videoId = videoIdMatch?.[1] || ''
+
+  const metadata: TikTokMetadata = {
+    title: data.title || 'TikTok Video',
+    description: data.title || '',
+    image: data.thumbnail_url || '',
+    siteName: 'TikTok',
+    favicon: 'https://www.tiktok.com/favicon.ico',
+    url: url,
+    type: 'video.other',
+    author: data.author_name || '',
+    publishedTime: '',
+    modifiedTime: '',
+    jsonLD: [],
+    authorUrl: data.author_url || '',
+    videoId: videoId,
+    thumbnailUrl: data.thumbnail_url || '',
+    thumbnailWidth: data.thumbnail_width || 720,
+    thumbnailHeight: data.thumbnail_height || 1280,
+  }
+
+  return { success: true, metadata, nodeVariant: NodeVariants.TikTok }
+}
+
 // ---------------------------------------------------------------------------
 // MAIN EXTRACTOR
 // ---------------------------------------------------------------------------
@@ -275,6 +317,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Handle TikTok separately with oEmbed API
+    if (nodeVariant === NodeVariants.TikTok) {
+      try {
+        const tiktok = await fetchTikTokOEmbed(url)
+        return NextResponse.json(tiktok)
+      } catch (err: any) {
+        console.error('TikTok oEmbed failed:', err)
+        // Fall through to Open Graph Scraper as fallback
+      }
+    }
+
     // Fallback to Open Graph Scraper
     const ogOptions = {
       url,
@@ -287,6 +340,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { error, result } = await ogs(ogOptions)
+
+    console.log(result)
 
     if (error) {
       const fallback = extractBaseMetadata({}, url)

@@ -15,6 +15,8 @@ import {
     LoomCard,
     SpotifyCard,
     AppleMusicCard,
+    ExcalidrawCard,
+    TikTokCard,
 } from "../../channel/metadata";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useOGMetadataWithCache } from "@/utils/ogMetadata";
@@ -177,6 +179,10 @@ function NodeWithMetadata({
         return <SpotifyCard metadata={metadata as any} />;
       case NodeVariants.AppleMusic:
         return <AppleMusicCard metadata={metadata as any} />;
+      case NodeVariants.Excalidraw:
+        return <ExcalidrawCard metadata={metadata as any} />;
+      case NodeVariants.TikTok:
+        return <TikTokCard metadata={metadata as any} />;
       default:
         return <WebsiteCard metadata={metadata as any} />;
     }
@@ -282,6 +288,8 @@ export function renderNodeContent(
         case NodeVariants.Loom:
         case NodeVariants.Spotify:
         case NodeVariants.AppleMusic:
+        case NodeVariants.Excalidraw:
+        case NodeVariants.TikTok:
         case NodeVariants.Link:
             return (
                 <NodeWithMetadata node={node} variant={variant} />
