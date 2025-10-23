@@ -307,7 +307,6 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             // For Excalidraw and other special embedded content, return early with basic metadata
             if (detectedType === NodeVariants.Excalidraw) {
                 try {
-                    const hostname = new URL(url).hostname;
                     return {
                         type: NodeVariants.Excalidraw,
                         title: "Excalidraw Drawing",

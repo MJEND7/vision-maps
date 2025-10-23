@@ -118,13 +118,13 @@ export function TikTokCard({ metadata }: TikTokCardProps) {
                 <TikTokHeader
                     author={metadata.author}
                     authorUrl={metadata.authorUrl}
-                    url={metadata.url}
+                    url={metadata.url || ""}
                 />
-                <TikTokTitle title={metadata.title} />
+                <TikTokTitle title={metadata.title || "TikTok"} />
                 <TikTokMedia
                     thumbnailUrl={metadata.thumbnailUrl}
-                    title={metadata.title}
-                    url={metadata.url}
+                    title={metadata.title || "TikTok"}
+                    url={metadata.url || ""}
                 />
             </TikTokWrapper>
         </motion.div>

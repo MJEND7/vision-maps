@@ -796,17 +796,13 @@ function VisionDetailPageContent() {
         });
     }
 
-    const handleTabReorder = (newOrder: TabStore[]) => {
-        const convertedOrder = newOrder.map(tab => ({
-            ...tab,
-            type: tab.type as ViewMode
-        }));
-        setTabOrder(convertedOrder);
-    }
+    const handleTabReorder = useCallback((newOrder: TabStore[]) => {
+        setTabOrder(newOrder);
+    }, []);
 
-    const renderTabIconForDraggable = (type: string) => {
+    const renderTabIconForDraggable = useCallback((type: string) => {
         return renderTabIcon(type as ViewMode);
-    };
+    }, []);
 
     return (
         <>
@@ -1079,7 +1075,7 @@ function VisionDetailPageContent() {
                             transition={{ delay: 0.2 }}
                         >
                             <DraggableTabs
-                                tabs={tabs.values().toArray()}
+                                tabs={tabOrder}
                                 selectedTab={selectedTab}
                                 TabSelectAction={setTab}
                                 TabRemoveAction={removeTab}

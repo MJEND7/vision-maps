@@ -41,14 +41,14 @@ export function WebsiteCard({ metadata }: WebsiteCardProps) {
         </div>
     );
 
-    const domain = getDomain(metadata.url);
+    const domain = getDomain(metadata.url || "");
 
     return (
         <BaseCard
-            title={metadata.title}
+            title={metadata.title || domain || "Website"}
             description={metadata.description}
             image={metadata.image}
-            url={metadata.url}
+            url={metadata.url || ""}
             author={metadata.siteName || domain}
             platform="website"
             platformIcon={fallbackIcon}

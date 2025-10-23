@@ -33,7 +33,7 @@ export function LoomCard({ metadata }: LoomCardProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
     
-    const embedUrl = getLoomEmbedUrl(metadata.url);
+    const embedUrl = getLoomEmbedUrl(metadata.url || "");
 
     console.log(metadata)
     

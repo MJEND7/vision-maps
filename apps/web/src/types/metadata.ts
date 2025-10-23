@@ -18,7 +18,7 @@ export interface BaseMetadata {
   favicon?: string;
   url?: string;
   type?: string;
-  author?: string;
+  author?:string;
   publishedTime?: string;
   modifiedTime?: string;
   jsonLD?: any[];
@@ -93,6 +93,7 @@ export interface TikTokMetadata extends BaseMetadata {
   comments?: number;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface WebsiteMetadata extends BaseMetadata {}
 
 // ============================================================================

@@ -29,7 +29,7 @@ export function FigmaCard({ metadata }: FigmaCardProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
 
-    const embedUrl = getFigmaEmbedUrl(metadata.url);
+    const embedUrl = getFigmaEmbedUrl(metadata.url || "");
 
     // fallback card if no embed
     if (!embedUrl || hasError) {

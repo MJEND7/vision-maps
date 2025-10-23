@@ -16,7 +16,7 @@ interface BaseMetadata {
   favicon: string
   url: string
   type: string
-  author: string
+  author?: string
   publishedTime: string
   modifiedTime: string
   jsonLD: any[]

@@ -49,7 +49,7 @@ export function ExcalidrawCard({ metadata }: ExcalidrawCardProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
 
-    const embedUrl = getExcalidrawEmbedUrl(metadata.url);
+    const embedUrl = getExcalidrawEmbedUrl(metadata.url || "");
 
     // Fallback card if no embed
     if (!embedUrl || hasError) {

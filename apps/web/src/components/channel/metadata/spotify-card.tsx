@@ -60,8 +60,8 @@ export function SpotifyCard({ metadata }: SpotifyCardProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
     
-    const embedUrl = getSpotifyEmbedUrl(metadata.url);
-    const contentType = getSpotifyContentType(metadata.url);
+    const embedUrl = getSpotifyEmbedUrl(metadata.url || "");
+    const contentType = getSpotifyContentType(metadata.url || "");
     
     // If we can't create an embed URL, show a fallback card
     if (!embedUrl || hasError) {

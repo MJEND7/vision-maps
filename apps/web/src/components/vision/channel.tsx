@@ -621,10 +621,11 @@ export default function Channel({
                         ) : (
                             <>
                                 <div className={`${sortBy === "latest" ? "inline" : "hidden"} ${isMobile ? "h-25" : "h-20"} shrink-0`} />
-                                {storedNodes.map((node, i) => {
+                                {storedNodes.map((node) => {
                                     const nodeUser = getUserForNode(node.userId);
                                     return (
                                         <ChannelNode
+                                            key={node._id}
                                             node={node}
                                             nodeUser={nodeUser}
                                             onOpenChat={onOpenChat}

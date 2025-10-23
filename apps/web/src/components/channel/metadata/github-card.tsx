@@ -38,10 +38,10 @@ export function GitHubCard({ metadata }: GitHubCardProps) {
 
     return (
         <BaseCard
-            title={metadata.title}
+            title={metadata.title || "GitHub Repository"}
             description={metadata.description}
             image={metadata.image}
-            url={metadata.url}
+            url={metadata.url || ""}
             author={metadata.author}
             platform="github"
             platformIcon={githubIcon}

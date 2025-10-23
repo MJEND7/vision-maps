@@ -49,9 +49,9 @@ const getAppleMusicContentType = (url: string): string => {
 export function AppleMusicCard({ metadata }: AppleMusicCardProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
-    
-    const embedUrl = getAppleMusicEmbedUrl(metadata.url);
-    const contentType = getAppleMusicContentType(metadata.url);
+
+    const embedUrl = getAppleMusicEmbedUrl(metadata.url || "");
+    const contentType = getAppleMusicContentType(metadata.url || "");
     
     // If we can't create an embed URL, show a fallback card
     if (!embedUrl || hasError) {

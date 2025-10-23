@@ -28,10 +28,10 @@ export function NotionCard({ metadata }: NotionCardProps) {
 
     return (
         <BaseCard
-            title={metadata.title}
+            title={metadata.title || "Notion Page"}
             description={metadata.description}
             image={metadata.image}
-            url={metadata.url}
+            url={metadata.url || ""}
             author={metadata.workspace}
             platform="notion"
             platformIcon={notionIcon}

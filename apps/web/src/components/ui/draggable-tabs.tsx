@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  motion,
-  Reorder,
-  useDragControls,
-  AnimatePresence,
-} from "motion/react";
+import { Reorder } from "motion/react";
 import { X } from "lucide-react";
 import {
   useCallback,
@@ -13,6 +8,7 @@ import {
   useState,
   useRef,
   useLayoutEffect,
+  memo,
 } from "react";
 import { cn } from "@/lib/utils";
 import { TabStore } from "@/types/vision_page";
@@ -26,7 +22,7 @@ interface DraggableTabsProps {
   renderTabIconAction: (type: string) => React.ReactNode;
 }
 
-function DraggableTab({
+const DraggableTab = memo(function DraggableTab({
   tab,
   isSelected,
   onSelect,
@@ -41,9 +37,6 @@ function DraggableTab({
   renderTabIcon: (type: string) => React.ReactNode;
   isMobile: boolean;
 }) {
-  const dragControls = useDragControls();
-  const longPressTimeout = useRef<NodeJS.Timeout | null>(null);
-
   const handleRemove = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -54,48 +47,26 @@ function DraggableTab({
 
   const tabWidth = isMobile ? 120 : 180;
   const maxTitleLength = isMobile ? 8 : 20;
-
-  // Start drag only after long press
-  const handlePointerDown = (e: React.PointerEvent) => {
-    // Allow normal scroll if user just swipes
-    longPressTimeout.current = setTimeout(() => {
-      dragControls.start(e);
-    }, 250); // 250ms long press
-  };
-
-  const handlePointerUp = () => {
-    if (longPressTimeout.current) {
-      clearTimeout(longPressTimeout.current);
-      longPressTimeout.current = null;
-    }
-  };
+  const displayTitle = tab.title.length > maxTitleLength
+    ? `${tab.title.substring(0, maxTitleLength)}...`
+    : tab.title;
 
   return (
     <Reorder.Item
       key={tab.id}
       value={tab}
       onClick={onSelect}
-      dragListener={false} // we control drag manually
-      dragControls={dragControls}
-      className="relative"
+      className="relative cursor-grab active:cursor-grabbing"
       data-tab-id={tab.id}
-      whileDrag={{ scale: 1.02, zIndex: 50 }}
-      initial={{ width: 0, opacity: 0, x: -10 }}
-      animate={{ width: tabWidth, opacity: 1, x: 0 }}
-      exit={{
-        width: 0,
-        opacity: 0,
-        x: -10,
-        transition: { duration: 0.25, ease: "easeInOut" },
+      style={{
+        overflow: "hidden",
+        flexShrink: 0,
       }}
-      transition={{ duration: 0.2 }}
-      style={{ overflow: "hidden" }}
     >
-      <motion.div
+      <div
         className={cn(
           "relative flex bg-background p-2 rounded-t-lg justify-between items-center",
-          "cursor-grab active:cursor-grabbing select-none",
-          "transition-all duration-200 ease-out",
+          "select-none",
           isSelected
             ? "bg-background z-10 shadow-sm"
             : "bg-muted/30 hover:bg-background/80"
@@ -103,17 +74,8 @@ function DraggableTab({
         style={{
           minWidth: `${tabWidth}px`,
           width: `${tabWidth}px`,
-          flexShrink: 0,
+          touchAction: "none",
         }}
-        whileHover={{
-          y: isSelected ? 0 : -1,
-          transition: { duration: 0.15 },
-        }}
-        whileTap={{ scale: 0.99 }}
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        onPointerLeave={handlePointerUp}
       >
         <button
           className={cn(
@@ -121,30 +83,26 @@ function DraggableTab({
             "text-xs",
             isMobile ? "gap-1" : "gap-2"
           )}
+          type="button"
         >
           {renderTabIcon(tab.type)}
-          <span className="truncate">
-            {tab.title.length > maxTitleLength
-              ? `${tab.title.substring(0, maxTitleLength)}...`
-              : tab.title}
-          </span>
+          <span className="truncate">{displayTitle}</span>
         </button>
 
-        <motion.button
+        <button
           onClick={handleRemove}
           className={cn(
             "rounded-full hover:bg-muted-foreground/10 transition-colors",
             "ml-2 p-0.5"
           )}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
+          type="button"
         >
           <X size={12} />
-        </motion.button>
-      </motion.div>
+        </button>
+      </div>
     </Reorder.Item>
   );
-}
+});
 
 export function DraggableTabs({
   tabs,
@@ -156,6 +114,12 @@ export function DraggableTabs({
 }: DraggableTabsProps) {
   const [isMobile, setIsMobile] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevTabsRef = useRef<TabStore[]>(tabs);
+
+  // Update ref without causing re-render
+  useEffect(() => {
+    prevTabsRef.current = tabs;
+  }, [tabs]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -170,6 +134,22 @@ export function DraggableTabs({
 
     return () => observer.disconnect();
   }, []);
+
+  // Handle horizontal scroll with mouse wheel on desktop
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || isMobile) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.deltaY !== 0 && !e.altKey) {
+        e.preventDefault();
+        container.scrollLeft += e.deltaY;
+      }
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => container.removeEventListener("wheel", handleWheel);
+  }, [isMobile]);
 
   useLayoutEffect(() => {
     if (selectedTab && scrollContainerRef.current) {
@@ -188,6 +168,11 @@ export function DraggableTabs({
     }
   }, [selectedTab]);
 
+  const handleReorder = useCallback((newOrder: TabStore[]) => {
+    // Notify parent immediately
+    TabReorderAction(newOrder);
+  }, [TabReorderAction]);
+
   return (
     <div
       ref={scrollContainerRef}
@@ -205,27 +190,25 @@ export function DraggableTabs({
       <Reorder.Group
         axis="x"
         values={tabs}
-        onReorder={TabReorderAction}
-        className="flex gap-0 min-w-max"
+        onReorder={handleReorder}
+        className="flex gap-0"
         style={{
           display: "flex",
           flexShrink: 0,
           width: "max-content",
         }}
       >
-        <AnimatePresence mode="popLayout">
-          {tabs.map((tab) => (
-            <DraggableTab
-              key={tab.id}
-              tab={tab}
-              isSelected={selectedTab?.id === tab.id}
-              onSelect={() => TabSelectAction(tab)}
-              onRemove={() => TabRemoveAction(tab.id)}
-              renderTabIcon={renderTabIconAction}
-              isMobile={isMobile}
-            />
-          ))}
-        </AnimatePresence>
+        {tabs.map((tab) => (
+          <DraggableTab
+            key={tab.id}
+            tab={tab}
+            isSelected={selectedTab?.id === tab.id}
+            onSelect={() => TabSelectAction(tab)}
+            onRemove={() => TabRemoveAction(tab.id)}
+            renderTabIcon={renderTabIconAction}
+            isMobile={isMobile}
+          />
+        ))}
       </Reorder.Group>
     </div>
   );

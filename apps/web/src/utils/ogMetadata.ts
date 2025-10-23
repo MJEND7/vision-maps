@@ -5,11 +5,6 @@ import { NodeVariants } from "@convex/tables/nodes";
 import { ApiRoutes } from "@/constants/apiRoutes";
 import type {
     BaseMetadata,
-    GitHubMetadata,
-    YouTubeMetadata,
-    FigmaMetadata,
-    NotionMetadata,
-    OGMetadata,
     OGFetchResult,
     FetchWithCacheResult,
 } from "@/types/metadata";
