@@ -817,7 +817,7 @@ function VisionDetailPageContent() {
                     {isMobile && (
                         <motion.div
                             ref={mobileHeaderRef}
-                            className="absolute top-0 left-0 right-0 z-40 px-3 py-3 bg-accent"
+                            className="absolute top-0 left-0 right-0 z-40 px-3 py-[9px] bg-accent"
                             initial={{ y: -50, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             transition={{ duration: 0.3 }}
