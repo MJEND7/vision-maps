@@ -6,7 +6,6 @@ import { useEffect } from 'react';
 import { ROUTES } from '@/lib/constants';
 import { ProfileUserProvider } from '@/contexts/ProfileUserContext';
 import { PermissionsProvider } from '@/contexts/PermissionsContext';
-import { InstallPrompt } from '@/components/ui/install-prompt';
 
 interface DashboardLayoutClientProps {
     children: React.ReactNode;
@@ -29,7 +28,6 @@ export default function DashboardLayoutClient({ children }: DashboardLayoutClien
             <ProfileUserProvider user={user}>
                 <div className="h-full min-h-screen">
                     {children}
-                    <InstallPrompt />
                 </div>
             </ProfileUserProvider>
         </PermissionsProvider>
