@@ -62,6 +62,7 @@ const DraggableTab = memo(function DraggableTab({
         overflow: "hidden",
         flexShrink: 0,
       }}
+      dragListener={!isMobile}
     >
       <div
         className={cn(
@@ -74,7 +75,7 @@ const DraggableTab = memo(function DraggableTab({
         style={{
           minWidth: `${tabWidth}px`,
           width: `${tabWidth}px`,
-          touchAction: "none",
+          touchAction: "pan-x auto",
         }}
       >
         <button
@@ -114,12 +115,6 @@ export function DraggableTabs({
 }: DraggableTabsProps) {
   const [isMobile, setIsMobile] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const prevTabsRef = useRef<TabStore[]>(tabs);
-
-  // Update ref without causing re-render
-  useEffect(() => {
-    prevTabsRef.current = tabs;
-  }, [tabs]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -169,7 +164,6 @@ export function DraggableTabs({
   }, [selectedTab]);
 
   const handleReorder = useCallback((newOrder: TabStore[]) => {
-    // Notify parent immediately
     TabReorderAction(newOrder);
   }, [TabReorderAction]);
 
