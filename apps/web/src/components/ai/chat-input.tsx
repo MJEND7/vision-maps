@@ -258,47 +258,49 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
                         </VisuallyHidden>
                     </DrawerHeader>
                     <DrawerContent className="md:hidden" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex flex-col h-[90vh] max-h-[700px]">
-                            <div className="flex-1 p-4 min-h-0">
-                                <div className="flex h-full flex-1 bg-muted/50 rounded-xl p-3">
-                                    <textarea
-                                        ref={drawerTextareaRef}
-                                        value={message}
-                                        onChange={(e) => setMessage(e.target.value)}
-                                        onKeyDown={handleKeyDown}
-                                        placeholder={placeholder}
-                                        disabled={disabled}
-                                        className={cn(
-                                            "w-full h-full resize-none bg-transparent",
-                                            "text-base leading-6 border-0 outline-none",
-                                            "placeholder:text-muted-foreground",
-                                            "scrollbar-thin scrollbar-track-transparent",
-                                            "scrollbar-thumb-muted-foreground/20"
-                                        )}
-                                        aria-label="Message input (expanded)"
-                                    />
-                                    <div className="flex justify-end ">
-                                        <Button
-                                            type="submit"
-                                            disabled={!message.trim() || disabled}
+                        <form onSubmit={handleSubmit} className="w-full">
+                            <div className="flex flex-col h-[90vh] max-h-[700px]">
+                                <div className="flex-1 p-4 min-h-0">
+                                    <div className="flex h-full flex-1 bg-muted/50 rounded-xl p-3">
+                                        <textarea
+                                            ref={drawerTextareaRef}
+                                            value={message}
+                                            onChange={(e) => setMessage(e.target.value)}
+                                            onKeyDown={handleKeyDown}
+                                            placeholder={placeholder}
+                                            disabled={disabled}
                                             className={cn(
-                                                "h-9 w-9 rounded-xl flex-shrink-0 self-end",
-                                                "transition-all duration-200"
+                                                "w-full h-full resize-none bg-transparent",
+                                                "text-base leading-6 border-0 outline-none",
+                                                "placeholder:text-muted-foreground",
+                                                "scrollbar-thin scrollbar-track-transparent",
+                                                "scrollbar-thumb-muted-foreground/20"
                                             )}
-                                            aria-label="Send message"
-                                        >
-                                            <motion.div
-                                                whileTap={{ scale: 0.95 }}
-                                                whileHover={{ scale: 1.05 }}
-                                                transition={{ duration: 0.15 }}
+                                            aria-label="Message input (expanded)"
+                                        />
+                                        <div className="flex justify-end ">
+                                            <Button
+                                                type="submit"
+                                                disabled={!message.trim() || disabled}
+                                                className={cn(
+                                                    "h-9 w-9 rounded-xl flex-shrink-0 self-end",
+                                                    "transition-all duration-200"
+                                                )}
+                                                aria-label="Send message"
                                             >
-                                                <Send className="h-4 w-4" />
-                                            </motion.div>
-                                        </Button>
+                                                <motion.div
+                                                    whileTap={{ scale: 0.95 }}
+                                                    whileHover={{ scale: 1.05 }}
+                                                    transition={{ duration: 0.15 }}
+                                                >
+                                                    <Send className="h-4 w-4" />
+                                                </motion.div>
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </form>
                     </DrawerContent>
                 </Drawer>
             </>
