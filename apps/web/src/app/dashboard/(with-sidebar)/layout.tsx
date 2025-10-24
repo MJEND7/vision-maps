@@ -14,15 +14,19 @@ export default function WithSidebarLayout({
 
     // Close sidebar when clicking outside on mobile
     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
+        const handleClickOutside = (event: Event) => {
             const sidebar = document.getElementById('mobile-sidebar');
             const button = document.getElementById('mobile-sidebar-button');
             // Check if click is inside drawer content
             const drawerContent = document.querySelector('[data-slot="drawer-content"]');
             const drawerOverlay = document.querySelector('[data-slot="drawer-overlay"]');
+            const drawerPortal = document.querySelector('[data-slot="drawer-portal"]');
 
-            // Don't close sidebar if clicking inside drawer or drawer overlay
-            const isClickInsideDrawer = drawerContent?.contains(event.target as Node) || drawerOverlay?.contains(event.target as Node);
+            // Don't close sidebar if clicking inside drawer, drawer overlay, or drawer portal
+            const isClickInsideDrawer =
+                drawerContent?.contains(event.target as Node) ||
+                drawerOverlay?.contains(event.target as Node) ||
+                drawerPortal?.contains(event.target as Node);
 
             if (isClickInsideDrawer) {
                 return;
@@ -35,11 +39,14 @@ export default function WithSidebarLayout({
         };
 
         if (isSidebarOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
+            // Listen to both mousedown and touchstart to catch all interaction types
+            document.addEventListener('mousedown', handleClickOutside as EventListener);
+            document.addEventListener('touchstart', handleClickOutside as EventListener);
         }
 
         return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('mousedown', handleClickOutside as EventListener);
+            document.removeEventListener('touchstart', handleClickOutside as EventListener);
         };
     }, [isSidebarOpen]);
 
