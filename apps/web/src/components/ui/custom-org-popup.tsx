@@ -8,6 +8,7 @@ import { useMutation, useQuery } from "convex/react";
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
@@ -219,6 +220,7 @@ function CreateOrgPopup({ open, onOpenChange, onOrgCreated }: CreateOrgPopupProp
                     <>
                         <DialogHeader>
                             <DialogTitle>Create Workspace</DialogTitle>
+                            <DialogDescription>Create a new workspace to collaborate with your team</DialogDescription>
                         </DialogHeader>
                         <div className="space-y-3">
                             <div className="space-y-3">
@@ -250,9 +252,7 @@ function CreateOrgPopup({ open, onOpenChange, onOrgCreated }: CreateOrgPopupProp
                     <>
                         <DialogHeader>
                             <DialogTitle>Invite Team Members</DialogTitle>
-                            <p className="text-sm text-muted-foreground">
-                                Would you like to invite team members now?
-                            </p>
+                            <DialogDescription>Would you like to invite team members now?</DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4">
                             {createdOrgId && (
@@ -346,6 +346,7 @@ export function InviteUsersPopup({ open, onOpenChange, organizationId, organizat
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>Invite Users to {organizationName}</DialogTitle>
+                    <DialogDescription>Add team members to your workspace and assign roles</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                     {/* Add User Section */}

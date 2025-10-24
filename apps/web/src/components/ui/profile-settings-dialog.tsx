@@ -13,6 +13,7 @@ import {
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
@@ -246,13 +247,11 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="flex flex-col gap-0 sm:max-w-[800px] max-w-[95vw] h-[90vh] sm:h-[60vh] max-h-[95vh] overflow-hidden p-0">
                 <DialogHeader className="px-6 py-4 border-b">
-                    <DialogTitle className="flex items-center gap-3">
-                        <div>
-                            <h2 className="text-xl font-semibold">Settings</h2>
-                            <p className="text-sm text-muted-foreground">Manage your account and preferences</p>
-                        </div>
-                    </DialogTitle>
-                    <ThemeSwitcher size={"lg"}/>
+                    <DialogTitle>Settings</DialogTitle>
+                    <DialogDescription>Manage your account and preferences</DialogDescription>
+                    <div className="absolute top-4 right-4">
+                        <ThemeSwitcher size={"lg"}/>
+                    </div>
                 </DialogHeader>
 
                 <div className="flex flex-col sm:flex-row h-full overflow-hidden">

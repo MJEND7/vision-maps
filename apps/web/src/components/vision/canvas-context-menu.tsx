@@ -212,7 +212,7 @@ export function CanvasContextMenu({
 
     const mobileMenu = (
         <Drawer open={isOpen} onOpenChange={onClose}>
-            <DrawerContent data-context-menu>
+            <DrawerContent data-context-menu onClick={(e) => e.stopPropagation()}>
                 <DrawerHeader>
                     <DrawerTitle>Canvas Actions</DrawerTitle>
                 </DrawerHeader>

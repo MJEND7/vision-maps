@@ -18,7 +18,7 @@ import {
     ExcalidrawCard,
     TikTokCard,
 } from "../../channel/metadata";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useOGMetadataWithCache } from "@/utils/ogMetadata";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -224,6 +224,9 @@ function ImageNodeContent({ node }: { node: any }) {
                     <DialogTitle className="sr-only">
                         {node.title || 'Image'}
                     </DialogTitle>
+                    <DialogDescription className="sr-only">
+                        Expanded image view
+                    </DialogDescription>
                     <div className="relative">
                         <Image
                             src={node.value}

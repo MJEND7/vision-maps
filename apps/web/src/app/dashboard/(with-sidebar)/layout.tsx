@@ -17,6 +17,17 @@ export default function WithSidebarLayout({
         const handleClickOutside = (event: MouseEvent) => {
             const sidebar = document.getElementById('mobile-sidebar');
             const button = document.getElementById('mobile-sidebar-button');
+            // Check if click is inside drawer content
+            const drawerContent = document.querySelector('[data-slot="drawer-content"]');
+            const drawerOverlay = document.querySelector('[data-slot="drawer-overlay"]');
+
+            // Don't close sidebar if clicking inside drawer or drawer overlay
+            const isClickInsideDrawer = drawerContent?.contains(event.target as Node) || drawerOverlay?.contains(event.target as Node);
+
+            if (isClickInsideDrawer) {
+                return;
+            }
+
             if (isSidebarOpen && sidebar && !sidebar.contains(event.target as Node) &&
                 button && !button.contains(event.target as Node)) {
                 setIsSidebarOpen(false);
@@ -41,7 +52,10 @@ export default function WithSidebarLayout({
 
             {/* Mobile Sidebar Overlay */}
             {isSidebarOpen && (
-                <div className="lg:hidden fixed inset-0 bg-black/50 z-40" />
+                <div
+                    className="lg:hidden fixed inset-0 bg-black/50 z-40"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
             )}
 
             {/* Mobile Sidebar */}

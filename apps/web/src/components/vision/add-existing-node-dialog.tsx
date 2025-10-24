@@ -227,7 +227,7 @@ export function AddExistingNodeDialog({
   if (isMobile) {
     return (
       <Drawer open={isOpen} onOpenChange={onClose}>
-        <DrawerContent className="max-h-[80vh]">
+        <DrawerContent className="max-h-[80vh]" onClick={(e) => e.stopPropagation()}>
           <DrawerHeader>
             <DrawerTitle>Add Existing Node</DrawerTitle>
           </DrawerHeader>

@@ -15,7 +15,10 @@ import { Button } from "@/components/ui/button";
 import {
     Drawer,
     DrawerContent,
+    DrawerHeader,
+    DrawerTitle,
 } from "@/components/ui/drawer";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 interface ChatInputProps {
     onSendMessage: (message: string) => void;
@@ -142,6 +145,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
             const isTextarea = target.closest("textarea");
 
             if (!isButton && !isTextarea && !disabled) {
+                e.stopPropagation();
                 textareaRef.current?.focus();
             }
         };
@@ -198,7 +202,10 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
                                 <div className="">
                                     <motion.button
                                         type="button"
-                                        onClick={() => setIsDrawerOpen(true)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIsDrawerOpen(true);
+                                        }}
                                         className={cn(
                                             "absolute right-0 md:hidden flex-shrink-0 self-start",
                                             "p-1.5 rounded-md text-muted-foreground",
@@ -245,10 +252,15 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
 
                 {/* Mobile drawer */}
                 <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-                    <DrawerContent className="md:hidden">
+                    <DrawerHeader>
+                        <VisuallyHidden>
+                            <DrawerTitle>Expand message input</DrawerTitle>
+                        </VisuallyHidden>
+                    </DrawerHeader>
+                    <DrawerContent className="md:hidden" onClick={(e) => e.stopPropagation()}>
                         <div className="flex flex-col h-[90vh] max-h-[700px]">
                             <div className="flex-1 p-4 min-h-0">
-                                <div className="h-full bg-muted/50 rounded-xl p-3">
+                                <div className="flex h-full flex-1 bg-muted/50 rounded-xl p-3">
                                     <textarea
                                         ref={drawerTextareaRef}
                                         value={message}
@@ -265,6 +277,25 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
                                         )}
                                         aria-label="Message input (expanded)"
                                     />
+                                    <div className="flex justify-end ">
+                                        <Button
+                                            type="submit"
+                                            disabled={!message.trim() || disabled}
+                                            className={cn(
+                                                "h-9 w-9 rounded-xl flex-shrink-0 self-end",
+                                                "transition-all duration-200"
+                                            )}
+                                            aria-label="Send message"
+                                        >
+                                            <motion.div
+                                                whileTap={{ scale: 0.95 }}
+                                                whileHover={{ scale: 1.05 }}
+                                                transition={{ duration: 0.15 }}
+                                            >
+                                                <Send className="h-4 w-4" />
+                                            </motion.div>
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

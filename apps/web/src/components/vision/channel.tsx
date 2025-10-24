@@ -697,7 +697,7 @@ export default function Channel({
 
             {/* Mobile Action Drawer */}
             <Drawer open={showMobileDrawer} onOpenChange={hideMobileDrawer}>
-                <DrawerContent>
+                <DrawerContent onClick={(e) => e.stopPropagation()}>
                     <DrawerHeader>
                         <DrawerTitle>Node Actions</DrawerTitle>
                         <DrawerDescription className="text-sm truncate">

@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { getUserAvatarFallbackInitials } from "@/utils/user";
@@ -72,6 +72,9 @@ export function InviteUsersDialogue({
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Invite Users</DialogTitle>
+                    <DialogDescription>
+                        Search for and invite users to this vision. They will receive an invitation notification.
+                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4">
