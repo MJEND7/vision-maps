@@ -375,7 +375,7 @@ export function ImprovedChatList({
       </div>
 
       {/* Fixed bottom button */}
-      <div className="sm:py-3 border-t bg-muted/40 px-4 pt-3 pb-8">
+      <div className="border-t bg-muted/40 px-4 pt-3 pb-8 sm:py-3">
         <Button
           onClick={onNewChat}
           size="sm"

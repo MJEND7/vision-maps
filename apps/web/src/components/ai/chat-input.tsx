@@ -31,7 +31,7 @@ export interface ChatInputRef {
     focus: () => void;
 }
 
-const MOBILE_MAX_ROWS = 6;
+const MOBILE_MAX_ROWS = 4;
 const DESKTOP_MAX_ROWS = 10;
 
 export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
@@ -252,14 +252,14 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
 
                 {/* Mobile drawer */}
                 <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-                    <DrawerHeader>
+                    <DrawerHeader className="hidden">
                         <VisuallyHidden>
                             <DrawerTitle>Expand message input</DrawerTitle>
                         </VisuallyHidden>
                     </DrawerHeader>
                     <DrawerContent className="md:hidden" onClick={(e) => e.stopPropagation()}>
                         <form onSubmit={handleSubmit} className="w-full">
-                            <div className="flex flex-col h-[90vh] max-h-[700px]">
+                            <div className="flex flex-col h-[90vh] max-h-[600px] ">
                                 <div className="flex-1 p-4 min-h-0">
                                     <div className="flex h-full flex-1 bg-muted/50 rounded-xl p-3">
                                         <textarea
@@ -270,7 +270,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
                                             placeholder={placeholder}
                                             disabled={disabled}
                                             className={cn(
-                                                "w-full h-full resize-none bg-transparent",
+                                                "w-full h-full resize-none bg-transparent scrollbar-hide",
                                                 "text-base leading-6 border-0 outline-none",
                                                 "placeholder:text-muted-foreground",
                                                 "scrollbar-thin scrollbar-track-transparent",
