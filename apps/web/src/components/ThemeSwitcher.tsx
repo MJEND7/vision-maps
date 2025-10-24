@@ -45,7 +45,7 @@ export default function ThemeSwitcher({ size = "lg"}: { size: "sm" | "lg" | "xl"
       variant="outline"
       size={size}
       onClick={toggleTheme}
-      className="p-2"
+      className="p-2 w-full"
     >
       {isDark ? (
         <Sun size={16} className="text-foreground" />

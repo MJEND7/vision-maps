@@ -245,19 +245,16 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="flex flex-col gap-0 sm:max-w-[800px] max-w-[95vw] h-[90vh] sm:h-[60vh] max-h-[95vh] overflow-hidden p-0">
+            <DialogContent className="flex flex-col sm:rounded-md rounded-none gap-0 sm:max-w-[800px] max-w-[100vw]  sm:h-[60vh] h-screen overflow-hidden p-0">
                 <DialogHeader className="px-6 py-4 border-b">
                     <DialogTitle>Settings</DialogTitle>
                     <DialogDescription>Manage your account and preferences</DialogDescription>
-                    <div className="absolute top-4 right-4">
-                        <ThemeSwitcher size={"lg"}/>
-                    </div>
                 </DialogHeader>
 
                 <div className="flex flex-col sm:flex-row h-full overflow-hidden">
                     {/* Sidebar Navigation */}
-                    <div className="w-full flex flex-col justify-between sm:w-60 border-r sm:border-r border-b sm:border-b-0 bg-muted/30 p-4 sm:p-6 flex-shrink-0">
-                        <nav className="flex sm:flex-col gap-2 sm:space-y-2 overflow-x-auto sm:overflow-x-visible scrollbar-hide">
+                    <nav className="w-full flex flex-row sm:flex-col overflow-x-auto sm:overflow-x-scroll scrollbar-hide sm:justify-between sm:w-60 border-r sm:border-r border-b sm:border-b-0 bg-muted/30 p-2 sm:p-6">
+                        <div className="flex flex-row sm:flex-col">
                             <button
                                 onClick={() => setActiveTab("profile")}
                                 className={`flex-shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 text-left rounded-lg transition-colors ${activeTab === "profile"
@@ -290,7 +287,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
                                 <DollarSign className="w-4 h-4" />
                                 <span className="font-medium whitespace-nowrap">Billing</span>
                             </button>
-                        </nav>
+                        </div>
 
                         <SignOutButton>
                             <button
@@ -300,7 +297,8 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
                                 <span className="font-medium whitespace-nowrap">Logout</span>
                             </button>
                         </SignOutButton>
-                    </div>
+                    </nav>
+
 
                     {/* Main Content */}
                     <div className="flex-1 overflow-hidden">
@@ -375,43 +373,47 @@ function ProfileTab({
 }: any) {
     return (
         <div className="space-y-6">
-
-            <div className="space-y-6 p-6 border rounded-xl bg-card shadow-sm">
+            <div className="space-y-4 p-6 border rounded-xl bg-card shadow-sm">
                 {/* Avatar + Name */}
-                <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
-                    <div className="relative">
-                        <Avatar className="h-20 w-20">
-                            <AvatarImage
-                                src={profileImagePreview || user?.imageUrl}
-                                alt={user?.fullName || "User avatar"}
+                <div className="flex sm:flex-row flex-col justify-between items-center gap-2">
+                    <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
+                        <div className="relative">
+                            <Avatar className="h-20 w-20">
+                                <AvatarImage
+                                    src={profileImagePreview || user?.imageUrl}
+                                    alt={user?.fullName || "User avatar"}
+                                />
+                                <AvatarFallback>
+                                    {user?.firstName?.[0]}{user?.lastName?.[0]}
+                                </AvatarFallback>
+                            </Avatar>
+                            <label
+                                htmlFor="profile-image-upload"
+                                className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow cursor-pointer hover:bg-primary/90"
+                                title="Upload new photo"
+                            >
+                                <Camera className="h-4 w-4" />
+                            </label>
+                            <input
+                                id="profile-image-upload"
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleImageSelect}
                             />
-                            <AvatarFallback>
-                                {user?.firstName?.[0]}{user?.lastName?.[0]}
-                            </AvatarFallback>
-                        </Avatar>
-                        <label
-                            htmlFor="profile-image-upload"
-                            className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow cursor-pointer hover:bg-primary/90"
-                            title="Upload new photo"
-                        >
-                            <Camera className="h-4 w-4" />
-                        </label>
-                        <input
-                            id="profile-image-upload"
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={handleImageSelect}
-                        />
-                    </div>
+                        </div>
 
-                    <div className="flex-1 min-w-0 text-center sm:text-left">
-                        <h2 className="truncate text-lg font-semibold">
-                            {user?.fullName || user?.username}
-                        </h2>
-                        <p className="text-sm text-muted-foreground">
-                            {user?.emailAddresses[0]?.emailAddress}
-                        </p>
+                        <div className="flex-1 min-w-0 text-center sm:text-left">
+                            <h2 className="truncate text-lg font-semibold">
+                                {user?.fullName || user?.username}
+                            </h2>
+                            <p className="text-sm text-muted-foreground">
+                                {user?.emailAddresses[0]?.emailAddress}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="sm:w-auto w-full">
+                        <ThemeSwitcher size={"lg"} />
                     </div>
                 </div>
 
@@ -443,8 +445,6 @@ function ProfileTab({
                         </Button>
                     </div>
                 )}
-
-                <Separator />
 
                 {/* Editable Fields */}
                 <div className="space-y-4">
