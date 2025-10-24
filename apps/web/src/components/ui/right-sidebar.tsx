@@ -308,7 +308,7 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
                                             />
                                         </div>
 
-                                        <div className="flex-shrink-0 pb-4 px-4">
+                                        <div className="flex-shrink-0 px-4 pb-8 sm:pb-4">
                                             <ChatInput
                                                 ref={chatInputRef}
                                                 onSendMessage={handleSendMessage}

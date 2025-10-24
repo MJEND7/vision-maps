@@ -163,7 +163,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
                                 disabled && "opacity-50 cursor-not-allowed"
                             )}
                         >
-                            <div className="relative flex items-center min-h-full min-w-0 gap-2">
+                            <div className="relative flex-1 flex mr-2 items-center min-h-full min-w-0 gap-2">
                                 <textarea
                                     ref={textareaRef}
                                     value={message}
