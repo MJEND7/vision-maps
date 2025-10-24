@@ -297,7 +297,7 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
                                             </span>
                                         </div>
 
-                                        <div className="flex-1 p-4 min-h-0 bg-background">
+                                        <div className="flex-1 p-3 min-h-0 bg-background">
                                             <ChatCard
                                                 chatId={selectedChatId}
                                                 drivenIds={drivenMessageIds}
@@ -308,11 +308,10 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
                                             />
                                         </div>
 
-                                        <div className="flex-shrink-0 p-4 border-t bg-muted/10">
+                                        <div className="flex-shrink-0 pb-4 px-4">
                                             <ChatInput
                                                 ref={chatInputRef}
                                                 onSendMessage={handleSendMessage}
-                                                placeholder="Ask AI about this vision..."
                                             />
                                         </div>
                                     </div>

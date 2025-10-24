@@ -1105,7 +1105,7 @@ function VisionDetailPageContent() {
                                     animate={{ x: 0 }}
                                     exit={{ x: 400 }}
                                     transition={{ duration: 0.3, ease: "easeInOut" }}
-                                    className="w-full h-screen bg-card border-l border-border z-40 absolute top-0 right-0 shadow-lg flex flex-col"
+                                    className="w-screen h-screen bg-card border-l border-border z-40 absolute shadow-lg flex flex-col"
                                 >
                                     <div className="flex-1 min-h-0">
                                         <RightSidebarContent

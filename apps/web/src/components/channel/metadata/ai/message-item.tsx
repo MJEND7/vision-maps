@@ -35,7 +35,7 @@ export default function MessageItem({ children, isUser, }: Props) {
                     <div className="flex flex-col gap-1">
                         <motion.div
                             className={`text-xs  ${isUser
-                                ? "rounded-2xl px-4 py-3 shadow-sm bg-gradient-to-br from-blue-500 to-blue-600 text-white"
+                                ? "rounded-2xl px-4 py-3 shadow-sm bg-gradient-to-br from-blue-500 to-blue-600 text-wrap break-all text-white"
                                 : "text-primary"
                                 } ${isUser ? "rounded-br-md" : "rounded-md"}`}
                         >

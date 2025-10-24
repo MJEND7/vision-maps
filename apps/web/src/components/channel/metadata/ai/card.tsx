@@ -200,7 +200,7 @@ export function ChatCard({ chatId, drivenIds, onFocusInput, onRetryMessage, onBr
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: index * 0.02 }}
-                                    className="mb-3"
+                                    className="mb-10"
                                 >
                                     <MessageItem
                                         message={message}
@@ -224,7 +224,7 @@ export function ChatCard({ chatId, drivenIds, onFocusInput, onRetryMessage, onBr
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: index * 0.02 + 0.05 }}
-                                    className="mb-3"
+                                    className="mb-10"
                                 >
                                     <MessageItem
                                         message={message}
