@@ -50,7 +50,7 @@ export function AudioDeviceMenu({ onMicrophoneSelect, onDeviceSelect }: AudioDev
                 <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 rounded-xl px-2 text-xs border-border/50 hover:border-border transition-colors"
+                    className="h-8 rounded-[13px] px-2 text-xs border-none transition-colors"
                 >
                     <Mic size={12} />
                 </Button>

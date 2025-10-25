@@ -52,7 +52,7 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
         const deleteMessagesAfter = useConvexMutation(api.messages.deleteMessagesAfter);
         const createTextNodeFromMessage = useConvexMutation(api.nodes.createTextNodeFromMessage);
 
-        const handleNewChat = async () => {
+        const handleCreateChatAndSendMessage = async (message: string) => {
             try {
                 const result = await createChatWithNode({
                     title: "New Chat",
@@ -62,6 +62,22 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
 
                 if (result?.chatId) {
                     setSelectedChatId(result.chatId);
+
+                    // Send the message after the chat is created
+                    // We need a small delay to ensure the chat state is updated
+                    setTimeout(async () => {
+                        try {
+                            const sendResult = await sendMessage({
+                                chatId: result.chatId as Id<"chats">,
+                                content: message
+                            });
+                            if (sendResult) {
+                                setDrivenMessageIds((ids) => ids.add(sendResult.messageId));
+                            }
+                        } catch (e) {
+                            console.error(e);
+                        }
+                    }, 100);
                 }
             } catch {
                 // Error already shown as toast by useConvexMutation
@@ -279,12 +295,11 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
                                         visionId={visionId}
                                         selectedChatId={selectedChatId}
                                         onChatSelect={setSelectedChatId}
-                                        onNewChat={handleNewChat}
                                         onChannelNavigate={onChannelNavigate}
                                         className="flex-1"
                                     />
                                 ) : (
-                                    <div className="flex-1 flex flex-col min-h-0">
+                                    <>
                                         <div className="flex items-center gap-2 p-3">
                                             <button
                                                 onClick={() => setSelectedChatId(undefined)}
@@ -307,15 +322,18 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
                                                 onCreateTextNode={handleCreateTextNode}
                                             />
                                         </div>
-
-                                        <div className="flex-shrink-0 px-4 pb-8 sm:pb-4">
-                                            <ChatInput
-                                                ref={chatInputRef}
-                                                onSendMessage={handleSendMessage}
-                                            />
-                                        </div>
-                                    </div>
+                                    </>
                                 )}
+
+                                {/* Single ChatInput - always rendered */}
+                                <div className="flex-shrink-0 px-4 pb-8 sm:pb-4">
+                                    <ChatInput
+                                        ref={chatInputRef}
+                                        onSendMessage={selectedChatId ? handleSendMessage : undefined}
+                                        onCreateNewChat={!selectedChatId ? handleCreateChatAndSendMessage : undefined}
+                                        placeholder={selectedChatId ? "Type a message..." : "Start a new chat..."}
+                                    />
+                                </div>
                             </div>
                         ) : (
                             <div className="flex-1 flex items-center justify-center p-8">

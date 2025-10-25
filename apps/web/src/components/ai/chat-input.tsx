@@ -21,10 +21,12 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 interface ChatInputProps {
-    onSendMessage: (message: string) => void;
+    onSendMessage?: (message: string) => void;
+    onCreateNewChat?: (message: string) => Promise<void>;
     disabled?: boolean;
     placeholder?: string;
     className?: string;
+    isCreatingNewChat?: boolean;
 }
 
 export interface ChatInputRef {
@@ -38,9 +40,11 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
     function ChatInput(
         {
             onSendMessage,
+            onCreateNewChat,
             disabled = false,
             placeholder = "Type your message...",
             className,
+            isCreatingNewChat = false,
         },
         ref
     ) {
@@ -123,10 +127,20 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
             return () => window.removeEventListener("resize", handleResize);
         }, [message, isDesktop]);
 
-        const handleSubmit = (e: React.FormEvent) => {
+        const handleSubmit = async (e: React.FormEvent) => {
             e.preventDefault();
-            if (message.trim() && !disabled) {
-                onSendMessage(message.trim());
+            if (message.trim() && !disabled && !isCreatingNewChat) {
+                // If we have a create new chat handler, use it
+                if (onCreateNewChat) {
+                    try {
+                        await onCreateNewChat(message.trim());
+                        // Message will be sent after chat is created (handled by parent)
+                    } catch (error) {
+                        console.error("Failed to create chat:", error);
+                    }
+                } else if (onSendMessage) {
+                    onSendMessage(message.trim());
+                }
                 setMessage("");
                 if (isDrawerOpen) setIsDrawerOpen(false);
             }
@@ -158,11 +172,11 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
                             ref={containerRef}
                             onClick={handleContainerClick}
                             className={cn(
-                                "relative flex-1 flex items-stretch justify-between min-h-[10px] max-w-none min-w-0",
-                                "bg-muted/70 dark:bg-muted/50",
-                                "rounded-2xl border-0 py-2 pl-4 pr-2",
-                                "transition-colors duration-200",
-                                "focus-within:bg-muted/60",
+                                "relative z-0 flex-1 flex items-stretch justify-between max-w-none min-w-0",
+                                "rounded-2xl border border-accent/20 bg-background dark:bg-input/30",
+                                "py-1 pl-4 pr-2 shadow-sm transition-[color,box-shadow,border,background-color] duration-200",
+                                "focus-within:ring-[3px] focus-within:ring-ring/50",
+                                "focus-within:ring-offset-2 focus-within:ring-offset-background",
                                 "cursor-text",
                                 disabled && "opacity-50 cursor-not-allowed"
                             )}
@@ -179,7 +193,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
                                     className={cn(
                                         "flex-1 resize-none bg-transparent scrollbar-hide",
                                         "text-base sm:text-sm ",
-                                        "placeholder:text-muted-foreground",
+                                        "placeholder:text-muted-foreground/70",
                                         "border-0 outline-none focus:outline-none",
                                         "overflow-y-auto scrollbar-thin",
                                         "scrollbar-track-transparent",
@@ -229,7 +243,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
                                 <div className="flex flex-col justify-end min-h-full min-w-0">
                                     <Button
                                         type="submit"
-                                        disabled={!message.trim() || disabled}
+                                        disabled={!message.trim() || disabled || isCreatingNewChat}
                                         className={cn(
                                             "h-9 w-9 rounded-xl flex-shrink-0 self-end",
                                             "transition-all duration-200"
@@ -281,7 +295,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
                                         <div className="flex justify-end ">
                                             <Button
                                                 type="submit"
-                                                disabled={!message.trim() || disabled}
+                                                disabled={!message.trim() || disabled || isCreatingNewChat}
                                                 className={cn(
                                                     "h-9 w-9 rounded-xl flex-shrink-0 self-end",
                                                     "transition-all duration-200"
