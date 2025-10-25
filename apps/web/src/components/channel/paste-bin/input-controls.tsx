@@ -39,9 +39,9 @@ export function InputControls({
         <motion.div className="relative w-full h-full">
             <Textarea
                 ref={ref}
-                className={`w-full dark:bg-background bg-background h-full resize-none transition-all duration-200 ${!isIdleMode
+                className={`w-full dark:bg-muted/50 border-none bg-background h-full resize-none transition-all duration-200 ${!isIdleMode
                     ? "pr-24 rounded-xl shadow-sm hover:shadow-lg focus:shadow-lg py-3 px-4"
-                    : "pr-24 rounded-3xl shadow-sm hover:shadow-lg focus:shadow-lg py-0 px-4 overflow-hidden"
+                    : "pr-24 rounded-2xl shadow-sm hover:shadow-lg focus:shadow-lg py-0 px-4 overflow-hidden"
                     }`}
                 style={{
                     lineHeight: !isIdleMode ? "1.5" : "44px",
@@ -71,7 +71,7 @@ export function InputControls({
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 rounded-xl px-2 text-xs border-border/50 hover:border-border transition-colors"
+                            className="h-8 rounded-[13px] px-2 text-xs border-none transition-colors"
                             onClick={onFileSelect}
                         >
                             <FileText size={12} />
@@ -80,7 +80,7 @@ export function InputControls({
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 rounded-xl px-2 text-xs border-border/50 hover:border-border transition-colors"
+                                className="h-8 rounded-[13px] px-2 text-xs border-none transition-colors"
                                 onClick={onStartPrompt}
                             >
                                 <Brain size={12} />

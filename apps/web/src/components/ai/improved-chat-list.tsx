@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Plus,
   Hash,
   Trash2,
   Edit2,
@@ -35,7 +34,6 @@ interface ChatListProps {
   visionId: string;
   selectedChatId?: string;
   onChatSelect: (chatId: string) => void;
-  onNewChat: () => void;
   onChannelNavigate?: (channelId: string, nodeId?: string) => void;
   className?: string;
 }
@@ -275,7 +273,6 @@ export function ImprovedChatList({
   visionId,
   selectedChatId,
   onChatSelect,
-  onNewChat,
   onChannelNavigate,
   className,
 }: ChatListProps) {
@@ -374,17 +371,6 @@ export function ImprovedChatList({
         )}
       </div>
 
-      {/* Fixed bottom button */}
-      <div className="border-t bg-muted/40 px-4 pt-3 pb-8 sm:py-3">
-        <Button
-          onClick={onNewChat}
-          size="sm"
-          className="w-full justify-center gap-2 font-medium"
-        >
-          <Plus className="w-4 h-4" />
-          New Chat
-        </Button>
-      </div>
     </div>
   );
 }

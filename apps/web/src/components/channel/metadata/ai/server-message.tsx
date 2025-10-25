@@ -123,7 +123,7 @@ export function ServerMessage({
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
             className="w-full"
           >
-            <div className="prose prose-sm max-w-none dark:prose-invert prose-p:text-[15px] prose-p:leading-relaxed prose-headings:text-base prose-headings:font-semibold prose-code:text-[13px] prose-pre:text-[13px] prose-li:text-[15px] prose-li:leading-relaxed break-words overflow-x-auto">
+            <div className="ml-1.5 prose prose-sm max-w-none dark:prose-invert prose-p:text-[15px] prose-p:leading-relaxed prose-headings:text-base prose-headings:font-semibold prose-code:text-[13px] prose-pre:text-[13px] prose-li:text-[15px] prose-li:leading-relaxed break-words overflow-x-auto">
               <Markdown
                 remarkPlugins={REMARK_PLUGINS}
                 components={MARKDOWN_COMPONENTS}
@@ -141,7 +141,7 @@ export function ServerMessage({
             )}
 
             {showActions && (
-              <div className="flex items-center gap-1 mt-3 pt-2 border-t border-border/40">
+              <div className="flex items-center gap-1">
                 {text && (
                   <Button
                     variant="ghost"
