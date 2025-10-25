@@ -33,11 +33,9 @@ import { ReactFlowErrorBoundary } from "./ReactFlowErrorBoundary";
 import useCreateNode from "@/hooks/nodes/useCreateNode";
 
 export function ViewportAwareNodeManager({
-    id,
     onViewportCenterChange,
     onScreenToFlowPositionChange,
 }: {
-    id: Id<"frames">;
     onViewportCenterChange: (getCenter: () => { x: number; y: number }) => void;
     onScreenToFlowPositionChange: (
         convert: (x: number, y: number) => { x: number; y: number }
@@ -409,7 +407,6 @@ export default function FrameComponent({
                         />
                         {/* viewport manager now just reports data */}
                         <ViewportAwareNodeManager
-                            id={id}
                             onViewportCenterChange={(getCenter) =>
                                 setViewportCenter(() => getCenter)
                             }

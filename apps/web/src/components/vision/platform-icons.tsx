@@ -1,6 +1,6 @@
 import React from "react";
 import { NodeVariants } from "@convex/tables/nodes";
-import { AudioLines, Brain, Captions, File, FileText, Image, Link, Tv } from "lucide-react";
+import { AudioLines, Brain, Captions, FileText, Image, Link, Tv } from "lucide-react";
 
 type NodeVariant = typeof NodeVariants[keyof typeof NodeVariants];
 
