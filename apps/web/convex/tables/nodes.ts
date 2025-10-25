@@ -49,5 +49,13 @@ export class Nodes {
         .searchIndex("search_thought", {
             searchField: "thought",
             filterFields: ["channel", "variant", "userId", "vision"],
+        })
+        .searchIndex("search_title", {
+            searchField: "title",
+            filterFields: ["channel", "variant", "userId", "vision"],
+        })
+        .searchIndex("search_value", {
+            searchField: "value",
+            filterFields: ["channel", "variant", "userId", "vision"],
         });
 }

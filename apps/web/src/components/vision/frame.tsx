@@ -371,7 +371,7 @@ export default function FrameComponent({
 
     return (
         <div className="w-full h-full px-4 pt-4">
-            <div className="relative h-[calc(100%-4rem)]">
+            <div className="relative h-[calc(100%-1rem)]">
                 <ReactFlowErrorBoundary>
                     <ReactFlow
                         nodes={nodes}
@@ -399,7 +399,7 @@ export default function FrameComponent({
                         zoomOnDoubleClick={false}
                         zoomActivationKeyCode="Shift"
                     >
-                        <Controls />
+                        <Controls position="top-left"  />
                         <Background
                             key={id}
                             variant={BackgroundVariant.Dots}

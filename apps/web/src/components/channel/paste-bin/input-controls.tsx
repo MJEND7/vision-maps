@@ -39,7 +39,7 @@ export function InputControls({
         <motion.div className="relative w-full h-full">
             <Textarea
                 ref={ref}
-                className={`w-full dark:bg-muted/50 border-none bg-background h-full resize-none transition-all duration-200 ${!isIdleMode
+                className={`w-full dark:bg-muted/50 dark:backdrop-blur-lg border-none bg-background h-full resize-none transition-all duration-200 ${!isIdleMode
                     ? "pr-24 rounded-xl shadow-sm hover:shadow-lg focus:shadow-lg py-3 px-4"
                     : "pr-24 rounded-2xl shadow-sm hover:shadow-lg focus:shadow-lg py-0 px-4 overflow-hidden"
                     }`}

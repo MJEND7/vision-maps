@@ -360,17 +360,134 @@ export const listByChannel = query({
         let nodesQuery;
 
         if (args.filters?.search) {
-            nodesQuery = ctx.db
+            const search = (args.filters?.search || "").toLowerCase();
+
+            // Helper function to check if a string is a URL
+            const isUrl = (str: string): boolean => {
+                try {
+                    new URL(str);
+                    return true;
+                } catch {
+                    return false;
+                }
+            };
+
+            // Search across title, thought, and value fields using separate search indexes
+            const searchTitleResults = await ctx.db
+                .query("nodes")
+                .withSearchIndex("search_title", (q) =>
+                    q
+                        .search("title", search)
+                        .eq("channel", args.channelId)
+                )
+                .collect();
+
+            const searchThoughtResults = await ctx.db
                 .query("nodes")
                 .withSearchIndex("search_thought", (q) =>
                     q
-                        .search("thought", args.filters?.search || "")
+                        .search("thought", search)
                         .eq("channel", args.channelId)
                 )
+                .collect();
+
+            const searchValueResults = await ctx.db
+                .query("nodes")
+                .withSearchIndex("search_value", (q) =>
+                    q
+                        .search("value", search)
+                        .eq("channel", args.channelId)
+                )
+                .collect();
+
+            // Combine results and deduplicate using a map
+            const resultMap = new Map<string, (typeof searchTitleResults)[0]>();
+
+            // Add title matches
+            searchTitleResults.forEach((node) => {
+                resultMap.set(node._id.toString(), node);
+            });
+
+            // Add thought matches
+            searchThoughtResults.forEach((node) => {
+                resultMap.set(node._id.toString(), node);
+            });
+
+            // Add value matches (only if not a URL)
+            searchValueResults.forEach((node) => {
+                if (!isUrl(node.value)) {
+                    resultMap.set(node._id.toString(), node);
+                }
+            });
+
+            let allResults = Array.from(resultMap.values());
+
+            // Apply variant filter if provided
+            if (args.filters?.variant) {
+                allResults = allResults.filter((node) => node.variant === args.filters!.variant);
+            }
+
+            // Apply userIds filter if provided
+            if (args.filters?.userIds && args.filters.userIds.length > 0) {
+                const userIdSet = new Set(args.filters.userIds);
+                allResults = allResults.filter((node) => userIdSet.has(node.userId));
+            }
+
+            // Apply sorting
+            if (sortBy !== "latest") {
+                allResults.reverse();
+            }
+
+            // Create a paginated result from the filtered data
+            const startIndex = paginationOpts.cursor ? parseInt(paginationOpts.cursor) : 0;
+            const endIndex = startIndex + paginationOpts.numItems;
+            const paginatedPage = allResults.slice(startIndex, endIndex);
+            const isDone = endIndex >= allResults.length;
+            const continueCursor = isDone ? null : (endIndex.toString() as any);
+
+            // Enrich paginated nodes with frame information
+            const nodesWithFrames = await Promise.all(
+                paginatedPage.map(async (node) => {
+                    let frameTitle = null;
+                    if (node.frame) {
+                        const frame = await ctx.db.get(node.frame as Id<"frames">);
+                        frameTitle = frame?.title || null;
+                    }
+                    return {
+                        ...node,
+                        frameTitle,
+                    };
+                })
+            );
+
+            // Fetch all references for the nodes in this page
+            const nodeIds = nodesWithFrames.map((node) => node._id);
+            const referencesMap: ReferencesMapItem[] = await ctx.runQuery(internal.references.getReferences, {
+                nodeIdList: nodeIds,
+                vision: channel.vision,
+            });
+
+            // Create a map for quick lookup
+            const referencesByNodeId = new Map(
+                referencesMap.map((ref) => [ref.nodeId, ref.referencingNodes])
+            );
+
+            // Integrate references into nodes
+            const nodesWithReferences = nodesWithFrames.map((node) => ({
+                ...node,
+                referencedIn: referencesByNodeId.get(node._id) || [],
+            }));
+
+            return {
+                page: nodesWithReferences,
+                isDone,
+                continueCursor,
+            };
         } else {
             nodesQuery = ctx.db
                 .query("nodes")
-                .withIndex("by_channel", (q) => q.eq("channel", args.channelId)).order(sortBy === "latest" ? "asc" : "desc");
+                .withIndex("by_channel", (q) => q.eq("channel", args.channelId))
+                .order(sortBy === "latest" ? "asc" : "desc");
         }
 
         if (args.filters?.variant) {
