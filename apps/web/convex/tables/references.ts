@@ -1,6 +1,6 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
-import { Id } from "../_generated/dataModel";
+import { Id, Doc } from "../_generated/dataModel";
 
 export type Reference = {
   _id: Id<"references">;
@@ -11,6 +11,20 @@ export type Reference = {
   ref: Id<"nodes">;
   label: string;
   ref_title: string;
+};
+
+export type ReferencingNode = {
+  nodeId: Id<"nodes">;
+  label: string;
+  refTitle: string;
+  channel: Id<"channels">;
+  frame?: Id<"frames">;
+  parentNode: Doc<"nodes"> | null;
+};
+
+export type ReferencesMapItem = {
+  nodeId: Id<"nodes">;
+  referencingNodes: ReferencingNode[];
 };
 
 export class References {

@@ -6,6 +6,30 @@ import { paginationOptsValidator } from "convex/server";
 import { nodeValidator } from "./reactflow/types";
 import { persistentTextStreaming } from "./messages";
 import { Position } from "@xyflow/react";
+import { ReferencesMapItem } from "./tables/references";
+import { internal } from "./_generated/api";
+
+/**
+ * Helper function to extract reference node IDs from text content
+ * Parses markdown link format: [ref:label](node_id)
+ */
+function extractReferencesFromText(text: string): Id<"nodes">[] {
+    if (!text) return [];
+
+    // Match pattern: [ref:label](node_id)
+    const referencePattern = /\[ref:[^\]]+\]\(([^)]+)\)/g;
+    const references: Id<"nodes">[] = [];
+    let match;
+
+    while ((match = referencePattern.exec(text)) !== null) {
+        const nodeId = match[1];
+        if (nodeId) {
+            references.push(nodeId as Id<"nodes">);
+        }
+    }
+
+    return references;
+}
 
 const createArgs = v.object({
     frameId: v.optional(v.id("frames")),
@@ -119,6 +143,26 @@ export const create = mutation({
             })
         }
 
+        // Extract and create references from node content (value and thought fields)
+        if (channel.vision) {
+            const referencedNodeIds = [
+                ...extractReferencesFromText(args.value),
+                ...extractReferencesFromText(args.thought || ""),
+            ];
+
+            // Remove duplicates
+            const uniqueReferencedNodeIds = Array.from(new Set(referencedNodeIds));
+
+            if (uniqueReferencedNodeIds.length > 0) {
+                await ctx.runMutation(internal.references.createReferences, {
+                    nodeIdList: [nodeId, ...uniqueReferencedNodeIds],
+                    vision: channel.vision,
+                    channel: channel._id,
+                    frame: args.frameId,
+                });
+            }
+        }
+
         return nodeId;
     },
 });
@@ -133,6 +177,57 @@ export const update = mutation({
 
         if (node.vision) {
             await requireVisionAccess(ctx, node.vision);
+        }
+
+        // Extract old references from current node content
+        const oldReferences = [
+            ...extractReferencesFromText(node.value || ""),
+            ...extractReferencesFromText(node.thought || ""),
+        ];
+
+        // Extract new references from updated content
+        const newValue = args.value !== undefined ? args.value : node.value;
+        const newThought = args.thought !== undefined ? args.thought : node.thought;
+        const newReferences = [
+            ...extractReferencesFromText(newValue || ""),
+            ...extractReferencesFromText(newThought || ""),
+        ];
+
+        // Find removed and added references
+        const oldRefSet = new Set(oldReferences);
+        const newRefSet = new Set(newReferences);
+
+        const removedReferences = oldReferences.filter((ref) => !newRefSet.has(ref));
+        const addedReferences = newReferences.filter((ref) => !oldRefSet.has(ref));
+
+        // Delete references that were removed
+        if (node.vision && removedReferences.length > 0) {
+            const referenceIds = await ctx.db
+                .query("references")
+                .withIndex("by_parent", (q) => q.eq("parent", args.id))
+                .collect()
+                .then((refs) =>
+                    refs
+                        .filter((ref) => removedReferences.includes(ref.ref))
+                        .map((ref) => ref._id)
+                );
+
+            if (referenceIds.length > 0) {
+                await ctx.runMutation(internal.references.deleteReferences, {
+                    referenceIdList: referenceIds,
+                    vision: node.vision,
+                });
+            }
+        }
+
+        // Create references that were added
+        if (node.vision && addedReferences.length > 0) {
+            await ctx.runMutation(internal.references.createReferences, {
+                nodeIdList: [args.id, ...addedReferences],
+                vision: node.vision,
+                channel: node.channel,
+                frame: node.frame as Id<"frames"> | undefined,
+            });
         }
 
         const updates: any = {
@@ -159,6 +254,32 @@ export const remove = mutation({
 
         if (node.vision) {
             await requireVisionAccess(ctx, node.vision);
+        }
+
+        // Delete all references for the node being deleted
+        // This includes references where the node is a parent and references where the node is referenced
+        if (node.vision) {
+            const parentReferences = await ctx.db
+                .query("references")
+                .withIndex("by_parent", (q) => q.eq("parent", args.id))
+                .collect();
+
+            const refReferences = await ctx.db
+                .query("references")
+                .withIndex("by_ref", (q) => q.eq("ref", args.id))
+                .collect();
+
+            const allReferenceIds = [
+                ...parentReferences.map((ref) => ref._id),
+                ...refReferences.map((ref) => ref._id),
+            ];
+
+            if (allReferenceIds.length > 0) {
+                await ctx.runMutation(internal.references.deleteReferences, {
+                    referenceIdList: allReferenceIds,
+                    vision: node.vision,
+                });
+            }
         }
 
         await ctx.db.delete(args.id);
@@ -270,6 +391,7 @@ export const listByChannel = query({
             paginationOpts
         );
 
+        // Enrich nodes with frame information
         const nodesWithFrames = await Promise.all(
             page.map(async (node) => {
                 let frameTitle = null;
@@ -284,8 +406,26 @@ export const listByChannel = query({
             })
         );
 
+        // Fetch all references for the nodes in this page
+        const nodeIds = nodesWithFrames.map((node) => node._id);
+        const referencesMap: ReferencesMapItem[] = await ctx.runQuery(internal.references.getReferences, {
+            nodeIdList: nodeIds,
+            vision: channel.vision,
+        });
+
+        // Create a map for quick lookup
+        const referencesByNodeId = new Map(
+            referencesMap.map((ref) => [ref.nodeId, ref.referencingNodes])
+        );
+
+        // Integrate references into nodes
+        const nodesWithReferences = nodesWithFrames.map((node) => ({
+            ...node,
+            referencedIn: referencesByNodeId.get(node._id) || [],
+        }));
+
         return {
-            page: nodesWithFrames,
+            page: nodesWithReferences,
             isDone,
             continueCursor,
         };
