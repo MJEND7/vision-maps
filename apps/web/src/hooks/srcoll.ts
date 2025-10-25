@@ -1,49 +1,57 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 function useSmoothWheelScroll(
   scrollContainerRef: React.RefObject<HTMLDivElement | null>,
-  isMobile: boolean
+  isMobile: boolean,
+  enabled: boolean = true
 ) {
+  const velocityRef = useRef(0);
+  const rafIdRef = useRef<number | null>(null);
+
   useEffect(() => {
     const container = scrollContainerRef.current;
-    if (!container || isMobile) return;
 
-    let velocity = 0;
-    let rafId: number | null = null;
+    // Return early if conditions aren't met
+    if (!container || isMobile || !enabled) return;
 
-    const friction = 0.95; // 0.90–0.97 works well; smaller is slower
-    const speedMultiplier = 1.2; // a sensitivity factor
+    const friction = 0.55;
+    const speedMultiplier = 0.5;
 
     const animate = () => {
       if (!container) return;
-      container.scrollLeft += velocity;
-      velocity *= friction;
 
-      if (Math.abs(velocity) > 0.1) {
-        rafId = requestAnimationFrame(animate);
+      container.scrollLeft += velocityRef.current;
+      velocityRef.current *= friction;
+
+      if (Math.abs(velocityRef.current) > 0.1) {
+        rafIdRef.current = requestAnimationFrame(animate);
       } else {
-        velocity = 0;
-        rafId = null;
+        velocityRef.current = 0;
+        rafIdRef.current = null;
       }
     };
 
     const handleWheel = (e: WheelEvent) => {
       if (e.deltaY !== 0 && !e.altKey) {
         e.preventDefault();
-        velocity += e.deltaY * speedMultiplier;
+        velocityRef.current += e.deltaY * speedMultiplier;
 
-        if (!rafId) {
-          rafId = requestAnimationFrame(animate);
+        if (!rafIdRef.current) {
+          rafIdRef.current = requestAnimationFrame(animate);
         }
       }
     };
 
     container.addEventListener("wheel", handleWheel, { passive: false });
+
     return () => {
       container.removeEventListener("wheel", handleWheel);
-      if (rafId) cancelAnimationFrame(rafId);
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
     };
-  }, [scrollContainerRef, isMobile]);
+  }, [scrollContainerRef, isMobile, enabled]);
 }
 
 export default useSmoothWheelScroll;

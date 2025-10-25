@@ -520,7 +520,6 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             }
         }
 
-        console.log(pasteBinData)
         if (pasteBinData.chatId && deleteUnusedChat) {
             try {
                 console.log("Deleting chat:", pasteBinData.chatId);

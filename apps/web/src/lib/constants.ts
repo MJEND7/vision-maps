@@ -10,7 +10,6 @@ export const NODE_VARIANTS: { value: NodeVariants; label: NodeVariants }[] = [
   { value: NodeVariants.Text, label: NodeVariants.Text },
   { value: NodeVariants.YouTube, label: NodeVariants.YouTube },
   { value: NodeVariants.Spotify, label: NodeVariants.Spotify },
-  { value: NodeVariants.AppleMusic, label: NodeVariants.AppleMusic },
   { value: NodeVariants.Notion, label: NodeVariants.Notion },
   { value: NodeVariants.Figma, label: NodeVariants.Figma },
   { value: NodeVariants.GitHub, label: NodeVariants.GitHub },
