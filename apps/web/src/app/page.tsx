@@ -229,11 +229,12 @@ function Features() {
                                 </div>
                             )}
 
-                            {feature.component === "pastebin-preview" && (
+                            {/* DemoPasteBin disabled for performance - heavy spring animations */}
+                            {/* {feature.component === "pastebin-preview" && (
                                 <div className="sm:absolute w-full opacity-90 -bottom-3 scale-90 flex justify-end z-[10]  pointer-events-none">
                                     <DemoPasteBin />
                                 </div>
-                            )}
+                            )} */}
 
                             {feature.image && (
                                 <div className="sm:inline sm:absolute w-full opacity-90 -bottom-3 scale-90 -right-35 z-[10] pointer-events-none">
