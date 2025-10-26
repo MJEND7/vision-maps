@@ -201,7 +201,8 @@ function Features() {
                                             className="w-17 h-17"
                                             width={30}
                                             height={30}
-                                            quality={60}
+                                            quality={100}
+                                            priority
                                             src={"/landing/Olive_Wipper_Snapper.png"}
                                             alt=""
                                         />
@@ -211,7 +212,8 @@ function Features() {
                                             className="w-17 h-17"
                                             width={30}
                                             height={30}
-                                            quality={60}
+                                            quality={100}
+                                            priority
                                             src={feature.emoji}
                                             alt=""
                                         />
@@ -221,7 +223,8 @@ function Features() {
                                             className="w-17 h-17"
                                             width={30}
                                             height={30}
-                                            quality={60}
+                                            quality={100}
+                                            priority
                                             src={"/landing/Black_Chick_Happy.png"}
                                             alt=""
                                         />
@@ -242,7 +245,8 @@ function Features() {
                                         className="w-full"
                                         width={850}
                                         height={620}
-                                        quality={70}
+                                        quality={100}
+                                        priority
                                         src={feature.image}
                                         alt=""
                                         style={{
