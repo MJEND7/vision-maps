@@ -203,6 +203,7 @@ function Features() {
                                             height={30}
                                             quality={100}
                                             priority
+                                            unoptimized
                                             src={"/landing/Olive_Wipper_Snapper.png"}
                                             alt=""
                                         />
@@ -214,6 +215,7 @@ function Features() {
                                             height={30}
                                             quality={100}
                                             priority
+                                            unoptimized
                                             src={feature.emoji}
                                             alt=""
                                         />
@@ -225,6 +227,7 @@ function Features() {
                                             height={30}
                                             quality={100}
                                             priority
+                                            unoptimized
                                             src={"/landing/Black_Chick_Happy.png"}
                                             alt=""
                                         />
@@ -232,12 +235,11 @@ function Features() {
                                 </div>
                             )}
 
-                            {/* DemoPasteBin disabled for performance - heavy spring animations */}
-                            {/* {feature.component === "pastebin-preview" && (
+                            {feature.component === "pastebin-preview" && (
                                 <div className="sm:absolute w-full opacity-90 -bottom-3 scale-90 flex justify-end z-[10]  pointer-events-none">
                                     <DemoPasteBin />
                                 </div>
-                            )} */}
+                            )}
 
                             {feature.image && (
                                 <div className="sm:inline sm:absolute w-full opacity-90 -bottom-3 scale-90 -right-35 z-[10] pointer-events-none">
@@ -247,6 +249,7 @@ function Features() {
                                         height={620}
                                         quality={100}
                                         priority
+                                        unoptimized
                                         src={feature.image}
                                         alt=""
                                         style={{
