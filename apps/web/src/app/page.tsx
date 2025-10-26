@@ -22,7 +22,8 @@ export default function Home() {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5 }}
             >
-                <div className="w-screen h-[300px] dark:inline hidden overflow-none sm:h-screen bg-transparent absolute sm:top-0 top-15">
+                {/* LightRays disabled for performance - WebGL animation was causing lag */}
+                {/* <div className="w-screen h-[300px] dark:inline hidden overflow-none sm:h-screen bg-transparent absolute sm:top-0 top-15">
                     <LightRays
                         raysOrigin="top-center"
                         raysSpeed={1.5}
@@ -34,8 +35,7 @@ export default function Home() {
                         distortion={0.05}
                         className="custom-rays"
                     />
-
-                </div>
+                </div> */}
                 <LandingNav showLandingSections />
 
                 <div
@@ -122,7 +122,7 @@ function Features() {
             id="features"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.3 }}
             viewport={{ once: true }}
             className="py-20 px-2 sm:px-6 bg-background relative"
         >
@@ -151,9 +151,9 @@ function Features() {
                     {features.map((feature, index) => (
                         <motion.div
                             key={index}
-                            initial={{ y: 40, opacity: 0 }}
-                            whileInView={{ y: 0, opacity: 1 }}
-                            transition={{ duration: 0.5, delay: index * 0.1 }}
+                            initial={{ opacity: 0 }}
+                            whileInView={{ opacity: 1 }}
+                            transition={{ duration: 0.3, delay: index * 0.02 }}
                             viewport={{ once: true }}
                             className={`flex flex-col justify-between rounded-xl border border-border 
                          bg-gradient-to-b from-background/40 to-background/20 
@@ -201,8 +201,7 @@ function Features() {
                                             className="w-17 h-17"
                                             width={30}
                                             height={30}
-                                            quality={100}
-                                            unoptimized
+                                            quality={60}
                                             src={"/landing/Olive_Wipper_Snapper.png"}
                                             alt=""
                                         />
@@ -212,8 +211,7 @@ function Features() {
                                             className="w-17 h-17"
                                             width={30}
                                             height={30}
-                                            quality={100}
-                                            unoptimized
+                                            quality={60}
                                             src={feature.emoji}
                                             alt=""
                                         />
@@ -223,8 +221,7 @@ function Features() {
                                             className="w-17 h-17"
                                             width={30}
                                             height={30}
-                                            quality={100}
-                                            unoptimized
+                                            quality={60}
                                             src={"/landing/Black_Chick_Happy.png"}
                                             alt=""
                                         />
@@ -244,8 +241,7 @@ function Features() {
                                         className="w-full"
                                         width={850}
                                         height={620}
-                                        quality={100}
-                                        unoptimized
+                                        quality={70}
                                         src={feature.image}
                                         alt=""
                                         style={{
@@ -291,15 +287,15 @@ function CallToAction() {
         <motion.section
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.3 }}
             viewport={{ once: true }}
             className="py-20 px-6 bg-gradient-to-r from-primary/5 to-primary/10"
         >
             <div className="max-w-4xl mx-auto text-center">
                 <motion.div
-                    initial={{ y: 50, opacity: 0 }}
-                    whileInView={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.6 }}
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
                     viewport={{ once: true }}
                     className="space-y-8"
                 >
@@ -314,9 +310,9 @@ function CallToAction() {
                     </p>
 
                     <motion.div
-                        initial={{ y: 20, opacity: 0 }}
-                        whileInView={{ y: 0, opacity: 1 }}
-                        transition={{ duration: 0.6, delay: 0.2 }}
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        transition={{ duration: 0.3, delay: 0.05 }}
                         viewport={{ once: true }}
                         className="flex flex-col sm:flex-row gap-4 justify-center items-center"
                     >
@@ -343,9 +339,9 @@ function CallToAction() {
                     </motion.div>
 
                     <motion.div
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        whileInView={{ scale: 1, opacity: 1 }}
-                        transition={{ duration: 0.6, delay: 0.4 }}
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        transition={{ duration: 0.3, delay: 0.1 }}
                         viewport={{ once: true }}
                         className="pt-8"
                     >
