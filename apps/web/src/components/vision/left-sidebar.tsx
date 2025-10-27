@@ -12,6 +12,7 @@ import { Vision } from '@convex/tables/visions';
 import { TabStore, ViewMode } from '@/types/vision_page';
 import { ProfileSettingsDialog } from '@/components/ui/profile-settings-dialog';
 import { useChannelManagement } from '@/hooks/useChannelManagement';
+import Link from 'next/link';
 
 interface TitleCardProps {
     isLoading: boolean;
@@ -28,9 +29,9 @@ function TitleCard({ isLoading, vision, onOpenSettings, className }: TitleCardPr
     return (
         <div className={cn('w-full space-y-2 pb-2 pt-4 px-4', className)}>
             <div className="w-full flex justify-between items-center">
-                <div className="text-sm flex items-center gap-1">
+                <Link href={"/dashboard/visions"} className="text-sm flex items-center gap-1">
                     ← Back
-                </div>
+                </Link>
                 <button
                     onClick={() => onOpenSettings(vision._id.toString())}
                     className="hover:rotate-180 rounded p-1 transition-all ease-in-out duration-500"
