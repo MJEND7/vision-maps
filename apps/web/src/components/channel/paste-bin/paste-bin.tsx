@@ -864,7 +864,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
 
                             handleCreate();
                         }}
-                        onPaste={mode === PasteBinMode.IDLE ? handlePaste : undefined}
+                        onPaste={mode === PasteBinMode.IDLE || mode == PasteBinMode.TEXT ? handlePaste : undefined}
                         onMicrophoneSelect={async () => {
                             try {
                                 setSelectedDeviceId(undefined);

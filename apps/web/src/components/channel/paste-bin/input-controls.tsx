@@ -51,7 +51,7 @@ export function InputControls({
                 value={value}
                 onChange={onChange}
                 onKeyDown={onKeyDown}
-                onPaste={isIdleMode ? onPaste : undefined}
+                onPaste={onPaste}
             />
 
             <AnimatePresence>
