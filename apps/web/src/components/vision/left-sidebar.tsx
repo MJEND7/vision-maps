@@ -286,7 +286,7 @@ export function LeftSidebar({
                         animate={{ x: 0 }}
                         exit={{ x: -280 }}
                         transition={{ duration: 0.3, ease: "easeInOut" }}
-                        className="w-[250px] h-full bg-card border-r border-border flex z-50 absolute top-0 left-0 shadow-lg"
+                        className="w-[250px] h-full bg-background border-r border-border flex z-50 absolute top-0 left-0 shadow-lg"
                     >
                         {sidebarContent}
                     </motion.div>
@@ -302,7 +302,7 @@ export function LeftSidebar({
 
     return (
         <div
-            className="h-full bg-card border-r border-border flex flex-col relative z-40"
+            className="h-full bg-background border-r border-border flex flex-col relative z-40"
             style={{
                 width: sidebarWidth,
                 height: '100vh'

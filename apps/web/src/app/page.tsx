@@ -6,7 +6,6 @@ import LandingFooter from "@/components/landing/LandingFooter";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Users, Palette, Globe, Upload, Brain } from "lucide-react";
 import { Authenticated, Unauthenticated } from "convex/react";
-import LightRays from "@/backgrounds/LightRays/LightRays";
 import { ROUTES } from "@/lib/constants";
 import { Header } from "@/components/landing/Header";
 import { About } from "@/components/landing/About";
@@ -22,20 +21,6 @@ export default function Home() {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5 }}
             >
-                <div className="w-screen h-[300px] dark:inline hidden overflow-none sm:h-screen bg-transparent absolute sm:top-0 top-15">
-                    <LightRays
-                        raysOrigin="top-center"
-                        raysSpeed={1.5}
-                        lightSpread={0.8}
-                        rayLength={0.8}
-                        followMouse={true}
-                        mouseInfluence={0.1}
-                        noiseAmount={0.1}
-                        distortion={0.05}
-                        className="custom-rays"
-                    />
-
-                </div>
                 <LandingNav showLandingSections />
 
                 <div
@@ -122,7 +107,7 @@ function Features() {
             id="features"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.3 }}
             viewport={{ once: true }}
             className="py-20 px-2 sm:px-6 bg-background relative"
         >
@@ -151,9 +136,9 @@ function Features() {
                     {features.map((feature, index) => (
                         <motion.div
                             key={index}
-                            initial={{ y: 40, opacity: 0 }}
-                            whileInView={{ y: 0, opacity: 1 }}
-                            transition={{ duration: 0.5, delay: index * 0.1 }}
+                            initial={{ opacity: 0 }}
+                            whileInView={{ opacity: 1 }}
+                            transition={{ duration: 0.3, delay: index * 0.02 }}
                             viewport={{ once: true }}
                             className={`flex flex-col justify-between rounded-xl border border-border 
                          bg-gradient-to-b from-background/40 to-background/20 
@@ -202,6 +187,7 @@ function Features() {
                                             width={30}
                                             height={30}
                                             quality={100}
+                                            priority
                                             unoptimized
                                             src={"/landing/Olive_Wipper_Snapper.png"}
                                             alt=""
@@ -213,6 +199,7 @@ function Features() {
                                             width={30}
                                             height={30}
                                             quality={100}
+                                            priority
                                             unoptimized
                                             src={feature.emoji}
                                             alt=""
@@ -224,6 +211,7 @@ function Features() {
                                             width={30}
                                             height={30}
                                             quality={100}
+                                            priority
                                             unoptimized
                                             src={"/landing/Black_Chick_Happy.png"}
                                             alt=""
@@ -245,6 +233,7 @@ function Features() {
                                         width={850}
                                         height={620}
                                         quality={100}
+                                        priority
                                         unoptimized
                                         src={feature.image}
                                         alt=""
@@ -291,15 +280,15 @@ function CallToAction() {
         <motion.section
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.3 }}
             viewport={{ once: true }}
             className="py-20 px-6 bg-gradient-to-r from-primary/5 to-primary/10"
         >
             <div className="max-w-4xl mx-auto text-center">
                 <motion.div
-                    initial={{ y: 50, opacity: 0 }}
-                    whileInView={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.6 }}
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
                     viewport={{ once: true }}
                     className="space-y-8"
                 >
@@ -314,9 +303,9 @@ function CallToAction() {
                     </p>
 
                     <motion.div
-                        initial={{ y: 20, opacity: 0 }}
-                        whileInView={{ y: 0, opacity: 1 }}
-                        transition={{ duration: 0.6, delay: 0.2 }}
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        transition={{ duration: 0.3, delay: 0.05 }}
                         viewport={{ once: true }}
                         className="flex flex-col sm:flex-row gap-4 justify-center items-center"
                     >
@@ -343,9 +332,9 @@ function CallToAction() {
                     </motion.div>
 
                     <motion.div
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        whileInView={{ scale: 1, opacity: 1 }}
-                        transition={{ duration: 0.6, delay: 0.4 }}
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        transition={{ duration: 0.3, delay: 0.1 }}
                         viewport={{ once: true }}
                         className="pt-8"
                     >

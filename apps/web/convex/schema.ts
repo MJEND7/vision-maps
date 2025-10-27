@@ -18,6 +18,7 @@ import { Workspaces } from "./tables/workspace";
 import { WorkspaceMembers } from "./tables/workspaceMember";
 import { Plans } from "./tables/plans";
 import { Invoices } from "./tables/invoices";
+import { References } from "./tables/references";
 
 // The schema is entirely optional.
 // You can delete this file (schema.ts) and the
@@ -31,6 +32,7 @@ export default defineSchema({
     frame_positions: Frame.PositionsTable,
     framed_node: FramedNode.Table,
     nodes: Nodes.Table,
+    references: References.Table,
     edges: Edges.Table,
     users: User.Table,
     comments: Comments.Table,

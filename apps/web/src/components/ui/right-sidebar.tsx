@@ -289,7 +289,7 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
                     {/* AI Tab Content */}
                     {selectedTab === "ai" && (
                         canUseAI ? (
-                            <div className="flex-1 flex flex-col min-h-0">
+                            <div className="relative flex-1 flex flex-col min-h-0">
                                 {!selectedChatId ? (
                                     <ImprovedChatList
                                         visionId={visionId}
@@ -326,7 +326,7 @@ export const RightSidebarContent = forwardRef<RightSidebarContentRef, RightSideb
                                 )}
 
                                 {/* Single ChatInput - always rendered */}
-                                <div className="flex-shrink-0 px-4 pb-8 sm:pb-4">
+                                <div className="absolute w-full bottom-0 flex-shrink-0 px-4 pb-8 sm:pb-4">
                                     <ChatInput
                                         ref={chatInputRef}
                                         onSendMessage={selectedChatId ? handleSendMessage : undefined}

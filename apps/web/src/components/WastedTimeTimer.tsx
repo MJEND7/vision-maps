@@ -24,10 +24,10 @@ export default function WastedTimeTimer() {
     // Set start time if not already set
     setVisitStartTime();
 
-    // Update timer every 10ms for smooth decimal display
+    // Update timer every 100ms instead of 10ms to reduce re-renders
     const interval = setInterval(() => {
       setSecondsWasted(getSecondsWithDecimalsWasted());
-    }, 10);
+    }, 100);
 
     // Initial update
     setSecondsWasted(getSecondsWithDecimalsWasted());
@@ -41,9 +41,9 @@ export default function WastedTimeTimer() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 2.0 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, delay: 0.8 }}
     >
       <p className="text-xs sm:text-[18px] text-primary/80 sm:text-left text-center">
         Time not building your <span className="italic">Vision</span>: <span className="font-mono text-red-400 font-medium tabular-nums"

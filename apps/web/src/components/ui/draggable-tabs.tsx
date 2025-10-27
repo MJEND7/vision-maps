@@ -223,6 +223,7 @@ export function DraggableTabs({
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const mobileDragDebounce = useRef<NodeJS.Timeout | undefined>(undefined);
     const [mobileDragEnabled, setMobileDragEnabled] = useState(false);
+    const draggable = !isMobile || (isMobile && mobileDragEnabled);
 
     const longPressHandlers = useLongPress(
         {
@@ -254,7 +255,8 @@ export function DraggableTabs({
         return () => observer.disconnect();
     }, []);
 
-    useSmoothWheelScroll(scrollContainerRef, isMobile);
+    // Enable wheel scroll only on desktop when NOT in drag mode
+    useSmoothWheelScroll(scrollContainerRef, isMobile, !draggable && !isMobile);
 
     // Auto-scroll selected tab
     useLayoutEffect(() => {
@@ -278,7 +280,6 @@ export function DraggableTabs({
         [TabReorderAction]
     );
 
-    const draggable = !isMobile || (isMobile && mobileDragEnabled);
     const items = tabs.map((tab) => (
         <DraggableTab
             key={tab.id}
@@ -303,11 +304,20 @@ export function DraggableTabs({
 
     return (
         <div
+            ref={scrollContainerRef}
             onContextMenu={(e) => e.preventDefault()}
             className={cn(
-                "flex gap-1 w-full bg-accent overflow-hidden",
+                "flex gap-1 w-full bg-accent scrollbar-hide",
                 isMobile ? "pt-1 px-1 h-9" : "pt-2 px-2 h-10"
             )}
+            style={!draggable ? {
+                scrollBehavior: "smooth",
+                WebkitOverflowScrolling: "touch",
+                overflowX: "auto",
+                overscrollBehaviorX: "contain",
+            } : {
+                overflowX: "hidden",
+            }}
         >
             {
                 draggable ? (
@@ -316,27 +326,20 @@ export function DraggableTabs({
                         values={tabs}
                         onReorder={handleReorder}
                         className="flex gap-1"
-                        style={{ display: "flex", flexShrink: 0, width: "max-content" }
-                        }
+                        style={{
+                            display: "flex",
+                            flexShrink: 0,
+                            width: "max-content",
+                            overflowX: "auto",
+                            scrollBehavior: "smooth",
+                        }}
                     >
                         {items}
                     </Reorder.Group >
                 ) : (
-
-                    <div
-                        ref={scrollContainerRef}
-                        className={cn(
-                            "flex gap-1 w-full bg-accent overflow-hidden scrollbar-hide",
-                        )}
-                        style={{
-                            scrollBehavior: "smooth",
-                            WebkitOverflowScrolling: "touch",
-                            overflowX: "auto",
-                            overscrollBehaviorX: "contain",
-                        }}
-                    >
+                    <>
                         {items}
-                    </div>
+                    </>
                 )}
         </div >
     );

@@ -29,7 +29,7 @@ function SafeVideo({ src, width, height }: { src: string; width?: number; height
       loop
       muted
       playsInline
-      preload="metadata"
+      preload="none"
     >
       <source src={src} type="video/mp4" />
       Your browser does not support the video tag.

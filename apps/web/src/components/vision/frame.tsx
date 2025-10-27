@@ -25,75 +25,36 @@ import PasteBin from "../channel/paste-bin";
 import { useMovementQueue } from "../../hooks/frames/useMovementQueue";
 import nodeTypes from "./nodes";
 import { CanvasContextMenu } from "./canvas-context-menu";
-import { AddExistingNodeDialog } from "./add-existing-node-dialog";
+import { SearchVisionNodes } from "./search-vision-nodes";
 import usePresence from "@convex-dev/presence/react";
 import { useSidebar } from "../../contexts/sidebar-context";
 import { useViewportCenter } from "../../hooks/frames/useViewportCenter";
 import { ReactFlowErrorBoundary } from "./ReactFlowErrorBoundary";
 import useCreateNode from "@/hooks/nodes/useCreateNode";
 
-// Component that has access to ReactFlow context for viewport positioning
-function ViewportAwareNodeManager({
-    showAddNodeDialog,
-    setShowAddNodeDialog,
-    id,
-    frame,
-    addExistingNodeToFrame,
+export function ViewportAwareNodeManager({
     onViewportCenterChange,
     onScreenToFlowPositionChange,
-    rightClickPosition,
 }: {
-    showAddNodeDialog: boolean;
-    setShowAddNodeDialog: (show: boolean) => void;
-    id: Id<"frames">;
-    frame: any;
-    addExistingNodeToFrame: any;
     onViewportCenterChange: (getCenter: () => { x: number; y: number }) => void;
-    onScreenToFlowPositionChange: (convert: (x: number, y: number) => { x: number; y: number }) => void;
-    rightClickPosition: { x: number; y: number } | null;
+    onScreenToFlowPositionChange: (
+        convert: (x: number, y: number) => { x: number; y: number }
+    ) => void;
 }) {
     const { getViewportCenter, convertScreenToFlowPosition } = useViewportCenter();
 
-    // Pass the viewport functions up to the parent
     useEffect(() => {
         onViewportCenterChange(getViewportCenter);
         onScreenToFlowPositionChange(convertScreenToFlowPosition);
-    }, [getViewportCenter, convertScreenToFlowPosition, onViewportCenterChange, onScreenToFlowPositionChange]);
+    }, [
+        getViewportCenter,
+        convertScreenToFlowPosition,
+        onViewportCenterChange,
+        onScreenToFlowPositionChange,
+    ]);
 
-    const handleAddExistingNode = useCallback(async (nodeId: Id<"nodes">) => {
-        let position: { x: number; y: number };
-
-        if (rightClickPosition) {
-            // Use the right-click position if available
-            position = rightClickPosition;
-        } else {
-            // Fallback to viewport center with randomness
-            const center = getViewportCenter();
-            position = {
-                x: center.x,
-                y: center.y,
-            };
-        }
-
-        await addExistingNodeToFrame({
-            nodeId,
-            frameId: id,
-            position,
-        });
-    }, [getViewportCenter, addExistingNodeToFrame, id, rightClickPosition]);
-
-    return (
-        <AddExistingNodeDialog
-            isOpen={showAddNodeDialog}
-            onClose={() => setShowAddNodeDialog(false)}
-            frameId={id}
-            channelId={frame.channel}
-            onNodeAdded={() => setShowAddNodeDialog(false)}
-            onAddNode={handleAddExistingNode}
-        />
-    );
+    return null; // purely hooks, no visible UI element
 }
-
 export default function FrameComponent({
     id,
     userId,
@@ -102,34 +63,35 @@ export default function FrameComponent({
 }: {
     id: Id<"frames">;
     userId: string;
-    visionId: string,
+    visionId: string;
     onShowUpgradeDialog: (show: boolean) => void;
 }) {
     const { openChat, rightSidebarContentRef } = useSidebar();
     const [isDark, setIsDark] = useState(false);
-    const [getViewportCenter, setViewportCenter] = useState<(() => { x: number; y: number })>(() => ({ x: 0, y: 0 }));
+    const [getViewportCenter, setViewportCenter] = useState<() => { x: number; y: number }>(() => ({ x: 0, y: 0 }));
     const [convertScreenToFlowPosition, setConvertScreenToFlowPosition] = useState<((x: number, y: number) => { x: number; y: number }) | null>(null);
     const [rightClickPosition, setRightClickPosition] = useState<{ x: number; y: number } | null>(null);
 
-    // Dynamic edge styling - memoized to prevent unnecessary re-renders
-    const defaultEdgeOptions: DefaultEdgeOptions = useMemo(() => ({
-        animated: true,
-        style: {
-            stroke: isDark ? "#e5e5e5" : "#b1b1b7",
-            strokeWidth: 2,
-        },
-        markerEnd: { type: 'arrow', color: isDark ? "#e5e5e5" : "#b1b1b7" },
-    }), [isDark]);
+    // === styling ===
+    const defaultEdgeOptions: DefaultEdgeOptions = useMemo(
+        () => ({
+            animated: true,
+            style: {
+                stroke: isDark ? "#e5e5e5" : "#b1b1b7",
+                strokeWidth: 2,
+            },
+            markerEnd: { type: "arrow", color: isDark ? "#e5e5e5" : "#b1b1b7" },
+        }),
+        [isDark]
+    );
 
-    // Detect dark mode from Tailwind
+    // track system dark mode
     useEffect(() => {
         const checkDarkMode = () => {
-            const isDarkMode =
-                document.documentElement.classList.contains("dark");
+            const isDarkMode = document.documentElement.classList.contains("dark");
             setIsDark(isDarkMode);
         };
         checkDarkMode();
-
         const observer = new MutationObserver(checkDarkMode);
         observer.observe(document.documentElement, {
             attributes: true,
@@ -138,15 +100,16 @@ export default function FrameComponent({
         return () => observer.disconnect();
     }, []);
 
+    // === main state ===
     const [nodes, setNodes] = useState<Node[]>([]);
     const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
     const [selectedEdges, setSelectedEdges] = useState<string[]>([]);
-    const [contextMenu, setContextMenu] = useState<{
-        show: boolean;
-        x: number;
-        y: number;
-        type: 'node' | 'edge' | 'pane';
-    }>({ show: false, x: 0, y: 0, type: 'pane' });
+    const [contextMenu, setContextMenu] = useState({
+        show: false,
+        x: 0,
+        y: 0,
+        type: "pane" as "node" | "edge" | "pane",
+    });
     const [showAddNodeDialog, setShowAddNodeDialog] = useState(false);
 
     // === Convex data ===
@@ -158,90 +121,57 @@ export default function FrameComponent({
     });
     const isAlone = !(users?.find((u) => u.online));
 
-    const createNode = useCreateNode({ visionId })
+    const createNode = useCreateNode({ visionId });
     const updateEdges = useMutation(api.edges.update);
     const addExistingNodeToFrame = useMutation(api.nodes.addToFrame);
 
     const framedNodes = useQuery(api.frames.getFrameNodes, { frameId: id });
     const edges = useQuery(api.edges.get, { frameId: id });
 
-
     // Movement queue
-    const { setNodesMap, handleNodesChange } = useMovementQueue(
-        id,
-        isAlone,
-        setNodes
-    );
+    const { setNodesMap, handleNodesChange } = useMovementQueue(id, isAlone, setNodes);
 
-    // Function to update editingNodeId and nodes simultaneously
     const updateEditingNodeId = useCallback((nodeId: string | null) => {
-        setNodes((currentNodes) => {
-            return currentNodes.map((node) => ({
-                ...node,
-                data: {
-                    ...node.data,
-                    editingNodeId: nodeId,
-                }
-            }));
-        });
+        setNodes((cur) => cur.map((n) => ({
+            ...n,
+            data: { ...n.data, editingNodeId: nodeId },
+        })));
     }, []);
 
-    // Function to update node content in the nodes list
     const updateNodeContent = useCallback((nodeId: string, newValue: string) => {
-        setNodes((currentNodes) => {
-            return currentNodes.map((node) => {
-                if (node.id === nodeId) {
-                    return {
-                        ...node,
+        setNodes((cur) =>
+            cur.map((n) =>
+                n.id === nodeId
+                    ? {
+                        ...n,
                         data: {
-                            ...node.data,
-                            node: {
-                                ...(node.data.node || {}),
-                                value: newValue,
-                            }
-                        }
-                    };
-                }
-                return node;
-            });
-        });
+                            ...n.data,
+                            node: { ...(n.data.node || {}), value: newValue },
+                        },
+                    }
+                    : n
+            )
+        );
     }, []);
 
-    // === Node data transformation ===
+    // === Node data sync ===
     useEffect(() => {
         if (!framedNodes) return;
-
         setNodes((current) => {
-            const newMap = new Map(current.map((n) => [n.id, n])); // existing
+            const newMap = new Map(current.map((n) => [n.id, n]));
+            const framedNodeIds = new Set(framedNodes.map((fn) => fn.node.id));
 
-            // Get the current set of node IDs from framedNodes
-            const framedNodeIds = new Set(framedNodes.map(fn => fn.node.id));
-
-            // Remove nodes that are no longer in framedNodes
-            const currentNodeIds = Array.from(newMap.keys());
-            currentNodeIds.forEach(nodeId => {
-                if (!framedNodeIds.has(nodeId)) {
-                    newMap.delete(nodeId);
-                }
+            Array.from(newMap.keys()).forEach((nodeId) => {
+                if (!framedNodeIds.has(nodeId)) newMap.delete(nodeId);
             });
 
-            // Add/update nodes from framedNodes
             framedNodes.forEach((framedNode) => {
-                if (newMap.get(framedNode.node.id)) {
-                    return
-                }
+                if (newMap.get(framedNode.node.id)) return;
                 const reactNode: Node = {
                     ...(framedNode.node as any),
                     type: framedNode.node.variant || "Text",
                     data: {
-                        node:
-                            framedNode.node ||
-                            ({
-                                _id: "",
-                                title: "Error loading node",
-                                variant: "Text",
-                                value: "",
-                            } as any),
+                        node: framedNode.node,
                         nodeUser: null,
                         frameId: id,
                         visionId: frame?.vision,
@@ -249,9 +179,9 @@ export default function FrameComponent({
                         onUpdateNodeContent: updateNodeContent,
                         onOpenChat: openChat,
                         onComment: () => {
-                            // Handler for creating a new comment (from context menu)
-                            // Need to pass the actual database node ID, not the ReactFlow ID
-                            rightSidebarContentRef?.current?.openNodeComments?.(framedNode.node._id);
+                            rightSidebarContentRef?.current?.openNodeComments?.(
+                                framedNode.node._id
+                            );
                         },
                         onNodeRightClick: (nodeId: string, event: React.MouseEvent) => {
                             setSelectedNodes((sel) =>
@@ -262,20 +192,28 @@ export default function FrameComponent({
                                 show: true,
                                 x: event.clientX,
                                 y: event.clientY,
-                                type: 'node',
+                                type: "node",
                             });
                         },
                     },
                 };
-
-                newMap.set(reactNode.id, reactNode); // add/replace
+                newMap.set(reactNode.id, reactNode);
             });
 
             const nextNodes = Array.from(newMap.values());
             setNodesMap(newMap);
             return nextNodes;
         });
-    }, [framedNodes, setNodesMap, id, openChat, updateEditingNodeId, updateNodeContent, rightSidebarContentRef, frame?.vision]);
+    }, [
+        framedNodes,
+        setNodesMap,
+        id,
+        openChat,
+        updateEditingNodeId,
+        updateNodeContent,
+        rightSidebarContentRef,
+        frame?.vision,
+    ]);
 
     const onNodesChange = useCallback(
         (changes: NodeChange[]) => {
@@ -285,12 +223,12 @@ export default function FrameComponent({
         [handleNodesChange]
     );
 
-    // Debounce selection changes to prevent excessive re-renders
     const debouncedSelectionChange = useMemo(
-        () => debounce(({ nodes, edges }: { nodes: Node[]; edges: Edge[] }) => {
-            setSelectedNodes(nodes.map((node) => node.id));
-            setSelectedEdges(edges.map((edge) => edge.id));
-        }, 16), // ~60fps
+        () =>
+            debounce(({ nodes, edges }: { nodes: Node[]; edges: Edge[] }) => {
+                setSelectedNodes(nodes.map((node) => node.id));
+                setSelectedEdges(edges.map((edge) => edge.id));
+            }, 16),
         []
     );
 
@@ -313,8 +251,7 @@ export default function FrameComponent({
 
     const connect = useMutation(api.edges.connect).withOptimisticUpdate(
         (store, args) => {
-            const currentEdges =
-                store.getQuery(api.edges.get, { frameId: id }) ?? [];
+            const currentEdges = store.getQuery(api.edges.get, { frameId: id }) ?? [];
             const connection = {
                 source: args.connection.source || "",
                 target: args.connection.target || "",
@@ -331,11 +268,8 @@ export default function FrameComponent({
             if (
                 connection.source?.startsWith("pending-") ||
                 connection.target?.startsWith("pending-")
-            ) {
-                console.warn("Ignoring pending connection", { connection });
+            )
                 return;
-            }
-            // Set default sourceHandle to bottom and targetHandle to left if not provided
             const connectionWithDefaults = {
                 ...connection,
                 sourceHandle: connection.sourceHandle || Position.Bottom,
@@ -351,25 +285,23 @@ export default function FrameComponent({
             event.preventDefault();
             setSelectedNodes([]);
             setSelectedEdges([]);
-
-            // Convert screen coordinates to world coordinates for node positioning
             if (convertScreenToFlowPosition) {
                 try {
-                    const flowPosition = convertScreenToFlowPosition(event.clientX, event.clientY);
-                    setRightClickPosition(flowPosition);
-                } catch (error) {
-                    console.warn('Failed to calculate right-click position:', error);
+                    const flowPos = convertScreenToFlowPosition(
+                        event.clientX,
+                        event.clientY
+                    );
+                    setRightClickPosition(flowPos);
+                } catch (err) {
+                    console.warn(err);
                     setRightClickPosition(null);
                 }
-            } else {
-                setRightClickPosition(null);
             }
-
             setContextMenu({
                 show: true,
                 x: event.clientX,
                 y: event.clientY,
-                type: 'pane',
+                type: "pane",
             });
         },
         [convertScreenToFlowPosition]
@@ -385,20 +317,19 @@ export default function FrameComponent({
                 show: true,
                 x: event.clientX,
                 y: event.clientY,
-                type: 'edge',
+                type: "edge",
             });
         },
         []
     );
 
     const closeContextMenu = useCallback(() => {
-        setContextMenu({ show: false, x: 0, y: 0, type: 'pane' });
+        setContextMenu({ show: false, x: 0, y: 0, type: "pane" });
     }, []);
 
     useEffect(() => {
-        const handleClick = (event: MouseEvent) => {
-            const target = event.target as Element;
-            if (target?.closest("[data-context-menu]")) return;
+        const handleClick = (e: MouseEvent) => {
+            if ((e.target as Element)?.closest("[data-context-menu]")) return;
             closeContextMenu();
         };
         if (contextMenu.show) {
@@ -407,9 +338,8 @@ export default function FrameComponent({
         }
     }, [contextMenu.show, closeContextMenu]);
 
-    // Selection rectangle right-click
     useEffect(() => {
-        const handleSelectionRectContextMenu = (event: MouseEvent) => {
+        const handler = (event: MouseEvent) => {
             const target = event.target as Element;
             if (
                 target?.classList.contains("react-flow__nodesselection-rect") &&
@@ -421,22 +351,12 @@ export default function FrameComponent({
                     show: true,
                     x: event.clientX,
                     y: event.clientY,
-                    type: 'node',
+                    type: "node",
                 });
             }
         };
-        document.addEventListener(
-            "contextmenu",
-            handleSelectionRectContextMenu,
-            true
-        );
-        return () => {
-            document.removeEventListener(
-                "contextmenu",
-                handleSelectionRectContextMenu,
-                true
-            );
-        };
+        document.addEventListener("contextmenu", handler, true);
+        return () => document.removeEventListener("contextmenu", handler, true);
     }, [selectedNodes.length]);
 
     if (!framedNodes || !edges || !frame) {
@@ -449,7 +369,7 @@ export default function FrameComponent({
 
     return (
         <div className="w-full h-full px-4 pt-4">
-            <div className="relative h-[calc(100%-4rem)]">
+            <div className="relative h-[calc(100%-1rem)]">
                 <ReactFlowErrorBoundary>
                     <ReactFlow
                         nodes={nodes}
@@ -468,16 +388,16 @@ export default function FrameComponent({
                         colorMode={isDark ? "dark" : "light"}
                         className="rounded-xl w-full h-full"
                         multiSelectionKeyCode="Meta"
-                        panOnDrag={true}
-                        selectionOnDrag={true}
+                        panOnDrag
+                        selectionOnDrag
                         selectNodesOnDrag={false}
-                        panOnScroll={true}
+                        panOnScroll
                         zoomOnScroll={false}
-                        zoomOnPinch={true}
+                        zoomOnPinch
                         zoomOnDoubleClick={false}
                         zoomActivationKeyCode="Shift"
                     >
-                        <Controls />
+                        <Controls position="top-left"  />
                         <Background
                             key={id}
                             variant={BackgroundVariant.Dots}
@@ -485,20 +405,20 @@ export default function FrameComponent({
                             gap={40}
                             size={2}
                         />
-
+                        {/* viewport manager now just reports data */}
                         <ViewportAwareNodeManager
-                            showAddNodeDialog={showAddNodeDialog}
-                            setShowAddNodeDialog={setShowAddNodeDialog}
-                            id={id}
-                            frame={frame}
-                            addExistingNodeToFrame={addExistingNodeToFrame}
-                            onViewportCenterChange={(getCenter) => setViewportCenter(() => getCenter)}
-                            onScreenToFlowPositionChange={(convert) => setConvertScreenToFlowPosition(() => convert)}
-                            rightClickPosition={rightClickPosition}
+                            onViewportCenterChange={(getCenter) =>
+                                setViewportCenter(() => getCenter)
+                            }
+                            onScreenToFlowPositionChange={(convert) =>
+                                setConvertScreenToFlowPosition(() => convert)
+                            }
                         />
                     </ReactFlow>
                 </ReactFlowErrorBoundary>
 
+
+                {/* context menu */}
                 <CanvasContextMenu
                     frameId={id}
                     selectedNodes={selectedNodes}
@@ -518,7 +438,6 @@ export default function FrameComponent({
                         .filter(Boolean) as { id: string; type: string; data: any }[]}
                     visionId={frame?.vision}
                     onDeleteSelected={() => {
-                        // Clear selections after deletion
                         setSelectedNodes([]);
                         setSelectedEdges([]);
                         closeContextMenu();
@@ -532,16 +451,19 @@ export default function FrameComponent({
                         closeContextMenu();
                     }}
                     onComment={() => {
-                        // Handler for creating a new comment (from context menu)
-                        // Get the selected node and open comments for it
                         if (selectedNodes.length === 1) {
-                            const selectedNode = selectedNodes.map((nodeId) => {
-                                const node = nodes.find((n) => n.id === nodeId);
-                                if (!node?.data?.node || typeof node.data.node !== 'object') return null;
-                                return (node.data.node as { _id: Id<"nodes"> })._id;
-                            }).filter(Boolean)[0];
+                            const selectedNode = selectedNodes
+                                .map((nodeId) => {
+                                    const node = nodes.find((n) => n.id === nodeId);
+                                    if (!node?.data?.node || typeof node.data.node !== "object")
+                                        return null;
+                                    return (node.data.node as { _id: Id<"nodes"> })._id;
+                                })
+                                .filter(Boolean)[0];
                             if (selectedNode) {
-                                rightSidebarContentRef?.current?.openNodeComments?.(selectedNode);
+                                rightSidebarContentRef?.current?.openNodeComments?.(
+                                    selectedNode
+                                );
                             }
                         }
                         closeContextMenu();
@@ -557,6 +479,28 @@ export default function FrameComponent({
                 onShowUpgradeDialog={onShowUpgradeDialog}
                 channelId={frame.channel}
                 visionId={visionId}
+            />
+
+            <SearchVisionNodes
+                isOpen={showAddNodeDialog}
+                onClose={() => setShowAddNodeDialog(false)}
+                frameId={id}
+                channelId={frame.channel}
+                onNodeAdded={() => setShowAddNodeDialog(false)}
+                onAddNode={async (nodeId) => {
+                    let position: { x: number; y: number };
+                    if (rightClickPosition) {
+                        position = rightClickPosition;
+                    } else {
+                        const center = getViewportCenter();
+                        position = { x: center.x, y: center.y };
+                    }
+                    await addExistingNodeToFrame({
+                        nodeId,
+                        frameId: id,
+                        position,
+                    });
+                }}
             />
         </div>
     );

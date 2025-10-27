@@ -314,21 +314,18 @@ export function Header() {
                 className="absolute z-[20] text-left top-[80px] sm:top-[280px] sm:left-10 p-4 rounded-lg max-w-[650px] backdrop-blur-md space-y-3"
             >
                 <motion.div
-                    initial={{ y: 100, opacity: 0, scale: 0.8 }}
-                    animate={{ y: 0, opacity: 1, scale: 1 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     transition={{
-                        duration: 1.2,
-                        delay: 0.8,
-                        type: "spring",
-                        stiffness: 100,
-                        damping: 12,
+                        duration: 0.5,
+                        delay: 0.3,
                     }}
                     className="text-5xl sm:text-6xl sm:text-left text-center cursor-default font-light"
                 >
                     <motion.span
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.8, delay: 2 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3, delay: 0.4 }}
                         className="font-semibold"
                     >
                         Map your ideation with{" "}
@@ -345,13 +342,11 @@ export function Header() {
                 <WastedTimeTimer />
 
                 <motion.div
-                    initial={{ y: 50, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     transition={{
-                        duration: 0.8,
-                        delay: 1.6,
-                        type: "spring",
-                        stiffness: 120,
+                        duration: 0.3,
+                        delay: 0.6,
                     }}
                     className="relative sm:inline flex justify-center"
                 >

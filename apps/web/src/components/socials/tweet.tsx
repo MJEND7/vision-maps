@@ -97,7 +97,7 @@ const TweetWrapper = ({
 }: {
     children: React.ReactNode
 }) => (
-    <div className="relative border border-zinc-300 dark:border-zinc-700 rounded-xl p-4 bg-white dark:bg-zinc-900 max-w-lg w-full shadow-sm">
+    <div className="relative border border-zinc-300 dark:border-zinc-700 rounded-xl p-4 bg-white dark:bg-black max-w-lg w-full shadow-sm">
         {children}
     </div>
 )

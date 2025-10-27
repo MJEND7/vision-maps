@@ -520,7 +520,6 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
             }
         }
 
-        console.log(pasteBinData)
         if (pasteBinData.chatId && deleteUnusedChat) {
             try {
                 console.log("Deleting chat:", pasteBinData.chatId);
@@ -745,7 +744,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                         }}
                     >
                         <motion.div
-                            className="w-full overflow-hidden rounded-2xl shadow-md border border-accent bg-background"
+                            className="w-full overflow-hidden rounded-2xl shadow-md bg-background dark:backdrop-blur-sm dark:bg-muted/50"
                             animate={{
                                 height: animationValues.containerHeight,
                                 padding: animationValues.containerPadding,
