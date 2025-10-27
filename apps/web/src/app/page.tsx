@@ -6,7 +6,6 @@ import LandingFooter from "@/components/landing/LandingFooter";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Users, Palette, Globe, Upload, Brain } from "lucide-react";
 import { Authenticated, Unauthenticated } from "convex/react";
-import LightRays from "@/backgrounds/LightRays/LightRays";
 import { ROUTES } from "@/lib/constants";
 import { Header } from "@/components/landing/Header";
 import { About } from "@/components/landing/About";
@@ -22,20 +21,6 @@ export default function Home() {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5 }}
             >
-                {/* LightRays disabled for performance - WebGL animation was causing lag */}
-                {/* <div className="w-screen h-[300px] dark:inline hidden overflow-none sm:h-screen bg-transparent absolute sm:top-0 top-15">
-                    <LightRays
-                        raysOrigin="top-center"
-                        raysSpeed={1.5}
-                        lightSpread={0.8}
-                        rayLength={0.8}
-                        followMouse={true}
-                        mouseInfluence={0.1}
-                        noiseAmount={0.1}
-                        distortion={0.05}
-                        className="custom-rays"
-                    />
-                </div> */}
                 <LandingNav showLandingSections />
 
                 <div
