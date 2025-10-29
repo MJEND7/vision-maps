@@ -23,6 +23,7 @@ import { useSidebarState } from '@/hooks/useSidebarState';
 import { useSidebarResizing } from '@/hooks/useSidebarResizing';
 import { useTabManagement } from '@/hooks/useTabManagement';
 import { LeftSidebar } from '@/components/vision/left-sidebar';
+import { UpdateChannelArgs } from '@convex/channels';
 
 function VisionDetailPageContent() {
     const { user } = useUser();
@@ -162,15 +163,19 @@ function VisionDetailPageContent() {
         }
     };
 
-    const saveChannelName = async (channelId: string, newTitle: string = '') => {
+    const saveChannel = async (channelId: string, newTitle: string = '', description?: string) => {
         const title = newTitle.trim() || '';
         updateTabTitle(channelId, title);
 
         try {
-            await updateChannel({
+            const update: UpdateChannelArgs = {
                 id: channelId as Id<"channels">,
                 title: title
-            });
+            };
+            if (description) {
+                update["description"] = description;
+            }
+            await updateChannel(update);
         } catch (error) {
             console.error('Failed to update channel:', error);
         }
@@ -282,6 +287,7 @@ function VisionDetailPageContent() {
                                     onChannelNavigate={handleChannelNavigate}
                                     onOpenCommentChat={handleOpenCommentChat}
                                     visionId={visionId}
+                                    onSaveChannel={saveChannel}
                                     onShowUpgradeDialog={setShowUpgradeDialog}
                                 />
                             </SidebarProvider>
@@ -398,7 +404,7 @@ function VisionDetailPageContent() {
                         onOpenTab={openTab}
                         onCreateChannel={handleCreateChannel}
                         onCreateFrame={handleCreateFrame}
-                        onSaveChannel={saveChannelName}
+                        onSaveChannel={saveChannel}
                         onSaveFrame={saveFrameName}
                         onChannelReorder={handleChannelReorder}
                         onFrameReorder={handleFrameReorder}

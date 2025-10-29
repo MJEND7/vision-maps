@@ -63,6 +63,7 @@ export default function Channel({
     onChannelNavigate,
     onOpenCommentChat,
     onShowUpgradeDialog,
+    onSaveChannel,
 }: {
     channelId: string;
     visionId: string;
@@ -70,6 +71,7 @@ export default function Channel({
     onChannelNavigate?: (channelId: string, nodeId?: string) => void;
     onOpenCommentChat?: (chatId: string, nodeId?: string) => void;
     onShowUpgradeDialog: (show: boolean) => void;
+    onSaveChannel: (channelId: string, title: string, description?: string) => void;
 }) {
     const [searchQuery, setSearchQuery] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -102,7 +104,6 @@ export default function Channel({
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    const updateChannel = useMutation(api.channels.update);
     const deleteNode = useMutation(api.nodes.remove);
 
     // Memoize callback functions to prevent unnecessary re-renders
@@ -246,12 +247,7 @@ export default function Channel({
 
     const handleTitleSave = async () => {
         setIsEditingTitle(false);
-        if (titleValue.trim() !== channel.title) {
-            await updateChannel({
-                id: channelId as Id<"channels">,
-                title: titleValue.trim(),
-            });
-        }
+        onSaveChannel(channelId, titleValue);
     };
 
     const handleDescriptionSave = async () => {
@@ -260,10 +256,7 @@ export default function Channel({
             descriptionValue &&
             descriptionValue.trim() !== (channel.description || "")
         ) {
-            await updateChannel({
-                id: channelId as Id<"channels">,
-                description: descriptionValue.trim(),
-            });
+            onSaveChannel(channelId, channel.title, descriptionValue);
         }
     };
 
