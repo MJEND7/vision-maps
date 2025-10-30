@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useTheme } from "next-themes";
-import { Check, ExternalLink } from 'lucide-react';
+import { Copy, CopyCheck  } from 'lucide-react';
 import { Components } from "react-markdown";
 import { Prism as SyntaxHighlighter, SyntaxHighlighterProps } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
@@ -35,7 +35,7 @@ const CodeComponent = ({ className, children, ...props }: any) => {
                 onClick={handleCopy}
                 className="absolute top-2 right-2 p-2 text-xs rounded-md bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
             >
-                {copied ? <Check size={12} /> : <ExternalLink size={12} />}
+                {copied ? <CopyCheck size={12} /> : <Copy size={12} />}
             </button>
             <SyntaxHighlighter
                 style={theme as SyntaxHighlighterProps["style"]}
