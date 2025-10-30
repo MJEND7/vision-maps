@@ -1,44 +1,56 @@
 import { useEffect, useRef } from "react";
 
-function useSmoothWheelScroll(
+export default function useSmoothWheelScroll(
   scrollContainerRef: React.RefObject<HTMLDivElement | null>,
   isMobile: boolean,
-  enabled: boolean = true
+  enabled = true
 ) {
   const velocityRef = useRef(0);
   const rafIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
-
-    // Return early if conditions aren't met
     if (!container || isMobile || !enabled) return;
 
-    const friction = 0.55;
-    const speedMultiplier = 0.5;
+    const friction = 1; // higher = smoother deceleration
+    const speedMultiplier = 1;
 
     const animate = () => {
       if (!container) return;
 
       container.scrollLeft += velocityRef.current;
+      const maxScroll = container.scrollWidth - container.clientWidth;
+
+      // Stop if we're hitting bounds
+      if (
+        container.scrollLeft <= 0 ||
+        container.scrollLeft >= maxScroll
+      ) {
+        velocityRef.current = 0;
+      }
+
       velocityRef.current *= friction;
 
-      if (Math.abs(velocityRef.current) > 0.1) {
+      if (Math.abs(velocityRef.current) >= 0.1) {
         rafIdRef.current = requestAnimationFrame(animate);
       } else {
-        velocityRef.current = 0;
         rafIdRef.current = null;
       }
     };
 
     const handleWheel = (e: WheelEvent) => {
-      if (e.deltaY !== 0 && !e.altKey) {
-        e.preventDefault();
-        velocityRef.current += e.deltaY * speedMultiplier;
+      // Grab the dominant scroll axis (horizontal usually deltaX)
+      const delta =
+        Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
 
-        if (!rafIdRef.current) {
-          rafIdRef.current = requestAnimationFrame(animate);
-        }
+      // Only handle horizontal/vertical scrolls without modifiers
+      if (delta === 0 || e.altKey || e.ctrlKey || e.metaKey) return;
+
+      e.preventDefault();
+      velocityRef.current += delta * speedMultiplier;
+
+      if (!rafIdRef.current) {
+        rafIdRef.current = requestAnimationFrame(animate);
       }
     };
 
@@ -53,5 +65,3 @@ function useSmoothWheelScroll(
     };
   }, [scrollContainerRef, isMobile, enabled]);
 }
-
-export default useSmoothWheelScroll;
