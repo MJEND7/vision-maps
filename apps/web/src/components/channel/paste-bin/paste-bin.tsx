@@ -118,7 +118,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                 mode !== PasteBinMode.IDLE ? "auto" :
                     isDragOver ? "8rem" : "2rem",
         containerPadding: mode !== PasteBinMode.IDLE || isDragOver ? "0px" : "4px",
-        inputHeight: mode !== PasteBinMode.IDLE ? "120px" : "44px"
+        inputHeight: mode !== PasteBinMode.IDLE ? "140px" : "44px"
     }), [mode, isDragOver]);
 
     // Helper function to convert Media to LinkMetadata for card components
@@ -724,7 +724,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
 
     return (
         <div
-            className={`absolute z-[10] inset-x-0 bottom-10 w-full max-w-xs sm:max-w-lg mx-auto`}
+            className={`absolute z-[10] inset-x-0 bottom-10 w-full px-4 sm:max-w-lg sm:mx-auto`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -829,7 +829,7 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                     <Input
                         ref={fileInputRef}
                         type="file"
-                        className="hidden"
+                        className="hidden select-none"
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
                         multiple={false}
                     />
@@ -889,20 +889,21 @@ function PasteBin({ onCreateNode, onShowUpgradeDialog, channelId, visionId }: {
                         }}
                         onFileSelect={() => fileInputRef.current?.click()}
                         onStartPrompt={handleToggleAiMode}
-                    />
+                    >
 
-                    <ActionButtons
-                        mode={mode}
-                        isRecording={isRecording}
-                        isConnecting={isConnecting}
-                        isStopping={isStopping}
-                        isUploading={isUploading}
-                        isUploadingAudio={isUploadingAudio}
-                        isValidForCreation={isValidForCreation()}
-                        onClose={async () => { await clearMedia() }}
-                        onCreate={handleCreate}
-                        onStopRecording={handleStopRecording}
-                    />
+                        <ActionButtons
+                            mode={mode}
+                            isRecording={isRecording}
+                            isConnecting={isConnecting}
+                            isStopping={isStopping}
+                            isUploading={isUploading}
+                            isUploadingAudio={isUploadingAudio}
+                            isValidForCreation={isValidForCreation()}
+                            onClose={async () => { await clearMedia() }}
+                            onCreate={handleCreate}
+                            onStopRecording={handleStopRecording}
+                        />
+                    </InputControls>
                 </motion.div>
             </div>
         </div>

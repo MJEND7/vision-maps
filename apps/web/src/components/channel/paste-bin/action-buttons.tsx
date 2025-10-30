@@ -33,24 +33,14 @@ export function ActionButtons({
     return (
         <AnimatePresence>
             {!isIdleMode && (
-                <motion.div
-                    className="absolute right-2 bottom-2 flex gap-2"
-                    initial={{ opacity: 0, y: 10, scale: 0.8 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{
-                        type: "spring",
-                        stiffness: 400,
-                        damping: 25
-                    }}
+                <div
+                    className="w-full flex justify-end bg-transparent gap-2"
                 >
                     {/* Close button */}
                     <motion.div
                         key="close-button"
-                        initial={{ x: 40, opacity: 0 }}
+                        initial={{ x: -40, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
-                        exit={{ x: 40, opacity: 0 }}
-                        transition={{ delay: 0.1 }}
                     >
                         <Button
                             variant="ghost"
@@ -65,10 +55,8 @@ export function ActionButtons({
                     {/* Main action button */}
                     <motion.div
                         key="send-button"
-                        initial={{ x: 30, opacity: 0 }}
+                        initial={{ x: -30, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
-                        exit={{ x: 30, opacity: 0 }}
-                        transition={{ delay: 0.15 }}
                     >
                         {mode === PasteBinMode.TRANSCRIPTION && (isRecording || isConnecting || isStopping) ? (
                             <Button
@@ -107,7 +95,7 @@ export function ActionButtons({
                             </Button>
                         )}
                     </motion.div>
-                </motion.div>
+                </div>
             )}
         </AnimatePresence>
     );
